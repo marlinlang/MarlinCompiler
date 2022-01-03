@@ -7,6 +7,7 @@ namespace MarlinCompiler.Compilation;
 
 internal class Builder : IBuilder
 {
+    private readonly List<RootSymbol> _includes;
     public CompileMessages Messages { get; }
 
     public string ProjectPath { get; set;  } = "<none>";
@@ -14,8 +15,9 @@ internal class Builder : IBuilder
     // antlr SourceName doesn't work with the c# target for some reason
     public string CurrentFile { get; private set; } = "<none>";
 
-    public Builder()
+    public Builder(List<RootSymbol> includes)
     {
+        _includes = includes;
         Messages = new CompileMessages();
     }
 
@@ -36,17 +38,35 @@ internal class Builder : IBuilder
         }
         Messages.LoadMessages(astGenerator.Messages);
         if (Messages.HasErrors) return false;
+        
+        // Create root symbol
+        root.Symbol = new RootSymbol();
 
         // Type fixing
         TypeFixer fixer = new(this);
         fixer.Visit(root);
-        Messages.LoadMessages(astGenerator.Messages);
+        Messages.LoadMessages(fixer.Messages);
         if (Messages.HasErrors) return false;
+        
+        // Load includes
+        foreach (RootSymbol include in _includes)
+        {
+            foreach (Symbol child in include.Scope)
+            {
+                root.Symbol.AddChild(child);
+            }
+        }
         
         // Semantic analysis
         SemanticAnalyzer analyzer = new(this);
         analyzer.Visit(root);
-        Messages.LoadMessages(astGenerator.Messages);
+        Messages.LoadMessages(analyzer.Messages);
+        if (Messages.HasErrors) return false;
+        
+        // Semantic checking
+        SemanticChecker checker = new(this);
+        checker.Visit(root);
+        Messages.LoadMessages(checker.Messages);
         if (Messages.HasErrors) return false;
         
         return !Messages.HasErrors;

@@ -112,6 +112,24 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
         
         VisitChildren(node);
 
+        List<AstNode> children = new();
+        foreach (AstNode child in node.Children)
+        {
+            if (child is VariableDeclarationNode)
+            {
+                children.Add(child);
+            }
+        }
+        foreach (AstNode child in node.Children)
+        {
+            if (child is not VariableDeclarationNode)
+            {
+                children.Add(child);
+            }
+        }
+        node.TypeBody.Body.Clear();
+        node.TypeBody.Body.AddRange(children);
+
         return node;
     }
 
@@ -144,6 +162,11 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
         );
         node.Prototype.Symbol = node.Symbol;
         
+        foreach (AstNode arg in node.Prototype.Args)
+        {
+            node.Symbol.AddChild(arg.Symbol);
+        }
+        
         Visit(node.Prototype);
 
         return node;
@@ -164,8 +187,8 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
 
     public override AstNode VisitMethodCallNode(MethodCallNode node)
     {
-        if (node.Member != null) Visit(node.Member);
-        foreach (AstNode arg in node.Args) Visit(arg);
+        if (node.Member != null) { Visit(node.Member); }
+        foreach (AstNode arg in node.Args) { Visit(arg);}
 
         return node;
     }

@@ -3,6 +3,7 @@
 public sealed class MethodSymbol : Symbol
 {
     public string Name { get; }
+    public TypeSymbol Type { get; }
     public bool IsStatic { get; }
     public MemberVisibility Visibility { get; }
     public List<Symbol> Args { get; }

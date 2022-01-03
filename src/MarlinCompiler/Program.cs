@@ -4,6 +4,8 @@ using System.CommandLine.NamingConventionBinder;
 using System.Diagnostics;
 using System.Reflection;
 using MarlinCompiler.Compilation;
+using MarlinCompiler.ModuleDefinitions;
+using MarlinCompiler.Symbols;
 
 namespace MarlinCompiler;
 
@@ -51,19 +53,22 @@ internal static class Program
 
     private static void Compile(string path, string mdk)
     {
-        if (!File.Exists(mdk) && !Directory.Exists(mdk))
+        List<RootSymbol> includes = new();
+        if (File.Exists(mdk) && Path.GetExtension(mdk) == ".mnmd")
         {
-            mdk = null;
+            ModuleDefinition def = ModuleParser.Parse(mdk);
+            if (def == null) return;
+            includes.Add(SymbolBuilder.CreateTree(def));
         }
         
         path = Path.GetFullPath(path);
 
-        IBuilder builder = new Builder();
+        IBuilder builder = new Builder(includes);
         bool success = builder.Build(path);
 
         Console.Write("Compilation ");
         Console.ForegroundColor = success ? ConsoleColor.Green : ConsoleColor.Red;
-        Console.Write($"{(success ? "SUCCESSFUL" : "FAILED")}");
+        Console.Write($"{(success ? "successful" : "failed")}");
         Console.ResetColor();
         Console.WriteLine(".");
         if (builder.Messages.Count > 0)

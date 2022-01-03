@@ -17,7 +17,7 @@ public class ErrorListener : BaseErrorListener
     public override void SyntaxError(TextWriter output, IRecognizer recognizer, IToken offendingSymbol, int line,
         int charPositionInLine, string msg, RecognitionException e)
     {
-        _builder.Messages.AddError(
+        _builder.Messages.Error(
             msg,
             new FileLocation(
                 _builder.CurrentFile,

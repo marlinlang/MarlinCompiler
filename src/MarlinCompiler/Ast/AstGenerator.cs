@@ -126,7 +126,7 @@ public sealed class AstGenerator : MarlinParserBaseVisitor<AstNode>
             string modifierText = modifier.GetText();
             if (previousModifiers.ContainsKey(modifierText))
             {
-                Messages.AddError($"Repeated modifier {modifierText}", new FileLocation(
+                Messages.Error($"Repeated modifier {modifierText}", new FileLocation(
                     _builder.CurrentFile,
                     modifier.Start.Line,
                     modifier.Start.Column
@@ -161,7 +161,7 @@ public sealed class AstGenerator : MarlinParserBaseVisitor<AstNode>
 
         if (!changedVisibility)
         {
-            Messages.AddWarning(
+            Messages.Warning(
                 "Visibility should always be explicitly defined",
                 new FileLocation(_builder, context.Start)
             );
@@ -195,7 +195,7 @@ public sealed class AstGenerator : MarlinParserBaseVisitor<AstNode>
             string modifierText = modifier.GetText();
             if (previousModifiers.ContainsKey(modifierText))
             {
-                Messages.AddError($"Repeated modifier {modifierText}", new FileLocation(
+                Messages.Error($"Repeated modifier {modifierText}", new FileLocation(
                     _builder.CurrentFile,
                     modifier.Start.Line,
                     modifier.Start.Column
@@ -251,7 +251,7 @@ public sealed class AstGenerator : MarlinParserBaseVisitor<AstNode>
             string modifierText = modifier.GetText();
             if (previousModifiers.ContainsKey(modifierText))
             {
-                Messages.AddError($"Repeated modifier {modifierText}", new FileLocation(
+                Messages.Error($"Repeated modifier {modifierText}", new FileLocation(
                     _builder.CurrentFile,
                     modifier.Start.Line,
                     modifier.Start.Column
@@ -271,7 +271,7 @@ public sealed class AstGenerator : MarlinParserBaseVisitor<AstNode>
                     isStatic = true;
                     break;
                 default:
-                    Messages.AddError($"Unsupported modifier {modifierText} for variable");
+                    Messages.Error($"Unsupported modifier {modifierText} for variable");
                     break;
             }
             
@@ -368,7 +368,7 @@ public sealed class AstGenerator : MarlinParserBaseVisitor<AstNode>
             string argName = arg.IDENTIFIER().GetText();
             if (dict.ContainsKey(argName))
             {
-                Messages.AddError($"Repeated argument name {argName}", new FileLocation(_builder, arg.Start));
+                Messages.Error($"Repeated argument name {argName}", new FileLocation(_builder, arg.Start));
                 continue;
             }
             

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using MarlinCompiler.Antlr;
 using MarlinCompiler.Ast;
 using MarlinCompiler.Symbols;
 
@@ -13,6 +14,7 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
     public SemanticAnalyzer(Builder builder)
     {
+        Messages = new CompileMessages();
         _builder = builder;
         _contextStack = new Stack<AstNode>();
     }
@@ -21,8 +23,8 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
     {
         if (node is RootBlockNode)
         {
-            node.Symbol = new RootSymbol();
-            
+            if (node.Symbol == null) { node.Symbol = new RootSymbol(); }
+
             _contextStack.Push(node);
         }
         
@@ -80,6 +82,11 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
     public override AstNode VisitMethodPrototypeNode(MethodPrototypeNode node)
     {
         _contextStack.Push(node);
+
+        foreach (ArgumentVariableDeclarationNode arg in node.Args)
+        {
+            Visit(arg.Type);
+        }
         
         VisitChildren(node);
         
@@ -90,7 +97,49 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
     public override AstNode VisitMethodCallNode(MethodCallNode node)
     {
-        node.Symbol = VisitMemberAccessNode(node.Member).Symbol;
+        Symbol initial = VisitMemberAccessNode(node.Member).Symbol;
+        Symbol owner = VisitMemberAccessNode(node.Member).Symbol.Parent;
+
+        MethodSymbol found = null;
+        
+        StringBuilder givenArgsSb = new();
+        foreach (VariableDeclarationNode arg in node.Args)
+        {
+            givenArgsSb.Append(arg.Type.Name).Append('-');
+        }
+
+        string givenArgs = givenArgsSb.ToString();
+        
+        foreach (Symbol tryFind in owner.LookupMultiple(initial.Name))
+        {
+            if (tryFind is MethodSymbol tryMethod)
+            {
+                StringBuilder expectedArgsSb = new();
+                foreach (VariableSymbol arg in tryMethod.Args)
+                {
+                    expectedArgsSb.Append(arg.Type).Append('-');
+                }
+
+                if (expectedArgsSb.ToString() == givenArgs)
+                {
+                    found = tryMethod;
+                    break;
+                }
+            }
+            else
+            {
+                // properties go at the top so this will be detected instantly
+                Messages.Error(
+                    $"Cannot call non-method {tryFind.Name}",
+                    new FileLocation(
+                        _builder,
+                        ((MarlinParser.MethodCallContext) node.Context).memberAccess().Stop
+                    )
+                );
+            }
+        }
+
+        node.Symbol = found;
         return node;
     }
 
@@ -115,7 +164,7 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
     {
         if (_contextStack.Peek().Symbol.Lookup(node.Name) != null)
         {
-            Messages.AddError(
+            Messages.Error(
                 $"Name {node.Name} already used somewhere else", 
                 new FileLocation(_builder, node.Context.Start)
             );
@@ -123,6 +172,7 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
         node.Symbol = new VariableSymbol(node.Name, node.Type.Name);
 
+        Visit(node.Type);
         if (node.Value != null) Visit(node.Value);
         
         return node;

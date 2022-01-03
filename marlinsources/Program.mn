@@ -2,8 +2,10 @@
 
 public class Program
 {
-    public static void Main(int x)
+    public static int Shveps(int x) {}
+
+    public static void Main()
     {
-        app::Program.Main();
+        app::Program.Shveps(12);
     }
 }

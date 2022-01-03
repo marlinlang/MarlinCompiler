@@ -5,7 +5,7 @@ public class Symbol
     public string Name { get; }
 
     public Symbol Parent { get; private set; }
-    private List<Symbol> Scope { get; }
+    public List<Symbol> Scope { get; }
     
     private string Guid { get; }
     
