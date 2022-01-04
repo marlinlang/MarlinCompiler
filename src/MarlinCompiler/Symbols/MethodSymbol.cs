@@ -8,6 +8,8 @@ public sealed class MethodSymbol : Symbol
     public MemberVisibility Visibility { get; }
     public List<Symbol> Args { get; }
 
+    public override string UserType => "method";
+
     public MethodSymbol(string name, bool isStatic, MemberVisibility visibility, List<Symbol> args) : base(name)
     {
         Name = name;

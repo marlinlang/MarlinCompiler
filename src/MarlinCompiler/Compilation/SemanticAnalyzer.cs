@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using MarlinCompiler.Antlr;
 using MarlinCompiler.Ast;
+using MarlinCompiler.MarlinCompiler.Compilation;
 using MarlinCompiler.Symbols;
 
 namespace MarlinCompiler.Compilation;
@@ -97,45 +98,46 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
     public override AstNode VisitMethodCallNode(MethodCallNode node)
     {
-        Symbol initial = VisitMemberAccessNode(node.Member).Symbol;
-        Symbol owner = VisitMemberAccessNode(node.Member).Symbol.Parent;
-
         MethodSymbol found = null;
+        Symbol initial = VisitMemberAccessNode(node.Member).Symbol;
         
-        StringBuilder givenArgsSb = new();
-        foreach (VariableDeclarationNode arg in node.Args)
+        if (initial != null)
         {
-            givenArgsSb.Append(arg.Type.Name).Append('-');
-        }
+            Symbol owner = VisitMemberAccessNode(node.Member).Symbol.Parent;
 
-        string givenArgs = givenArgsSb.ToString();
-        
-        foreach (Symbol tryFind in owner.LookupMultiple(initial.Name))
-        {
-            if (tryFind is MethodSymbol tryMethod)
+            foreach (Symbol tryFind in owner.LookupMultiple(initial.Name))
             {
-                StringBuilder expectedArgsSb = new();
-                foreach (VariableSymbol arg in tryMethod.Args)
+                if (tryFind is MethodSymbol tryMethod)
                 {
-                    expectedArgsSb.Append(arg.Type).Append('-');
-                }
+                    if (tryMethod.Args.Count == node.Args.Count)
+                    {
+                        for (int i = 0; i < tryMethod.Args.Count; i++)
+                        {
+                            string expected = ((VariableSymbol) tryMethod.Args[i]).Type;
+                            string given = SemanticUtils.GetNodeTypeName(Visit(node.Args[i]));
 
-                if (expectedArgsSb.ToString() == givenArgs)
-                {
-                    found = tryMethod;
-                    break;
+                            TypeSymbol expectedType = (TypeSymbol) _contextStack.Peek().Symbol.Lookup(expected);
+                            TypeSymbol givenType = (TypeSymbol) _contextStack.Peek().Symbol.Lookup(given);
+
+                            if (SemanticUtils.AreTypesCompatible(expectedType, givenType))
+                            {
+                                found = tryMethod;
+                                break;
+                            }
+                        }
+                    }
                 }
-            }
-            else
-            {
-                // properties go at the top so this will be detected instantly
-                Messages.Error(
-                    $"Cannot call non-method {tryFind.Name}",
-                    new FileLocation(
-                        _builder,
-                        ((MarlinParser.MethodCallContext) node.Context).memberAccess().Stop
-                    )
-                );
+                else
+                {
+                    // properties go at the top so this will be detected instantly
+                    Messages.Error(
+                        $"Cannot call non-method {tryFind.Name} (a {tryFind.UserType})",
+                        new FileLocation(
+                            _builder,
+                            ((MarlinParser.MethodCallContext) node.Context).memberAccess().Stop
+                        )
+                    );
+                }
             }
         }
 
@@ -180,13 +182,27 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
     public override TypeReferenceNode VisitTypeReferenceNode(TypeReferenceNode node)
     {
-        node.Symbol = _contextStack.Peek().Symbol.Lookup(node.Name);
+        string useName = node.Name.EndsWith("[]") ? node.Name[..^2] : node.Name;
+        
+        node.Symbol = _contextStack.Peek().Symbol.Lookup(useName);
         
         return node;
     }
 
-    public override AstNode VisitNameReferenceNode(NameReferenceNode node)
+    public override AstNode VisitArrayInitializerNode(ArrayInitializerNode node)
     {
+        Visit(node.ArrayType);
+
         return node;
     }
+
+    public override AstNode VisitNameReferenceNode(NameReferenceNode node) => node;
+
+    public override AstNode VisitBooleanNode(BooleanNode node) => node;
+
+    public override AstNode VisitDoubleNode(DoubleNode node) => node;
+
+    public override AstNode VisitIntegerNode(IntegerNode node) => node;
+
+    public override AstNode VisitStringNode(StringNode node) => node;
 }

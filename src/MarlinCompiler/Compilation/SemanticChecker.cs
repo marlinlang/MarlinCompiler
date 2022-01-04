@@ -2,6 +2,7 @@
 using MarlinCompiler.Antlr;
 using MarlinCompiler.Ast;
 using MarlinCompiler.Compilation;
+using MarlinCompiler.MarlinCompiler.Compilation;
 using MarlinCompiler.Symbols;
 
 namespace MarlinCompiler.Compilation;
@@ -17,66 +18,6 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
         _builder = builder;
     }
 
-    /// <summary>
-    /// Gets the type of a node as a string.
-    /// </summary>
-    private string GetNodeTypeName(AstNode node)
-    {
-        switch (node)
-        {
-            // Really simple nodes
-            case VariableDeclarationNode variableDeclarationNode:
-                return variableDeclarationNode?.Type?.Symbol?.Name ?? "<???>";
-            case MethodCallNode methodCallNode:
-                return ((MethodSymbol) methodCallNode.Symbol)?.Type.Name ?? "<???>";
-            case TypeReferenceNode typeReferenceNode:
-                return typeReferenceNode.Symbol?.Name ?? "<???>";
-
-            // More complex nodes
-            case MemberAccessNode memberAccessNode:
-            {
-                string type = GetNodeTypeName(memberAccessNode.Member);
-                return memberAccessNode.ArrayIndex != null ? type + "[]" : type;
-            }
-            case NameReferenceNode nameReferenceNode:
-                return nameReferenceNode.Symbol switch
-                {
-                    TypeSymbol ty => ty.Name,
-                    MethodSymbol mtd => mtd.Type.Name,
-                    VariableSymbol var => var?.Type ?? "<???>",
-                    _ => throw new NotImplementedException()
-                };
-
-            // Literals
-            case BooleanNode:
-                return "std::Boolean";
-            case IntegerNode:
-                return "std::Integer";
-            case DoubleNode:
-                return "std::Double";
-            case StringNode:
-                return "std::String";
-
-            default:
-                throw new InvalidOperationException("node is not supported");
-        }
-    }
-
-    /// <summary>
-    /// Checks if a type is a subclass of another.
-    /// </summary>
-    private bool AreTypesCompatible(TypeSymbol super, TypeSymbol sub)
-    {
-        if (super is ClassTypeSymbol superCls && sub is ClassTypeSymbol subCls)
-        {
-            return superCls == subCls || subCls.BaseClasses.Contains(super.Name);
-        }
-        else
-        {
-            return super == sub;
-        }
-    }
-    
     public override AstNode VisitClassDeclarationNode(ClassDeclarationNode node)
     {
         Symbol[] othersCheck = node.Symbol.LookupMultiple(node.Name);
@@ -94,11 +35,6 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
         VisitChildren(node);
 
         return node;
-    }
-
-    public override AstNode VisitMemberAccessNode(MemberAccessNode node)
-    {
-        throw new NotImplementedException();
     }
 
     public override AstNode VisitMethodDeclarationNode(MethodDeclarationNode node)
@@ -150,9 +86,9 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
             MarlinParser.MemberAccessContext ctx = ((MarlinParser.MethodCallContext) node.Context).memberAccess();
 
             StringBuilder argsSb = new("(");
-            foreach (ArgumentVariableDeclarationNode arg in node.Args)
+            foreach (AstNode arg in node.Args)
             {
-                argsSb.Append(arg.Type.Name);
+                argsSb.Append(SemanticUtils.GetNodeTypeName(arg));
                 if (arg != node.Args.Last())
                 {
                     argsSb.Append(", ");
@@ -160,11 +96,48 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
             }
             argsSb.Append(')');
             
-            // todo: more meaningful error please!
-            Messages.Error(
-                $"Cannot resolve method {ctx.GetText()}{argsSb}",
-                new FileLocation(_builder, ctx.Stop)
-            );
+            // list possible overloads
+            List<string> overloads = new();
+            Symbol initial = node.Member.Symbol;
+            string methodPath = ctx.GetText();
+            
+            if (initial != null)
+            {
+                Symbol owner = node.Member.Symbol.Parent;
+                methodPath = initial.GetPath();
+                foreach (MethodSymbol overload in owner.LookupMultiple(initial.Name).Where(sym => sym is MethodSymbol))
+                {
+                    StringBuilder args = new(methodPath);
+                    args.Append('(');
+                    foreach (VariableSymbol arg in overload.Args)
+                    {
+                        args.Append(arg.Type);
+
+                        if (arg != overload.Args.Last())
+                        {
+                            args.Append(", ");
+                        }
+                    }
+
+                    overloads.Add(args.Append(')').ToString());
+                }
+            }
+
+            if (overloads.Count == 0)
+            {
+                Messages.Error(
+                    $"Cannot resolve method {methodPath}{argsSb}",
+                    new FileLocation(_builder, ctx.Stop)
+                );
+            }
+            else
+            {
+                Messages.Error(
+                    $"Cannot find overload {methodPath}{argsSb} - possible overloads are:\n\t"
+                        + string.Join("\n\t", overloads),
+                    new FileLocation(_builder, ctx.Stop)
+                );
+            }
         }
 
         return node;
@@ -172,16 +145,60 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
 
     public override AstNode VisitVariableAssignmentNode(VariableAssignmentNode node)
     {
-        throw new NotImplementedException();
+        string varName = node.Member.Context.GetText();
+        if (node.Member.Symbol == null)
+        {
+            Messages.Error(
+                $"Unknown variable {varName}",
+                new FileLocation(_builder, node.Member.Context.Start)
+            );
+        }
+        else
+        {
+            Symbol symbol = node.Member.Symbol;
+            varName = symbol.GetPath();
+            
+            if (symbol is VariableSymbol varSymbol)
+            {
+                string valueType = SemanticUtils.GetNodeTypeName(node.Value);
+                TypeSymbol super = (TypeSymbol) node.Symbol.Lookup(varSymbol.Type);
+                TypeSymbol sub = (TypeSymbol) node.Symbol.Lookup(valueType);
+                if (!SemanticUtils.AreTypesCompatible(super, sub))
+                {
+                    Messages.Error(
+                        $"Cannot assign value of type '{valueType}' to variable '{varName}' ('{varSymbol.Type}')",
+                        new FileLocation(_builder, node.Value.Context.Start)
+                    );
+                }
+            }
+            else
+            {
+                Messages.Error(
+                    $"Cannot assign to non-variable {varName}",
+                    new FileLocation(_builder, node.Member.Context.Start)
+                );
+            }
+        }
+        
+        return node;
     }
 
     public override AstNode VisitVariableDeclarationNode(VariableDeclarationNode node)
     {
         if (node.Value != null)
         {
-            string valueType = GetNodeTypeName(node.Value);
-            if (!AreTypesCompatible((TypeSymbol) node.Type.Symbol, (TypeSymbol) node.Symbol.Lookup(valueType)))
+            string valueType = SemanticUtils.GetNodeTypeName(node.Value);
+            bool isValueArray = valueType.EndsWith("[]");
+            if (isValueArray)
             {
+                valueType = valueType[..^2];
+            }
+            
+            TypeSymbol super = (TypeSymbol) node.Type.Symbol;
+            TypeSymbol sub = (TypeSymbol) node.Symbol.Lookup(valueType);
+            if (!SemanticUtils.AreTypesCompatible(super, sub) || node.Type.IsArray != isValueArray)
+            {
+                if (isValueArray) valueType += "[]"; // hack
                 Messages.Error(
                     $"Cannot assign value of type '{valueType}' to variable '{node.Name}' ('{node.Type.Name}')",
                     new FileLocation(_builder, node.Value.Context.Start)

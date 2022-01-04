@@ -113,5 +113,10 @@ public abstract class BaseAstVisitor<TResult> : IAstVisitor<TResult>
         VisitChildren(node);
         return default;
     }
-    
+
+    public virtual TResult VisitArrayInitializerNode(ArrayInitializerNode node)
+    {
+        VisitChildren(node);
+        return default;
+    }
 }

@@ -14,12 +14,15 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
         _builder = builder;
     }
 
+    /// <summary>
+    /// Converts types such as 'int' to std::Integer. Supports array types.
+    /// </summary>
     private string FixType(string type)
     {
         // Handle array types
         if (type.EndsWith("[]"))
         {
-            return FixType(type[..^2] + "[]");
+            return FixType(type[..^2]) + "[]";
         }
         
         return type switch
@@ -146,6 +149,7 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
 
         foreach (ArgumentVariableDeclarationNode arg in node.Prototype.Args)
         {
+            VisitTypeReferenceNode(arg.Type);
             arg.Symbol = new VariableSymbol(arg.Name, arg.Type.Name);
         }
         
@@ -177,6 +181,7 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
         foreach (ArgumentVariableDeclarationNode arg in node.Args)
         {
             Visit(arg);
+            VisitTypeReferenceNode(arg.Type);
             arg.Symbol = new VariableSymbol(arg.Name, arg.Type.Name);
         }
         
@@ -188,7 +193,11 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
     public override AstNode VisitMethodCallNode(MethodCallNode node)
     {
         if (node.Member != null) { Visit(node.Member); }
-        foreach (AstNode arg in node.Args) { Visit(arg);}
+
+        foreach (AstNode arg in node.Args)
+        {
+            Visit(arg);
+        }
 
         return node;
     }
@@ -204,6 +213,12 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
         VisitTypeReferenceNode(node.Type);
         if (node.Value != null) Visit(node.Value);
         
+        return node;
+    }
+
+    public override AstNode VisitArrayInitializerNode(ArrayInitializerNode node)
+    {
+        VisitTypeReferenceNode(node.ArrayType);
         return node;
     }
 

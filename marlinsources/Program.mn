@@ -2,10 +2,8 @@
 
 public class Program
 {
-    public static int Shveps(int x) {}
-
     public static void Main()
     {
-        app::Program.Shveps(12);
+        int[] test = new string[0];
     }
 }

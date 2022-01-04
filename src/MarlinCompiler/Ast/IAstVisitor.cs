@@ -20,4 +20,5 @@ public interface IAstVisitor<TResult>
     public TResult VisitVariableDeclarationNode(VariableDeclarationNode node);
     public TResult VisitTypeReferenceNode(TypeReferenceNode node);
     public TResult VisitNameReferenceNode(NameReferenceNode node);
+    public TResult VisitArrayInitializerNode(ArrayInitializerNode node);
 }

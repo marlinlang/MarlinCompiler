@@ -3,11 +3,18 @@
 public class Symbol
 {
     public string Name { get; }
+    
+    /// <summary>
+    /// A user-friendly string that describes what the symbol represents, e.g. a variable.
+    /// </summary>
+    public virtual string UserType => "???";
 
     public Symbol Parent { get; private set; }
     public List<Symbol> Scope { get; }
     
     private string Guid { get; }
+
+    public static IEqualityComparer<Symbol> GuidComparer { get; } = new GuidEqualityComparer();
     
     public Symbol(string name)
     {
@@ -82,7 +89,12 @@ public class Symbol
         }
     }
 
-    public static IEqualityComparer<Symbol> GuidComparer { get; } = new GuidEqualityComparer();
-
     public override int GetHashCode() => Guid.GetHashCode();
+
+    public string GetPath()
+    {
+        return Parent != null && Parent is not RootSymbol
+            ? Parent.GetPath() + "." + Name
+            : Name;
+    }
 }

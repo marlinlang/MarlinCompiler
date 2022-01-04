@@ -45,7 +45,7 @@ public class FileLocation
     {
         Path = builder.CurrentFile;
         Line = token.Line;
-        Column = token.Column;
+        Column = token.Column + 1;
     }
     
     public override string ToString() => $"{Path}:{Line}:{Column}";

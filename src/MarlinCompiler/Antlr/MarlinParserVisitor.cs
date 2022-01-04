@@ -141,6 +141,12 @@ public interface IMarlinParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitMemberAccess([NotNull] MarlinParser.MemberAccessContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="MarlinParser.arrayInitializer"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitArrayInitializer([NotNull] MarlinParser.ArrayInitializerContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="MarlinParser.return"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -176,5 +182,11 @@ public interface IMarlinParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitStringLiteral([NotNull] MarlinParser.StringLiteralContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="MarlinParser.numberLiteral"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitNumberLiteral([NotNull] MarlinParser.NumberLiteralContext context);
 }
 } // namespace MarlinCompiler.Antlr

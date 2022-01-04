@@ -6,6 +6,8 @@ public sealed class ClassTypeSymbol : TypeSymbol
     public bool IsSealed { get; }
     public string[] BaseClasses { get; }
 
+    public override string UserType => "class";
+
     public ClassTypeSymbol(string name, MemberVisibility visibility, bool isStatic, bool isSealed,
         string[] baseClasses) : base(name, visibility)
     {

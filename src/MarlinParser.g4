@@ -10,7 +10,8 @@ file
 
 // Fragments
 typeName
-    : IDENTIFIER (DOUBLE_COLON IDENTIFIER)*
+    : typeName LBRACKET RBRACKET
+    | IDENTIFIER (DOUBLE_COLON IDENTIFIER)*
     | NATIVE IDENTIFIER
     ;
 
@@ -52,10 +53,9 @@ expression
     | memberAccess
     | booleanLiteral
     | stringLiteral
-    | INTEGER
-    | DOUBLE
+    | numberLiteral
+    | arrayInitializer
     ;
-
 // Containers (types and methods)
 typeDeclaration
     : classDeclaration
@@ -100,6 +100,11 @@ memberAccess
     | IDENTIFIER (LBRACKET expression RBRACKET)?
     ;
 
+arrayInitializer
+    : NEW typeName LBRACKET expression RBRACKET
+    | NEW typeName LBRACKET RBRACKET LBRACE expression (COMMA expression)* RBRACKET
+    ;
+
 return
     : RETURN expression?
     ;
@@ -128,4 +133,9 @@ booleanLiteral
 
 stringLiteral
     : NORMAL_STRING
+    ;
+
+numberLiteral
+    : INTEGER
+    | DOUBLE
     ;

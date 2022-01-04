@@ -5,6 +5,8 @@ public sealed class VariableSymbol : Symbol
     public string Type { get; }
     public MemberVisibility Visibility { get; }
     public bool IsStatic { get; }
+
+    public override string UserType => "variable";
     
     /// <summary>
     /// Used for member & local variables.
