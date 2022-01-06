@@ -265,7 +265,8 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
             context.IDENTIFIER().GetText(),
             isStatic,
             visibility,
-            (MethodPrototypeNode) VisitMethodBody(context.methodBody())
+            (MethodPrototypeNode) VisitMethodBody(context.methodBody()),
+            (TypeReferenceNode) VisitTypeName(context.typeName())
         );
     }
 

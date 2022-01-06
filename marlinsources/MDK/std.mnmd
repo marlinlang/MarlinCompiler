@@ -76,7 +76,7 @@
                             "signature": [
                                 "std::Object"
                             ],
-                            "returns": "void"
+                            "returns": "std::Void"
                         }
                     ]
                 }

@@ -1,0 +1,35 @@
+{
+	"mnmdVersion": 1,
+	"moduleName": "Program",
+	"moduleAuthor": "???",
+	"types": [
+		{
+			"typeKind": "class",
+			"typeName": "app::Program",
+			"visibility": "public",
+			"canCreate": true,
+			"data": {
+				"inheritable": true,
+				"static": false,
+				"bases": [
+					"std::Object"
+				],
+				"members": [
+					{
+						"kind": "variable",
+						"name": "Main",
+						"visibility": "public",
+						"overloads": [
+							{
+								"static": true,
+								"signature": [
+								],
+								"returns": "std::Void"
+							}
+						]
+					}
+				]
+			}
+		}
+	]
+}

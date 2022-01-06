@@ -1,6 +1,7 @@
 ﻿using Antlr4.Runtime;
 using MarlinCompiler.Antlr;
 using MarlinCompiler.Ast;
+using MarlinCompiler.ModuleDefinitions;
 using MarlinCompiler.Symbols;
 
 namespace MarlinCompiler.Compilation;
@@ -68,6 +69,12 @@ internal class Builder : IBuilder
         checker.Visit(root);
         Messages.LoadMessages(checker.Messages);
         if (Messages.HasErrors) return false;
+        
+        // ModuleDefinition builder
+        string p = Path.Combine(Path.GetDirectoryName(ProjectPath), new Uri(ProjectPath).Segments.Last() + ".mnmd");
+        ModuleDefinitionBuilder.Create(p, Path.GetFileNameWithoutExtension(new Uri(ProjectPath).Segments.Last()), root);
+        
+        // Target invocation
         
         return !Messages.HasErrors;
     }

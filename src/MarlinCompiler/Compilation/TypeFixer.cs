@@ -27,6 +27,7 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
         
         return type switch
         {
+            "void" => "std::Void",
             "int" => "std::Integer",
             "char" => "std::Character",
             "string" => "std::String",
@@ -145,6 +146,8 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
 
     public override AstNode VisitMethodDeclarationNode(MethodDeclarationNode node)
     {
+        Visit(node.Type);
+        
         List<Symbol> args = new();
 
         foreach (ArgumentVariableDeclarationNode arg in node.Prototype.Args)

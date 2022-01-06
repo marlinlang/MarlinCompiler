@@ -76,6 +76,8 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
     public override AstNode VisitMethodDeclarationNode(MethodDeclarationNode node)
     {
         VisitMethodPrototypeNode(node.Prototype);
+
+        ((MethodSymbol) node.Symbol).Type = (TypeSymbol) VisitTypeReferenceNode(node.Type).Symbol;
         
         return node;
     }
