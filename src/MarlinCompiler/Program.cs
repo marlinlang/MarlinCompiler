@@ -60,6 +60,11 @@ internal static class Program
             if (def == null) return;
             includes.Add(SymbolBuilder.CreateTree(def));
         }
+        else if (mdk != null)
+        {
+            Console.WriteLine("Cannot find MDK");
+            return;
+        }
         
         path = Path.GetFullPath(path);
 
