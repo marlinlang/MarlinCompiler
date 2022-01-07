@@ -27,11 +27,30 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
                 $"Type '{node.Name}' declared multiple times",
                 new FileLocation(
                     _builder,
-                    ((MarlinParser.ClassDeclarationContext)node.Context).IDENTIFIER().Symbol
+                    ((MarlinParser.ClassDeclarationContext) node.Context).IDENTIFIER().Symbol
                 )
             );
         }
-        
+
+        VisitChildren(node);
+
+        return node;
+    }
+
+    public override AstNode VisitStructDeclarationNode(StructDeclarationNode node)
+    {
+        Symbol[] othersCheck = node.Symbol.LookupMultiple(node.Name);
+        if (othersCheck.Length > 1)
+        {
+            Messages.Error(
+                $"Type '{node.Name}' declared multiple times",
+                new FileLocation(
+                    _builder,
+                    ((MarlinParser.StructDeclarationContext) node.Context).IDENTIFIER().Symbol
+                )
+            );
+        }
+
         VisitChildren(node);
 
         return node;

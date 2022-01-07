@@ -9,12 +9,12 @@ public class Symbol
     /// </summary>
     public virtual string UserType => "???";
 
-    public Symbol Parent { get; private set; }
+    public Symbol? Parent { get; private set; }
     public List<Symbol> Scope { get; }
     
     private string Guid { get; }
 
-    public object CustomTargetData { get; set; }
+    public object? CustomTargetData { get; set; }
     
     public static IEqualityComparer<Symbol> GuidComparer { get; } = new GuidEqualityComparer();
     
@@ -76,7 +76,7 @@ public class Symbol
 
     private sealed class GuidEqualityComparer : IEqualityComparer<Symbol>
     {
-        public bool Equals(Symbol x, Symbol y)
+        public bool Equals(Symbol? x, Symbol? y)
         {
             if (ReferenceEquals(x, y)) return true;
             if (ReferenceEquals(x, null)) return false;

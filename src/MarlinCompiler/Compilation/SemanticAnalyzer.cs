@@ -50,6 +50,17 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
         return node;
     }
 
+    public override AstNode VisitStructDeclarationNode(StructDeclarationNode node)
+    {
+        _contextStack.Push(node);
+        
+        VisitChildren(node);
+        
+        _contextStack.Pop();
+        
+        return node;
+    }
+
     public override AstNode VisitMemberAccessNode(MemberAccessNode node)
     {
         AstNode currentParent = node.Parent != null ? Visit(node.Parent) : _contextStack.Peek();
@@ -100,7 +111,7 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
     public override AstNode VisitMethodCallNode(MethodCallNode node)
     {
-        MethodSymbol found = null;
+        MethodSymbol? found = null;
         Symbol initial = VisitMemberAccessNode(node.Member).Symbol;
         
         if (initial != null)
@@ -143,7 +154,8 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
             }
         }
 
-        node.Symbol = found;
+        if (found != null)
+            node.Symbol = found;
         return node;
     }
 

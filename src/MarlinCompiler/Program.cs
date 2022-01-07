@@ -4,7 +4,6 @@ using System.CommandLine.NamingConventionBinder;
 using System.Diagnostics;
 using System.Reflection;
 using MarlinCompiler.Compilation;
-using MarlinCompiler.ModuleDefinitions;
 using MarlinCompiler.Symbols;
 
 namespace MarlinCompiler;
@@ -73,7 +72,8 @@ internal static class Program
                 {
                     CompileMessageLevel.Error => ConsoleColor.Red,
                     CompileMessageLevel.Message => ConsoleColor.White,
-                    CompileMessageLevel.Warning => ConsoleColor.Yellow
+                    CompileMessageLevel.Warning => ConsoleColor.Yellow,
+                    _ => throw new NotImplementedException()
                 };
                 Console.WriteLine(message.ToString());
                 Console.ResetColor();

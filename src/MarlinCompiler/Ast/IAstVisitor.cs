@@ -8,6 +8,7 @@ public interface IAstVisitor<TResult>
     public TResult VisitBlockNode(BlockNode node);
     public TResult VisitBooleanNode(BooleanNode node);
     public TResult VisitClassDeclarationNode(ClassDeclarationNode node);
+    public TResult VisitStructDeclarationNode(StructDeclarationNode node);
     public TResult VisitDoubleNode(DoubleNode node);
     public TResult VisitIntegerNode(IntegerNode node);
     public TResult VisitMemberAccessNode(MemberAccessNode node);

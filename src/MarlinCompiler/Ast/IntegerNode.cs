@@ -6,7 +6,7 @@ public class IntegerNode : AstNode
 {
     public int Value { get; }
 
-    public IntegerNode(ParserRuleContext context, int value) : base(context)
+    public IntegerNode(ParserRuleContext? context, int value) : base(context)
     {
         Value = value;
     }

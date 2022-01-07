@@ -42,6 +42,12 @@ public abstract class BaseAstVisitor<TResult> : IAstVisitor<TResult>
         return default;
     }
 
+    public virtual TResult VisitStructDeclarationNode(StructDeclarationNode node)
+    {
+        VisitChildren(node);
+        return default;
+    }
+
     public virtual TResult VisitDoubleNode(DoubleNode node)
     { 
         VisitChildren(node);

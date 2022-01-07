@@ -12,7 +12,7 @@ public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
     private readonly BitcodeModule _module;
     private readonly InstructionBuilder _instructionBuilder;
 
-    private Phase _currentCompilationPhase;
+    private Phase _currentGenerationPhase;
 
     public LlvmCompilationTarget()
     {
@@ -27,7 +27,7 @@ public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
         {
             foreach (Phase phase in Enum.GetValues(typeof(Phase)))
             {
-                _currentCompilationPhase = phase;
+                _currentGenerationPhase = phase;
                 Visit(root);
             }
 

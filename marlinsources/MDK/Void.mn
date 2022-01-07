@@ -1,5 +1,5 @@
 ﻿module std;
 
-public sealed class Void
+struct Void
 {
 }

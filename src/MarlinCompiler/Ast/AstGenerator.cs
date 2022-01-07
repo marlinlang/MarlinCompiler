@@ -12,7 +12,7 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
     public CompileMessages Messages { get; } = new();
     private readonly IBuilder _builder;
 
-    private string _module;
+    private string? _module;
 
     public AstGenerator(IBuilder builder)
     {
@@ -34,7 +34,7 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
             );
         }
         
-        AstNode result = null;
+        AstNode? result = null;
         for (int i = 0; i < node.ChildCount; i++)
         {
             IParseTree child = node.GetChild(i);
@@ -71,7 +71,7 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
 
     public AstNode VisitMemberAccess(MarlinParser.MemberAccessContext context)
     {
-        AstNode arrayIndex = context.expression() != null ? Visit(context.expression()) : null;
+        AstNode? arrayIndex = context.expression() != null ? Visit(context.expression()) : null;
         
         if (context.typeName() != null)
         {
@@ -192,6 +192,12 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
                 case "sealed":
                     isSealed = true;
                     break;
+                default:
+                    Messages.Error(
+                        $"Illegal modifier for class '{modifierText}'",
+                        new FileLocation(_builder, modifier.Start)
+                    );
+                    break;
             }
             
             previousModifiers.Add(modifierText, modifier);
@@ -217,6 +223,74 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
         foreach (MarlinParser.ClassMemberContext member in context.classMember())
         {
             node.TypeBody.Body.Add(VisitClassMember(member));
+        }
+
+        return node;
+    }
+
+    public AstNode VisitStructDeclaration(MarlinParser.StructDeclarationContext context)
+    {
+        MemberVisibility visibility = MemberVisibility.Internal;
+        bool changedVisibility = false;
+
+        string name = $"{_module}::{context.IDENTIFIER().GetText()}";
+
+        Dictionary<string, MarlinParser.ModifierContext> previousModifiers = new();
+        foreach (MarlinParser.ModifierContext modifier in context.modifier())
+        {
+            string modifierText = modifier.GetText();
+            if (previousModifiers.ContainsKey(modifierText))
+            {
+                Messages.Error($"Repeated modifier {modifierText}", new FileLocation(
+                    _builder.CurrentFile,
+                    modifier.Start.Line,
+                    modifier.Start.Column
+                ));
+                continue;
+            }
+
+            switch (modifierText)
+            {
+                case "private":
+                    changedVisibility = true;
+                    visibility = MemberVisibility.Private;
+                    break;
+                case "internal":
+                    changedVisibility = true;
+                    visibility = MemberVisibility.Internal;
+                    break;
+                case "public":
+                    changedVisibility = true;
+                    visibility = MemberVisibility.Public;
+                    break;
+                default:
+                    Messages.Error(
+                        $"Illegal modifier for struct '{modifierText}'",
+                        new FileLocation(_builder, modifier.Start)
+                    );
+                    break;
+            }
+            
+            previousModifiers.Add(modifierText, modifier);
+        }
+
+        if (!changedVisibility)
+        {
+            Messages.Warning(
+                "Visibility should always be explicitly defined",
+                new FileLocation(_builder, context.Start)
+            );
+        }
+        
+        StructDeclarationNode node = new(
+            context,
+            name,
+            visibility
+        );
+
+        foreach (MarlinParser.StructMemberContext member in context.structMember())
+        {
+            node.TypeBody.Body.Add(VisitStructMember(member));
         }
 
         return node;
@@ -465,8 +539,6 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
         => throw new InvalidOperationException("Do not call VisitGiveArgs, use HandleGiveArgs instead.");
 
     public AstNode VisitTypeDeclaration(MarlinParser.TypeDeclarationContext context) => VisitChildren(context);
-
-    public AstNode VisitStructDeclaration(MarlinParser.StructDeclarationContext context) => VisitChildren(context);
 
     public AstNode VisitClassMember(MarlinParser.ClassMemberContext context) => VisitChildren(context);
 

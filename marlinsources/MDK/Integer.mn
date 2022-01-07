@@ -1,5 +1,6 @@
 ﻿module std;
 
-class Integer {
-    
+public struct Integer
+{
+    public native int __value__;
 }

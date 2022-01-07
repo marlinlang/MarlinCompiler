@@ -137,6 +137,36 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
         return node;
     }
 
+    public override AstNode VisitStructDeclarationNode(StructDeclarationNode node)
+    {
+        node.Symbol = new StructTypeSymbol(
+            node.Name,
+            node.Visibility
+        );
+        
+        VisitChildren(node);
+
+        List<AstNode> children = new();
+        foreach (AstNode child in node.Children)
+        {
+            if (child is VariableDeclarationNode)
+            {
+                children.Add(child);
+            }
+        }
+        foreach (AstNode child in node.Children)
+        {
+            if (child is not VariableDeclarationNode)
+            {
+                children.Add(child);
+            }
+        }
+        node.TypeBody.Body.Clear();
+        node.TypeBody.Body.AddRange(children);
+
+        return node;
+    }
+
     public override AstNode VisitMemberAccessNode(MemberAccessNode node)
     {
         if (node.Parent != null) Visit(node.Parent);

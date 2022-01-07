@@ -3,7 +3,6 @@ using MarlinCompiler.Antlr;
 using MarlinCompiler.Ast;
 using MarlinCompiler.MarlinCompiler.Compilation.Targets;
 using MarlinCompiler.MarlinCompiler.Compilation.Targets.LLVM;
-using MarlinCompiler.ModuleDefinitions;
 using MarlinCompiler.Symbols;
 
 namespace MarlinCompiler.Compilation;
@@ -60,17 +59,6 @@ internal class Builder : IBuilder
         checker.Visit(root);
         Messages.LoadMessages(checker.Messages);
         if (Messages.HasErrors) return false;
-        
-        // ModuleDefinition builder
-        ModuleDefinitionBuilder.Create(
-            Path.Combine(
-                Path.GetDirectoryName(ProjectPath),
-                new Uri(ProjectPath).Segments.Last() + ".mnmd"),
-            Path.GetFileNameWithoutExtension(
-                new Uri(ProjectPath).Segments.Last()
-            ),
-            root
-        );
         
         // Target invocation
         BaseCompilationTarget target = new LlvmCompilationTarget();

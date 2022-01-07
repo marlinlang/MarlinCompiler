@@ -6,12 +6,12 @@ public class VariableDeclarationNode : AstNode
 {
     public TypeReferenceNode Type { get; }
     public string Name { get; }
-    public AstNode Value { get; }
+    public AstNode? Value { get; }
     public bool IsStatic { get; }
     public MemberVisibility Visibility { get; }
 
     public VariableDeclarationNode(ParserRuleContext context, TypeReferenceNode type, string name,
-        AstNode value, bool isStatic, MemberVisibility visibility) : base(context)
+        AstNode? value, bool isStatic, MemberVisibility visibility) : base(context)
     {
         Type = type;
         Name = name;

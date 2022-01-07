@@ -7,7 +7,7 @@ public class TypeReferenceNode : AstNode
     public string Name { get; set; }
     public bool IsArray { get; }
 
-    public TypeReferenceNode(ParserRuleContext context, string name) : base(context)
+    public TypeReferenceNode(ParserRuleContext? context, string name) : base(context)
     {
         Name = name;
         IsArray = Name.EndsWith("[]");
