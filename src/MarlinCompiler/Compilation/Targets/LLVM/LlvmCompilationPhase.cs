@@ -15,12 +15,6 @@ public partial class LlvmCompilationTarget
         CreateMethods           = 1,
         
         /// <summary>
-        /// Create the properties for the types.
-        /// For classes, have one void property at position 0 (future vtable)
-        /// </summary>
-        CreateProperties        = 2,
-        
-        /// <summary>
         /// Create virtual tables and default constructors.
         /// </summary>
         FinalizeTypes           = 3,

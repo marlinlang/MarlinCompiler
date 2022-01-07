@@ -357,6 +357,7 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
     {
         MemberVisibility vis = MemberVisibility.Private;
         bool isStatic = false;
+        bool isNative = context != null;
         
         Dictionary<string, MarlinParser.ModifierContext> previousModifiers = new();
         foreach (MarlinParser.ModifierContext modifier in context.modifier())
@@ -395,8 +396,8 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
         string name = context.IDENTIFIER().GetText();
         
         return context.expression() != null
-            ? new VariableDeclarationNode(context, type, name, Visit(context.expression()), isStatic, vis)
-            : new VariableDeclarationNode(context, type, name, null, isStatic, vis);
+            ? new VariableDeclarationNode(context, type, name, Visit(context.expression()), isStatic, isNative, vis)
+            : new VariableDeclarationNode(context, type, name, null, isStatic, isNative, vis);
     }
 
     public AstNode VisitLocalVariableDeclaration(MarlinParser.LocalVariableDeclarationContext context)

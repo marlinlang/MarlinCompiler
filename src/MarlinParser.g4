@@ -12,7 +12,6 @@ file
 typeName
     : typeName LBRACKET RBRACKET
     | IDENTIFIER (DOUBLE_COLON IDENTIFIER)*
-    | NATIVE IDENTIFIER
     ;
 
 moduleName
@@ -80,7 +79,7 @@ methodCall
     ;
 
 variableDeclaration
-    : modifier* typeName IDENTIFIER (ASSIGN expression)?
+    : modifier* typeName NATIVE? IDENTIFIER (ASSIGN expression)?
     ;
 
 localVariableDeclaration

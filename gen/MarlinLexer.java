@@ -1,4 +1,4 @@
-// Generated from D:/Marlin/MarlinCompiler/src\MarlinLexer.g4 by ANTLR 4.9.2
+// Generated from D:/Projects/Marlin/MarlinCompiler/src\MarlinLexer.g4 by ANTLR 4.9.2
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;

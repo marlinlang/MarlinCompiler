@@ -7,7 +7,6 @@ public class TypeDeclarationNode : AstNode
     public string Name { get; set; }
     public MemberVisibility Visibility { get; }
     public BlockNode TypeBody { get; }
-
     public override IEnumerable<AstNode> Children => TypeBody.Body;
 
     public TypeDeclarationNode(ParserRuleContext context, string name, MemberVisibility visibility) : base(context)

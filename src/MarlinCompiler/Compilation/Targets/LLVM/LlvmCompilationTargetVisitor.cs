@@ -52,12 +52,6 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                 break;
             }
 
-            case Phase.CreateProperties:
-            {
-                // TODO CreateProperties on classes
-                break;
-            }
-
             case Phase.FinalizeTypes:
             {
                 IStructType type = (IStructType) node.Symbol.CustomTargetData;
@@ -103,17 +97,6 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
                 break;
             }
-            
-            case Phase.CreateProperties:
-            {
-                AstNode[] properties = node.Children.Where(x => x is VariableDeclarationNode).ToArray();
-                for (var i = 0; i < properties.Length; i++)
-                {
-                    VariableDeclarationNode property = (VariableDeclarationNode) properties[i];
-                }
-
-                break;
-            }
 
             case Phase.FinalizeTypes:
             {
@@ -145,7 +128,7 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitIntegerNode(IntegerNode node)
     {
-        return Box(GetTypeRef("std::Integer", node.Symbol), _context.CreateConstant(node.Value));
+        return Box(GetTypeRef("std::Integer"), _context.CreateConstant(node.Value));
     }
 
     public Value VisitMemberAccessNode(MemberAccessNode node)

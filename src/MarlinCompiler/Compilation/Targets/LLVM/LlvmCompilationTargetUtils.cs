@@ -17,17 +17,14 @@ public partial class LlvmCompilationTarget
         {
             if (_voidValue == null)
             {
-                _voidValue = Box(_module.GetTypeByName("std::Void"), null);
+                _voidValue = Box(GetTypeRef("std::Void"), null);
             }
 
             return _voidValue;
         }
     }
 
-    private ITypeRef GetTypeRef(string name, Symbol lookup)
-    {
-        return (ITypeRef) lookup.Lookup(name).CustomTargetData;
-    }
+    private ITypeRef GetTypeRef(string name) => _module.GetTypeByName(name);
 
     private ITypeRef GetTypeRef(TypeReferenceNode node)
     {
@@ -73,8 +70,8 @@ public partial class LlvmCompilationTarget
         if (insertValue != null)
         {
             _instructionBuilder.Store(
-                _instructionBuilder.GetStructElementPointer(targetType, ptr, 0),
-                ptr
+                insertValue,
+                _instructionBuilder.GetStructElementPointer(targetType, ptr, 0)
             );
         }
         
