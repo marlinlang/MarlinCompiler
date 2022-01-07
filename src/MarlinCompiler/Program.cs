@@ -51,24 +51,12 @@ internal static class Program
         return command;
     }
 
-    private static void Compile(string path, string mdk)
+    private static void Compile(string path)
     {
         List<RootSymbol> includes = new();
-        if (File.Exists(mdk) && Path.GetExtension(mdk) == ".mnmd")
-        {
-            ModuleDefinition def = ModuleParser.Parse(mdk);
-            if (def == null) return;
-            includes.Add(SymbolBuilder.CreateTree(def));
-        }
-        else if (mdk != null)
-        {
-            Console.WriteLine("Cannot find MDK");
-            return;
-        }
-        
         path = Path.GetFullPath(path);
 
-        IBuilder builder = new Builder(includes);
+        IBuilder builder = new Builder();
         bool success = builder.Build(path);
 
         Console.Write("Compilation ");

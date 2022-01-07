@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Compilation;
+﻿using MarlinCompiler.Ast;
+using MarlinCompiler.Compilation;
 
 namespace MarlinCompiler.MarlinCompiler.Compilation.Targets;
 
@@ -11,5 +12,5 @@ public abstract class BaseCompilationTarget
         Messages = new CompileMessages();
     }
 
-    public abstract bool InvokeTarget();
+    public abstract bool InvokeTarget(AstNode root);
 }

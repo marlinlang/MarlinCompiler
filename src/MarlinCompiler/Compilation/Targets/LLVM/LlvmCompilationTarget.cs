@@ -1,26 +1,45 @@
-﻿using Ubiquity.NET.Llvm;
+﻿using System.Reflection;
+using MarlinCompiler.Ast;
+using Ubiquity.NET.Llvm;
 using Ubiquity.NET.Llvm.Instructions;
 using static Ubiquity.NET.Llvm.Interop.Library;
 
 namespace MarlinCompiler.MarlinCompiler.Compilation.Targets.LLVM;
 
-public partial class LlvmCompilationTarget : BaseCompilationTarget
+public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
 {
-    private readonly Context Context;
-    private readonly BitcodeModule Module;
-    private readonly InstructionBuilder InstructionBuilder;
+    private readonly Context _context;
+    private readonly BitcodeModule _module;
+    private readonly InstructionBuilder _instructionBuilder;
+
+    private Phase _currentCompilationPhase;
 
     public LlvmCompilationTarget()
     {
-        Context = new Context();
-        Module = Context.CreateBitcodeModule("Program");
+        _context = new Context();
+        _module = _context.CreateBitcodeModule("Program");
+        _instructionBuilder = new InstructionBuilder(_context);
     }
 
-    public override bool InvokeTarget()
+    public override bool InvokeTarget(AstNode root)
     {
         using (InitializeLLVM())
         {
-            RegisterNative();
+            foreach (Phase phase in Enum.GetValues(typeof(Phase)))
+            {
+                _currentCompilationPhase = phase;
+                Visit(root);
+            }
+
+            Console.WriteLine(_module.WriteToString());
         }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _module.Dispose();
     }
 }

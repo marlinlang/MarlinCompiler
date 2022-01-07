@@ -1,6 +1,8 @@
 ﻿using Antlr4.Runtime;
 using MarlinCompiler.Antlr;
 using MarlinCompiler.Ast;
+using MarlinCompiler.MarlinCompiler.Compilation.Targets;
+using MarlinCompiler.MarlinCompiler.Compilation.Targets.LLVM;
 using MarlinCompiler.ModuleDefinitions;
 using MarlinCompiler.Symbols;
 
@@ -8,7 +10,6 @@ namespace MarlinCompiler.Compilation;
 
 internal class Builder : IBuilder
 {
-    private readonly List<RootSymbol> _includes;
     public CompileMessages Messages { get; }
 
     public string ProjectPath { get; set;  } = "<none>";
@@ -16,9 +17,8 @@ internal class Builder : IBuilder
     // antlr SourceName doesn't work with the c# target for some reason
     public string CurrentFile { get; private set; } = "<none>";
 
-    public Builder(List<RootSymbol> includes)
+    public Builder()
     {
-        _includes = includes;
         Messages = new CompileMessages();
     }
 
@@ -49,15 +49,6 @@ internal class Builder : IBuilder
         Messages.LoadMessages(fixer.Messages);
         if (Messages.HasErrors) return false;
         
-        // Load includes
-        foreach (RootSymbol include in _includes)
-        {
-            foreach (Symbol child in include.Scope)
-            {
-                root.Symbol.AddChild(child);
-            }
-        }
-        
         // Semantic analysis
         SemanticAnalyzer analyzer = new(this);
         analyzer.Visit(root);
@@ -71,10 +62,19 @@ internal class Builder : IBuilder
         if (Messages.HasErrors) return false;
         
         // ModuleDefinition builder
-        string p = Path.Combine(Path.GetDirectoryName(ProjectPath), new Uri(ProjectPath).Segments.Last() + ".mnmd");
-        ModuleDefinitionBuilder.Create(p, Path.GetFileNameWithoutExtension(new Uri(ProjectPath).Segments.Last()), root);
+        ModuleDefinitionBuilder.Create(
+            Path.Combine(
+                Path.GetDirectoryName(ProjectPath),
+                new Uri(ProjectPath).Segments.Last() + ".mnmd"),
+            Path.GetFileNameWithoutExtension(
+                new Uri(ProjectPath).Segments.Last()
+            ),
+            root
+        );
         
         // Target invocation
+        BaseCompilationTarget target = new LlvmCompilationTarget();
+        target.InvokeTarget(root);
         
         return !Messages.HasErrors;
     }

@@ -14,6 +14,8 @@ public class Symbol
     
     private string Guid { get; }
 
+    public object CustomTargetData { get; set; }
+    
     public static IEqualityComparer<Symbol> GuidComparer { get; } = new GuidEqualityComparer();
     
     public Symbol(string name)
