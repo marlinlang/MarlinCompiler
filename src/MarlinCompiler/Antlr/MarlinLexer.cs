@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from D:/Marlin/MarlinCompiler/src\MarlinLexer.g4 by ANTLR 4.9.2
+// Generated from D:/Projects/Marlin/MarlinCompiler/src\MarlinLexer.g4 by ANTLR 4.9.2
 
 // Unreachable code detected
 #pragma warning disable 0162

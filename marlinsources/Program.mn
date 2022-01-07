@@ -4,6 +4,6 @@ public class Program
 {
     public static void Main()
     {
-        int x;
+        int x = 0;
     }
 }

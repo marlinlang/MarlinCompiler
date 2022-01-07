@@ -212,16 +212,26 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
             {
                 valueType = valueType[..^2];
             }
-            
-            TypeSymbol super = (TypeSymbol) node.Type.Symbol;
-            TypeSymbol sub = (TypeSymbol) node.Symbol.Lookup(valueType);
-            if (!SemanticUtils.AreTypesCompatible(super, sub) || node.Type.IsArray != isValueArray)
+
+            if (node.IsNative)
             {
-                if (isValueArray) valueType += "[]"; // hack
                 Messages.Error(
-                    $"Cannot assign value of type '{valueType}' to variable '{node.Name}' ('{node.Type.Name}')",
+                    "Do not provide values for native variables",
                     new FileLocation(_builder, node.Value.Context.Start)
                 );
+            }
+            else
+            {
+                TypeSymbol super = (TypeSymbol) node.Type.Symbol;
+                TypeSymbol sub = (TypeSymbol) node.Symbol.Lookup(valueType);
+                if (!SemanticUtils.AreTypesCompatible(super, sub) || node.Type.IsArray != isValueArray)
+                {
+                    if (isValueArray) valueType += "[]"; // hack
+                    Messages.Error(
+                        $"Cannot assign value of type '{valueType}' to variable '{node.Name}' ('{node.Type.Name}')",
+                        new FileLocation(_builder, node.Value.Context.Start)
+                    );
+                }
             }
         }
 

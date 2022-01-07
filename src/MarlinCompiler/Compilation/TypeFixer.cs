@@ -243,6 +243,8 @@ internal sealed class TypeFixer : BaseAstVisitor<AstNode>
 
     public override AstNode VisitVariableDeclarationNode(VariableDeclarationNode node)
     {
+        if (node.IsNative) return node;
+        
         VisitTypeReferenceNode(node.Type);
         if (node.Value != null) Visit(node.Value);
         

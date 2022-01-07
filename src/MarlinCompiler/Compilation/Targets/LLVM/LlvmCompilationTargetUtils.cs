@@ -31,6 +31,17 @@ public partial class LlvmCompilationTarget
         return (ITypeRef) node.Symbol.CustomTargetData;
     }
 
+    private ITypeRef GetNativeTypeRef(TypeReferenceNode node)
+    {
+        return node.Name switch
+        {
+            "int" => _context.Int32Type,
+            "char" => _context.Int16Type,
+            "bool" => _context.BoolType,
+            _ => throw new InvalidOperationException()
+        };
+    }
+
     private Value GetDefaultValue(ITypeRef ty)
     {
         switch (((IStructType) ty).Name)

@@ -357,7 +357,7 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
     {
         MemberVisibility vis = MemberVisibility.Private;
         bool isStatic = false;
-        bool isNative = context != null;
+        bool isNative = context.NATIVE() != null;
         
         Dictionary<string, MarlinParser.ModifierContext> previousModifiers = new();
         foreach (MarlinParser.ModifierContext modifier in context.modifier())

@@ -63,7 +63,9 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                 elements[i++] = _context.VoidType;
                 foreach (VariableDeclarationNode property in properties)
                 {
-                    elements[i++] = GetTypeRef(property.Type);
+                    elements[i++] = property.IsNative
+                        ? GetNativeTypeRef(property.Type)
+                        : GetTypeRef(property.Type);
                 }
                 
                 type.SetBody(false, elements);
@@ -108,7 +110,9 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                 for (var i = 0; i < properties.Length; i++)
                 {
                     VariableDeclarationNode property = (VariableDeclarationNode) properties[i];
-                    elements[i++] = GetTypeRef(property.Type);
+                    elements[i++] = property.IsNative
+                        ? GetNativeTypeRef(property.Type)
+                        : GetTypeRef(property.Type);
                 }
 
                 type.SetBody(false, elements);
