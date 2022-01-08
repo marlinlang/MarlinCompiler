@@ -100,7 +100,7 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
 
     public override AstNode VisitMethodCallNode(MethodCallNode node)
     {
-        if (node.Symbol == null)
+        if (node.Symbol == null && !node.IsNative)
         {
             MarlinParser.MemberAccessContext ctx = ((MarlinParser.MethodCallContext) node.Context).memberAccess();
 
@@ -207,6 +207,9 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
         if (node.Value != null)
         {
             string valueType = SemanticUtils.GetNodeTypeName(node.Value);
+
+            if (valueType == SemanticUtils.NATIVE_TYPE_IDENTIFIER) return node;
+            
             bool isValueArray = valueType.EndsWith("[]");
             if (isValueArray)
             {

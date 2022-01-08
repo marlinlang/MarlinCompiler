@@ -107,7 +107,7 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                 AstNode[] properties = node.Children.Where(x => x is VariableDeclarationNode).ToArray();
                 ITypeRef[] elements = new ITypeRef[properties.Count()];
 
-                for (var i = 0; i < properties.Length; i++)
+                for (int i = 0; i < properties.Length; i++)
                 {
                     VariableDeclarationNode property = (VariableDeclarationNode) properties[i];
                     elements[i++] = property.IsNative
@@ -190,6 +190,34 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitMethodCallNode(MethodCallNode node)
     {
+        if (node.IsNative)
+        {
+            // First argument is the invoking method
+            // Rest are the arguments
+
+            AstNode[] givenArgs = node.Args.Skip(1).ToArray();
+
+            switch (((StringNode) node.Args[0]).Value)
+            {
+                case "box":
+                {
+                    return Box(GetTypeRef(((StringNode) givenArgs[0]).Value), Visit(givenArgs[1]));
+                }
+                case "unbox":
+                {
+                    return Unbox(GetTypeRef(((StringNode) givenArgs[0]).Value), Visit(givenArgs[1]));
+                }
+                case "c_getchar":
+                {
+                    return _instructionBuilder.Call(CGetChar);
+                }
+                case "c_putchar":
+                {
+                    return _instructionBuilder.Call(CPutChar, Visit(givenArgs[0]));
+                }
+            }
+        }
+        
         throw new NotImplementedException();
     }
 
@@ -199,6 +227,11 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
     }
 
     public Value VisitStringNode(StringNode node)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Value VisitCharacterNode(CharacterNode node)
     {
         throw new NotImplementedException();
     }

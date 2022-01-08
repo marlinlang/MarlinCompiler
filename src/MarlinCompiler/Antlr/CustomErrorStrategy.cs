@@ -23,6 +23,7 @@ public class CustomErrorStrategy : BailErrorStrategy
                 e.OffendingToken.Column
             )
         );
+        throw e;
     }
     
     

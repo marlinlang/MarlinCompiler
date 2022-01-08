@@ -65,8 +65,15 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
     {
         AstNode currentParent = node.Parent != null ? Visit(node.Parent) : _contextStack.Peek();
         AstNode current = Visit(node.Member);
+        
         while (true)
         {
+            if (currentParent == null || current == null
+                || currentParent.Symbol == null)
+            {
+                return null;
+            }
+            
             switch (current)
             {
                 case NameReferenceNode nameRef:
@@ -111,51 +118,55 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
     public override AstNode VisitMethodCallNode(MethodCallNode node)
     {
-        MethodSymbol? found = null;
-        Symbol initial = VisitMemberAccessNode(node.Member).Symbol;
-        
-        if (initial != null)
+        if (!node.IsNative)
         {
-            Symbol owner = VisitMemberAccessNode(node.Member).Symbol.Parent;
+            MethodSymbol? found = null;
+            Symbol initial = VisitMemberAccessNode(node.Member)?.Symbol;
 
-            foreach (Symbol tryFind in owner.LookupMultiple(initial.Name))
+            if (initial != null)
             {
-                if (tryFind is MethodSymbol tryMethod)
+                Symbol owner = VisitMemberAccessNode(node.Member).Symbol.Parent;
+
+                foreach (Symbol tryFind in owner.LookupMultiple(initial.Name))
                 {
-                    if (tryMethod.Args.Count == node.Args.Count)
+                    if (tryFind is MethodSymbol tryMethod)
                     {
-                        for (int i = 0; i < tryMethod.Args.Count; i++)
+                        if (tryMethod.Args.Count == node.Args.Count)
                         {
-                            string expected = ((VariableSymbol) tryMethod.Args[i]).Type;
-                            string given = SemanticUtils.GetNodeTypeName(Visit(node.Args[i]));
-
-                            TypeSymbol expectedType = (TypeSymbol) _contextStack.Peek().Symbol.Lookup(expected);
-                            TypeSymbol givenType = (TypeSymbol) _contextStack.Peek().Symbol.Lookup(given);
-
-                            if (SemanticUtils.AreTypesCompatible(expectedType, givenType))
+                            for (int i = 0; i < tryMethod.Args.Count; i++)
                             {
-                                found = tryMethod;
-                                break;
+                                string expected = ((VariableSymbol) tryMethod.Args[i]).Type;
+                                string given = SemanticUtils.GetNodeTypeName(Visit(node.Args[i]));
+
+                                TypeSymbol expectedType = (TypeSymbol) _contextStack.Peek().Symbol.Lookup(expected);
+                                TypeSymbol givenType = (TypeSymbol) _contextStack.Peek().Symbol.Lookup(given);
+
+                                if (SemanticUtils.AreTypesCompatible(expectedType, givenType))
+                                {
+                                    found = tryMethod;
+                                    break;
+                                }
                             }
                         }
                     }
-                }
-                else
-                {
-                    // properties go at the top so this will be detected instantly
-                    Messages.Error(
-                        $"Cannot call non-method {tryFind.Name} (a {tryFind.UserType})",
-                        new FileLocation(
-                            _builder,
-                            ((MarlinParser.MethodCallContext) node.Context).memberAccess().Stop
-                        )
-                    );
+                    else
+                    {
+                        // properties go at the top so this will be detected instantly
+                        Messages.Error(
+                            $"Cannot call non-method {tryFind.Name} (a {tryFind.UserType})",
+                            new FileLocation(
+                                _builder,
+                                ((MarlinParser.MethodCallContext) node.Context).memberAccess().Stop
+                            )
+                        );
+                    }
                 }
             }
+
+            if (found != null)
+                node.Symbol = found;
         }
 
-        if (found != null)
-            node.Symbol = found;
         return node;
     }
 
@@ -219,4 +230,6 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
     public override AstNode VisitIntegerNode(IntegerNode node) => node;
 
     public override AstNode VisitStringNode(StringNode node) => node;
+
+    public override AstNode VisitCharacterNode(CharacterNode node) => node;
 }

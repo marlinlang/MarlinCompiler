@@ -6,6 +6,11 @@ namespace MarlinCompiler.MarlinCompiler.Compilation;
 public static class SemanticUtils
 {
     /// <summary>
+    /// Used to signify that a type is native.
+    /// </summary>
+    public const string NATIVE_TYPE_IDENTIFIER = "$native$";
+    
+    /// <summary>
     /// Gets the type of a node as a string.
     /// </summary>
     public static string GetNodeTypeName(AstNode node)
@@ -16,6 +21,10 @@ public static class SemanticUtils
             case VariableDeclarationNode variableDeclarationNode:
                 return variableDeclarationNode?.Type?.Symbol?.Name ?? "<???>";
             case MethodCallNode methodCallNode:
+                if (methodCallNode.IsNative)
+                {
+                    return "$native$";
+                }
                 return ((MethodSymbol) methodCallNode.Symbol)?.Type.Name ?? "<???>";
             case TypeReferenceNode typeReferenceNode:
                 return typeReferenceNode.Symbol?.Name ?? "<???>";
@@ -46,6 +55,8 @@ public static class SemanticUtils
                 return "std::Double";
             case StringNode:
                 return "std::String";
+            case CharacterNode:
+                return "std::Character";
 
             default:
                 throw new InvalidOperationException($"{node.GetType().Name} nodes aren't supported");

@@ -74,7 +74,7 @@ public partial class LlvmCompilationTarget
         _instructionBuilder.Call(func);
     }
     
-    private Value Box(ITypeRef targetType, Constant? insertValue)
+    private Value Box(ITypeRef targetType, Value? insertValue)
     {
         Alloca ptr = _instructionBuilder.Alloca(targetType);
 
@@ -87,5 +87,10 @@ public partial class LlvmCompilationTarget
         }
         
         return ptr;
+    }
+
+    private Value Unbox(ITypeRef targetType, Value ptr)
+    {
+        return _instructionBuilder.GetStructElementPointer(targetType, ptr, 0);
     }
 }

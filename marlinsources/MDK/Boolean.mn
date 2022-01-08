@@ -1,0 +1,6 @@
+﻿module std;
+
+public struct Boolean
+{
+    public bool native __value__;
+}

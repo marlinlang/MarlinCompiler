@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from D:/Projects/Marlin/MarlinCompiler/src\MarlinParser.g4 by ANTLR 4.9.2
+// Generated from D:/Marlin/MarlinCompiler/src\MarlinParser.g4 by ANTLR 4.9.2
 
 // Unreachable code detected
 #pragma warning disable 0162
@@ -226,6 +226,16 @@ public partial class MarlinParserBaseVisitor<Result> : AbstractParseTreeVisitor<
 	/// <return>The visitor result.</return>
 	public virtual Result VisitArrayInitializer([NotNull] MarlinParser.ArrayInitializerContext context) { return VisitChildren(context); }
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="MarlinParser.nativeCall"/>.
+	/// <para>
+	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
+	/// on <paramref name="context"/>.
+	/// </para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	public virtual Result VisitNativeCall([NotNull] MarlinParser.NativeCallContext context) { return VisitChildren(context); }
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="MarlinParser.return"/>.
 	/// <para>
 	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
@@ -285,6 +295,16 @@ public partial class MarlinParserBaseVisitor<Result> : AbstractParseTreeVisitor<
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	public virtual Result VisitStringLiteral([NotNull] MarlinParser.StringLiteralContext context) { return VisitChildren(context); }
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="MarlinParser.characterLiteral"/>.
+	/// <para>
+	/// The default implementation returns the result of calling <see cref="AbstractParseTreeVisitor{Result}.VisitChildren(IRuleNode)"/>
+	/// on <paramref name="context"/>.
+	/// </para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	public virtual Result VisitCharacterLiteral([NotNull] MarlinParser.CharacterLiteralContext context) { return VisitChildren(context); }
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="MarlinParser.numberLiteral"/>.
 	/// <para>

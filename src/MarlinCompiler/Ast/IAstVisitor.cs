@@ -17,6 +17,7 @@ public interface IAstVisitor<TResult>
     public TResult VisitMethodCallNode(MethodCallNode node);
     public TResult VisitReturnNode(ReturnNode node);
     public TResult VisitStringNode(StringNode node);
+    public TResult VisitCharacterNode(CharacterNode node);
     public TResult VisitVariableAssignmentNode(VariableAssignmentNode node);
     public TResult VisitVariableDeclarationNode(VariableDeclarationNode node);
     public TResult VisitTypeReferenceNode(TypeReferenceNode node);

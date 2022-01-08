@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
+using MarlinCompiler.Compilation;
 
 namespace MarlinCompiler;
 
@@ -25,4 +26,17 @@ public class DisregardTextWriter : TextWriter
     {
         Use = new DisregardTextWriter();
     }
+}
+
+public class BuilderMessageErrorTextWriter : TextWriter
+{
+    private readonly IBuilder _builder;
+    public override Encoding Encoding { get; } = Encoding.Default;
+    
+    public BuilderMessageErrorTextWriter(IBuilder builder)
+    {
+        _builder = builder;
+    }
+    
+    
 }

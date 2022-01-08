@@ -46,6 +46,7 @@ statement
     | localVariableDeclaration  SEMICOLON
     | variableAssignment        SEMICOLON
     | return                    SEMICOLON
+    | nativeCall                SEMICOLON
     ;
 
 expression
@@ -54,9 +55,12 @@ expression
     | memberAccess
     | booleanLiteral
     | stringLiteral
+    | characterLiteral
     | numberLiteral
     | arrayInitializer
+    | nativeCall
     ;
+
 // Containers (types and methods)
 typeDeclaration
     : classDeclaration
@@ -106,6 +110,10 @@ arrayInitializer
     | NEW typeName LBRACKET RBRACKET LBRACE expression (COMMA expression)* RBRACKET
     ;
 
+nativeCall
+    : AT LBRACKET giveArgs RBRACKET
+    ;
+
 return
     : RETURN expression?
     ;
@@ -134,6 +142,10 @@ booleanLiteral
 
 stringLiteral
     : NORMAL_STRING
+    ;
+
+characterLiteral
+    : CHARACTER
     ;
 
 numberLiteral

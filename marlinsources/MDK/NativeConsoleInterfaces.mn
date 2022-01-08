@@ -1,15 +1,15 @@
-﻿module std;
-// Native console interfaces for Marlin
+﻿// Native console interfaces for Marlin
+module std;
 
 internal class NativeConsoleInterfaces
 {
     public static void PutCharacter(char c)
     {
-        @["putchar", c];
+        @[("c_putchar", c)];
     }
     
     public static char GetCharacter()
     {
-        return @["getchar"]
+        return @[("box", "std::Character", @[("c_getchar")])];
     }
 }

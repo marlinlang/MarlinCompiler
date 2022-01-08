@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from D:/Projects/Marlin/MarlinCompiler/src\MarlinParser.g4 by ANTLR 4.9.2
+// Generated from D:/Marlin/MarlinCompiler/src\MarlinParser.g4 by ANTLR 4.9.2
 
 // Unreachable code detected
 #pragma warning disable 0162
@@ -147,6 +147,12 @@ public interface IMarlinParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitArrayInitializer([NotNull] MarlinParser.ArrayInitializerContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="MarlinParser.nativeCall"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitNativeCall([NotNull] MarlinParser.NativeCallContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="MarlinParser.return"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -182,6 +188,12 @@ public interface IMarlinParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitStringLiteral([NotNull] MarlinParser.StringLiteralContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="MarlinParser.characterLiteral"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitCharacterLiteral([NotNull] MarlinParser.CharacterLiteralContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="MarlinParser.numberLiteral"/>.
 	/// </summary>

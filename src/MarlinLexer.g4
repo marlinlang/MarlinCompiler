@@ -19,6 +19,7 @@ STATIC:         'static';
 READONLY:       'readonly';
 SEALED:         'sealed';
 
+AT:             '@';
 DOT:            '.';
 COMMA:          ',';
 COLON:          ':';
@@ -30,13 +31,15 @@ RPAREN:         ')';
 LBRACKET:       '[';
 RBRACKET:       ']';
 ASSIGN:         '=';
+QUOTE:          '\'';
 DOUBLE_QUOTE:   '"';
 DOUBLE_COLON:   '::';
 ARROW:          '=>';
 
 IDENTIFIER:              ([A-Za-z_])([0-9A-Za-z_]*);
 INTEGER:                 WholeNumber | HexNumber;
-NORMAL_STRING:           DOUBLE_QUOTE ~('"')* DOUBLE_QUOTE;
+NORMAL_STRING:           DOUBLE_QUOTE Character* DOUBLE_QUOTE;
+CHARACTER:               QUOTE Character QUOTE;
 DOUBLE:                  DoubleNumber;
 
 fragment WholeNumber
@@ -60,3 +63,11 @@ fragment BlockComment
     : '/*'  .*? '*/'
     ;
 
+fragment Character
+    : ~['\\\r\n]
+    | EscapeSequence
+    ;
+
+fragment EscapeSequence
+    : '\\' [btnfr"'\\]
+    ;

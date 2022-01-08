@@ -35,17 +35,19 @@ internal class Builder : IBuilder
         List<MarlinParser.FileContext> parsed = new();
         foreach (string file in files)
         {
-            parsed.Add(Parse(file));
+            MarlinParser.FileContext parsedFile = Parse(file);
+            if (parsedFile == null) continue;
+            parsed.Add(parsedFile);
         }
         if (Messages.HasErrors) return false;
 
         foreach (MarlinParser.FileContext context in parsed)
         {
-            root.Body.Add(astGenerator.VisitFile(context));
+            root.Body.AddRange(((RootBlockNode)astGenerator.VisitFile(context)).Body);
         }
         Messages.LoadMessages(astGenerator.Messages);
         if (Messages.HasErrors) return false;
-        
+
         // Create root symbol
         root.Symbol = new RootSymbol();
 
@@ -78,25 +80,19 @@ internal class Builder : IBuilder
     {
         using StreamReader reader = new(path);
 
-        try
-        {
-            AntlrInputStream inputStream = new(reader);
-            MarlinLexer lexer = new(inputStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
-            lexer.RemoveErrorListeners();
-            lexer.AddErrorListener(new ErrorListener<int>(this));
-            CommonTokenStream tokenStream = new(lexer);
-            MarlinParser parser = new(tokenStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
-            parser.RemoveErrorListeners();
-            parser.AddErrorListener(new ErrorListener(this));
-            parser.ErrorHandler = new CustomErrorStrategy(this);
+        AntlrInputStream inputStream = new(reader);
+        MarlinLexer lexer = new(inputStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
+        lexer.RemoveErrorListeners();
+        lexer.AddErrorListener(new ErrorListener<int>(this));
             
-            CurrentFile = path;
-            return parser.file();
-        }
-        catch (ParseCanceledException ex)
-        {
-            return null;
-        }
+        CommonTokenStream tokenStream = new(lexer);
+        MarlinParser parser = new(tokenStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
+        parser.RemoveErrorListeners();
+        parser.AddErrorListener(new ErrorListener(this));
+        //parser.ErrorHandler = new BailErrorStrategy();
+            
+        CurrentFile = path;
+        return parser.file();
     }
 
     private string[] GetFilePaths(string super)

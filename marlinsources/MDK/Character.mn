@@ -1,0 +1,6 @@
+﻿module std;
+
+public struct Character
+{
+    public char native __value__;
+}

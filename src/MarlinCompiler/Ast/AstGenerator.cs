@@ -418,6 +418,11 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
             : new VariableAssignmentNode(context, varNode, null);
     }
 
+    public AstNode VisitNativeCall(MarlinParser.NativeCallContext context)
+    {
+        return new MethodCallNode(context, HandleGiveArgs(context.giveArgs()));
+    }
+
     public AstNode VisitReturn(MarlinParser.ReturnContext context)
     {
         return context.expression() != null
@@ -467,7 +472,28 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
 
     public AstNode VisitStringLiteral(MarlinParser.StringLiteralContext context)
     {
-        return new StringNode(context, context.GetText()[1..^1]);
+        return new StringNode(
+            context,
+            context.GetText()[1..^1]
+                .Replace("\\t", "\t")
+                .Replace("\\b", "\b")
+                .Replace("\\n", "\n")
+                .Replace("\\f", "\f")
+                .Replace("\\r", "\r")
+        );
+    }
+
+    public AstNode VisitCharacterLiteral(MarlinParser.CharacterLiteralContext context)
+    {
+        return new CharacterNode(
+            context,
+            (context.GetText()[1..^1]
+                .Replace("\\t", "\t")
+                .Replace("\\b", "\b")
+                .Replace("\\n", "\n")
+                .Replace("\\f", "\f")
+                .Replace("\\r", "\r"))[0]
+        );
     }
 
     public AstNode VisitNumberLiteral(MarlinParser.NumberLiteralContext context)

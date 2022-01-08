@@ -2,6 +2,7 @@
 using MarlinCompiler.Ast;
 using Ubiquity.NET.Llvm;
 using Ubiquity.NET.Llvm.Instructions;
+using Ubiquity.NET.Llvm.Values;
 using static Ubiquity.NET.Llvm.Interop.Library;
 
 namespace MarlinCompiler.MarlinCompiler.Compilation.Targets.LLVM;
@@ -12,6 +13,8 @@ public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
     private readonly BitcodeModule _module;
     private readonly InstructionBuilder _instructionBuilder;
 
+    private readonly IrFunction 
+    
     private Phase _currentGenerationPhase;
 
     public LlvmCompilationTarget()
