@@ -4,5 +4,5 @@ public interface IBuilder
 {
     string CurrentFile { get; }
     CompileMessages Messages { get; }
-    bool Build(string path);
+    bool Build(string path, string outPath);
 }

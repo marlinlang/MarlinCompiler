@@ -24,7 +24,7 @@ internal class Builder : IBuilder
         Messages = new CompileMessages();
     }
 
-    public bool Build(string path)
+    public bool Build(string path, string outPath)
     {
         ProjectPath = path;
 
@@ -70,8 +70,8 @@ internal class Builder : IBuilder
         if (Messages.HasErrors) return false;
         
         // Target invocation
-        BaseCompilationTarget target = new LlvmCompilationTarget();
-        target.InvokeTarget(root);
+        BaseCompilationTarget target = new LlvmCompilationTarget(this);
+        target.InvokeTarget(root, outPath);
         
         return !Messages.HasErrors;
     }
@@ -100,7 +100,14 @@ internal class Builder : IBuilder
         // super directory is a file itself
         if (File.Exists(super))
         {
-            return new[] { super };
+            if (Path.GetExtension(super) == ".mn")
+            {
+                return new[] {super};
+            }
+            else
+            {
+                return Array.Empty<string>();
+            }
         }
 
         List<string> paths = new();

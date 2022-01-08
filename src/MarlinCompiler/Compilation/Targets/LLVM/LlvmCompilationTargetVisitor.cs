@@ -1,4 +1,5 @@
 ﻿using MarlinCompiler.Ast;
+using MarlinCompiler.Compilation;
 using MarlinCompiler.Symbols;
 using Ubiquity.NET.Llvm.DebugInfo;
 using Ubiquity.NET.Llvm.Instructions;
@@ -27,7 +28,7 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitBooleanNode(BooleanNode node)
     {
-        throw new NotImplementedException();
+        return Box(GetTypeRef("std::Boolean"), _context.CreateConstant(node.Value));
     }
 
     public Value VisitClassDeclarationNode(ClassDeclarationNode node)
@@ -36,8 +37,12 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
         {
             case Phase.CreateTypes:
             {
-                IStructType type = new DebugStructType(_module, node.Name, null, node.Name);
-                node.Symbol.CustomTargetData = type;
+                if (!node.IsStatic)
+                {
+                    IStructType type = new DebugStructType(_module, node.Name, null, node.Name);
+                    node.Symbol.CustomTargetData = type;
+                }
+
                 break;
             }
 
@@ -54,23 +59,27 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
             case Phase.FinalizeTypes:
             {
-                IStructType type = (IStructType) node.Symbol.CustomTargetData;
-
-                AstNode[] properties = node.Children.Where(x => x is VariableDeclarationNode).ToArray();
-                ITypeRef[] elements = new ITypeRef[properties.Count() + 1];
-
-                int i = 0;
-                elements[i++] = _context.VoidType;
-                foreach (VariableDeclarationNode property in properties)
+                if (!node.IsStatic)
                 {
-                    elements[i++] = property.IsNative
-                        ? GetNativeTypeRef(property.Type)
-                        : GetTypeRef(property.Type);
+                    IStructType type = (IStructType) node.Symbol.CustomTargetData;
+
+                    AstNode[] properties = node.Children.Where(x => x is VariableDeclarationNode).ToArray();
+                    ITypeRef[] elements = new ITypeRef[properties.Count() + 1];
+
+                    int i = 0;
+                    elements[i++] = _context.VoidType;
+                    foreach (VariableDeclarationNode property in properties)
+                    {
+                        elements[i++] = property.IsNative
+                            ? GetNativeTypeRef(property.Type)
+                            : GetTypeRef(property.Type);
+                    }
+
+                    type.SetBody(false, elements);
+
+                    GenerateDefaultConstructor(type, node);
                 }
-                
-                type.SetBody(false, elements);
-                
-                GenerateDefaultConstructor(type, node);
+
                 break;
             }
         }
@@ -171,8 +180,11 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
         switch (_currentGenerationPhase)
         {
             case Phase.CreateMethods:
-                IFunctionType retType
-                    = _context.GetFunctionType((ITypeRef) ((MethodSymbol) node.Symbol).Type.CustomTargetData);
+                IFunctionType retType = _context.GetFunctionType(
+                    _context.GetPointerTypeFor(
+                        (ITypeRef) ((MethodSymbol) node.Symbol).Type.CustomTargetData
+                    )
+                );
                 node.Symbol.CustomTargetData = _module.CreateFunction(node.Symbol.GetPath(), retType);
                 break;
             
@@ -197,7 +209,8 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
             AstNode[] givenArgs = node.Args.Skip(1).ToArray();
 
-            switch (((StringNode) node.Args[0]).Value)
+            string nativeFuncName = ((StringNode) node.Args[0]).Value;
+            switch (nativeFuncName)
             {
                 case "box":
                 {
@@ -209,11 +222,19 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                 }
                 case "c_getchar":
                 {
-                    return _instructionBuilder.Call(CGetChar);
+                    return _instructionBuilder.Call(_cGetChar);
                 }
                 case "c_putchar":
                 {
-                    return _instructionBuilder.Call(CPutChar, Visit(givenArgs[0]));
+                    Value arg = Visit(givenArgs[0]);
+                    return _instructionBuilder.Call(_cPutChar, _instructionBuilder.Load(arg));
+                }
+                default:
+                {
+                    Messages.Error($"Unknown native func {nativeFuncName}",
+                        new FileLocation(_builder, node.Context.Start)
+                    );
+                    break;
                 }
             }
         }
@@ -223,7 +244,14 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitReturnNode(ReturnNode node)
     {
-        throw new NotImplementedException();
+        if (node.Value == null)
+        {
+            return _instructionBuilder.Return(VoidValue);
+        }
+        else
+        {
+            return _instructionBuilder.Return(Visit(node.Value));
+        }
     }
 
     public Value VisitStringNode(StringNode node)
@@ -233,7 +261,7 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitCharacterNode(CharacterNode node)
     {
-        throw new NotImplementedException();
+        return Box(GetTypeRef("std::Character"), _context.CreateConstant((int)node.Value));
     }
 
     public Value VisitVariableAssignmentNode(VariableAssignmentNode node)

@@ -12,5 +12,5 @@ public abstract class BaseCompilationTarget
         Messages = new CompileMessages();
     }
 
-    public abstract bool InvokeTarget(AstNode root);
+    public abstract bool InvokeTarget(AstNode root, string outPath);
 }

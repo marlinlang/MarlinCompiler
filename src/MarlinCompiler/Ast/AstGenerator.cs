@@ -480,6 +480,9 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
                 .Replace("\\n", "\n")
                 .Replace("\\f", "\f")
                 .Replace("\\r", "\r")
+                .Replace("\\'", "'")
+                .Replace("\\\"", "\"")
+                .Replace("\\\\", "\\")
         );
     }
 

@@ -56,7 +56,7 @@ internal static class Program
         path = Path.GetFullPath(path);
 
         IBuilder builder = new Builder();
-        bool success = builder.Build(path);
+        bool success = builder.Build(path, Path.Combine(path, "out.ll"));
 
         Console.Write("Compilation ");
         Console.ForegroundColor = success ? ConsoleColor.Green : ConsoleColor.Red;

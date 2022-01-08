@@ -38,8 +38,8 @@ ARROW:          '=>';
 
 IDENTIFIER:              ([A-Za-z_])([0-9A-Za-z_]*);
 INTEGER:                 WholeNumber | HexNumber;
-NORMAL_STRING:           DOUBLE_QUOTE Character* DOUBLE_QUOTE;
-CHARACTER:               QUOTE Character QUOTE;
+NORMAL_STRING:           DOUBLE_QUOTE (~["])* DOUBLE_QUOTE;
+CHARACTER:               QUOTE (EscapeSequence|~[']) QUOTE;
 DOUBLE:                  DoubleNumber;
 
 fragment WholeNumber
@@ -64,8 +64,8 @@ fragment BlockComment
     ;
 
 fragment Character
-    : ~['\\\r\n]
-    | EscapeSequence
+    : EscapeSequence
+    | .
     ;
 
 fragment EscapeSequence

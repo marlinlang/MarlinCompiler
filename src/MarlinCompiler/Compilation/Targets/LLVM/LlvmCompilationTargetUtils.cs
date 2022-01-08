@@ -11,18 +11,7 @@ public partial class LlvmCompilationTarget
 {
     private Value? _voidValue = null;
 
-    private Value VoidValue
-    {
-        get
-        {
-            if (_voidValue == null)
-            {
-                _voidValue = Box(GetTypeRef("std::Void"), null);
-            }
-
-            return _voidValue;
-        }
-    }
+    private Value VoidValue => GetTypeRef("std::Void").GetNullValue();
 
     private ITypeRef GetTypeRef(string name) => _module.GetTypeByName(name);
 
