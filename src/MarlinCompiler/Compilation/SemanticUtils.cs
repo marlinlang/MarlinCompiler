@@ -8,7 +8,7 @@ public static class SemanticUtils
     /// <summary>
     /// Used to signify that a type is native.
     /// </summary>
-    public const string NATIVE_TYPE_IDENTIFIER = "$native$";
+    public const string NativeTypeIdentifier = "$native$";
     
     /// <summary>
     /// Gets the type of a node as a string.
@@ -75,6 +75,28 @@ public static class SemanticUtils
         else
         {
             return super == sub;
+        }
+    }
+
+    /// <summary>
+    /// Returns whether or not all code paths return something.
+    /// </summary>
+    public static bool DoAllCodePathsReturn(AstNode root)
+    {
+        switch (root)
+        {
+            case ReturnNode n:
+                return true;
+            
+            default:
+                foreach (AstNode child in root.Children)
+                {
+                    if (DoAllCodePathsReturn(child))
+                    {
+                        return true;
+                    }
+                }
+                return false;
         }
     }
 }

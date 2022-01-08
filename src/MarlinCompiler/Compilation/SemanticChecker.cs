@@ -94,6 +94,20 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
         }
         
         VisitChildren(node);
+
+        if (!SemanticUtils.DoAllCodePathsReturn(node))
+        {
+            if (((MethodSymbol) node.Symbol).Type.Name == "std::Void")
+            {
+                // We can insert a return here :)
+                node.Body.Add(new ReturnNode(null, null) { Symbol = node.Symbol });
+            }
+            else
+            {
+                Messages.Error("Not all code paths return a value",
+                    new FileLocation(_builder, node.Context.Start));
+            }
+        }
         
         return node;
     }
@@ -208,7 +222,7 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
         {
             string valueType = SemanticUtils.GetNodeTypeName(node.Value);
 
-            if (valueType == SemanticUtils.NATIVE_TYPE_IDENTIFIER) return node;
+            if (valueType == SemanticUtils.NativeTypeIdentifier) return node;
             
             bool isValueArray = valueType.EndsWith("[]");
             if (isValueArray)
@@ -227,7 +241,7 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
             {
                 TypeSymbol super = (TypeSymbol) node.Type.Symbol;
                 TypeSymbol sub = (TypeSymbol) node.Symbol.Lookup(valueType);
-                if (!SemanticUtils.AreTypesCompatible(super, sub) || node.Type.IsArray != isValueArray)
+                if (node.Type.IsArray != isValueArray || !SemanticUtils.AreTypesCompatible(super, sub))
                 {
                     if (isValueArray) valueType += "[]"; // hack
                     Messages.Error(

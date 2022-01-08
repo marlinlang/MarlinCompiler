@@ -123,6 +123,7 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
         {
             TypeReferenceNode tRef = (TypeReferenceNode) VisitTypeName(context.typeName());
             tRef.Name += "[]";
+            tRef.IsArray = true;
             return tRef;
         }
         else

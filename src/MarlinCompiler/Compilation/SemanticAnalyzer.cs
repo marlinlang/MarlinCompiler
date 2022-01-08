@@ -199,7 +199,7 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
         node.Symbol = new VariableSymbol(node.Name, node.Type.Name);
 
-        Visit(node.Type);
+        VisitTypeReferenceNode(node.Type);
         if (node.Value != null) Visit(node.Value);
         
         return node;
@@ -207,7 +207,7 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
 
     public override TypeReferenceNode VisitTypeReferenceNode(TypeReferenceNode node)
     {
-        string useName = node.Name.EndsWith("[]") ? node.Name[..^2] : node.Name;
+        string useName = node.IsArray ? node.Name[..^2] : node.Name;
         
         node.Symbol = _contextStack.Peek().Symbol.Lookup(useName);
         

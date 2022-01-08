@@ -15,6 +15,7 @@ public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
     private readonly BitcodeModule _module;
     private readonly InstructionBuilder _instructionBuilder;
 
+    private readonly IrFunction _cMalloc;
     private readonly IrFunction _cGetChar;
     private readonly IrFunction _cPutChar;
     
@@ -28,6 +29,10 @@ public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
         _instructionBuilder = new InstructionBuilder(_context);
 
         //_module.TryGetFunction("getchar", out _cGetChar);
+        _cMalloc = _module.CreateFunction(
+            "malloc",
+            _context.GetFunctionType(_context.Int32Type, _context.Int32Type)
+        );
         _cGetChar = _module.CreateFunction(
             "getchar",
             _context.GetFunctionType(_context.Int32Type)
@@ -48,9 +53,15 @@ public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
                 Visit(root);
             }
 
-            if (!_module.WriteToTextFile(outPath, out string err))
+            if (!_module.Verify(out string verifyErr))
             {
-                Messages.Error(err);
+                Messages.Error(verifyErr);
+                return false;
+            }
+
+            if (!_module.WriteToTextFile(outPath, out string writeErr))
+            {
+                Messages.Error(writeErr);
             }
         }
 

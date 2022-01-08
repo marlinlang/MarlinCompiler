@@ -11,7 +11,7 @@ public partial class LlvmCompilationTarget
 {
     private Value? _voidValue = null;
 
-    private Value VoidValue => GetTypeRef("std::Void").GetNullValue();
+    private Value VoidValue => Box(GetTypeRef("std::Void"), null);
 
     private ITypeRef GetTypeRef(string name) => _module.GetTypeByName(name);
 
@@ -53,7 +53,8 @@ public partial class LlvmCompilationTarget
 
         BasicBlock entryBlock = func.AppendBasicBlock("entry");
         _instructionBuilder.PositionAtEnd(entryBlock);
-
+        
+        
         _instructionBuilder.Return();
     }
 

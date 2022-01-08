@@ -154,20 +154,11 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
         switch (_currentGenerationPhase)
         {
             case Phase.CreateMethods:
+            case Phase.VisitMethodBodies:
             {
                 Visit(node.Prototype);
 
                 node.Symbol.CustomTargetData = node.Prototype.Symbol.CustomTargetData;
-                break;
-            }
-
-            case Phase.VisitMethodBodies:
-            {
-                IrFunction func = (IrFunction) node.Symbol.CustomTargetData;
-                BasicBlock block = func.AppendBasicBlock("entry");
-                _instructionBuilder.PositionAtEnd(block);
-                Visit(node.Prototype);
-                _instructionBuilder.Return(func.ReturnType.GetNullValue());
                 break;
             }
         }
@@ -180,15 +171,40 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
         switch (_currentGenerationPhase)
         {
             case Phase.CreateMethods:
-                IFunctionType retType = _context.GetFunctionType(
+                List<ITypeRef> args = new();
+
+                if (!((MethodSymbol) node.Symbol).IsStatic)
+                {
+                    ITypeRef type = null;
+                    Symbol useSymbol = node.Symbol;
+                    while (type == null)
+                    {
+                        if (useSymbol is TypeSymbol t)
+                        {
+                            type = GetTypeRef(t.Name);
+                            break;
+                        }
+
+                        useSymbol = useSymbol.Parent;
+                    }
+                    args.Add(_context.GetPointerTypeFor(type));
+                }
+                
+                IFunctionType funcType = _context.GetFunctionType(
                     _context.GetPointerTypeFor(
                         (ITypeRef) ((MethodSymbol) node.Symbol).Type.CustomTargetData
-                    )
+                    ),
+                    args.ToArray()
                 );
-                node.Symbol.CustomTargetData = _module.CreateFunction(node.Symbol.GetPath(), retType);
+                
+                node.Symbol.CustomTargetData = _module.CreateFunction(node.Symbol.GetPath(), funcType);
                 break;
             
             case Phase.VisitMethodBodies:
+                IrFunction func = (IrFunction) node.Symbol.CustomTargetData;
+                BasicBlock block = func.AppendBasicBlock("entry");
+                _instructionBuilder.PositionAtEnd(block);
+                
                 foreach (AstNode n in node.Children)
                 {
                     Visit(n);
@@ -238,8 +254,20 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                 }
             }
         }
-        
-        throw new NotImplementedException();
+
+        List<Value> args = new();
+        foreach (AstNode arg in node.Args)
+        {
+            args.Add(Visit(arg));
+        }
+
+        if (!((MethodSymbol) node.Symbol).IsStatic)
+        {
+            // Add 0th arg `this`
+            
+        }
+
+        return _instructionBuilder.Call((Value) node.Symbol.CustomTargetData, args.ToArray());
     }
 
     public Value VisitReturnNode(ReturnNode node)
@@ -296,6 +324,20 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitArrayInitializerNode(ArrayInitializerNode node)
     {
-        throw new NotImplementedException();
+        ITypeRef elementType = GetTypeRef(node.ArrayType);
+        Value elementCount = Visit(node.ElementCount);
+
+        elementCount = Unbox(elementCount.NativeType, elementCount);
+
+        return _instructionBuilder.BitCast(
+            _instructionBuilder.Call(
+                _cMalloc,
+                _instructionBuilder.Mul(
+                    _context.CreateConstant(elementType.IntegerBitWidth),
+                    elementCount
+                )
+            ),
+            elementType
+        );
     }
 }

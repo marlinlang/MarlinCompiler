@@ -17,7 +17,8 @@ entry:
   %2 = getelementptr inbounds %"std::Character", %"std::Character"* %0, i32 0, i32 0
   %3 = load i32, i32* %2
   %4 = call i32 @putchar(i32 %3)
-  ret %"std::Void"* null
+  %5 = alloca %"std::Void"
+  ret %"std::Void"* %5
 }
 
 define %"std::Character"* @"std::ConsoleInterfaces.GetCharacter"() {
@@ -27,7 +28,6 @@ entry:
   %2 = getelementptr inbounds %"std::Character", %"std::Character"* %1, i32 0, i32 0
   store i32 %0, i32* %2
   ret %"std::Character"* %1
-  ret %"std::Character"* null
 }
 
 define %"std::Void"* @"app::Program.Main"() {
@@ -38,7 +38,8 @@ entry:
   store i32 0, i32* %1
   %2 = load %"std::Integer", %"std::Integer"* %0
   store %"std::Integer" %2, %"std::Integer"* %x
-  ret %"std::Void"* null
+  %3 = alloca %"std::Void"
+  ret %"std::Void"* %3
 }
 
 define void @"std::Boolean.ctor"() {

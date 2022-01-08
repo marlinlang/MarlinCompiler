@@ -32,17 +32,18 @@ internal class Builder : IBuilder
         AstGenerator astGenerator = new(this);
         string[] files = GetFilePaths(path);
         RootBlockNode root = new();
-        List<MarlinParser.FileContext> parsed = new();
+        Dictionary<string, MarlinParser.FileContext> parsed = new();
         foreach (string file in files)
         {
             MarlinParser.FileContext parsedFile = Parse(file);
             if (parsedFile == null) continue;
-            parsed.Add(parsedFile);
+            parsed.Add(file, parsedFile);
         }
         if (Messages.HasErrors) return false;
 
-        foreach (MarlinParser.FileContext context in parsed)
+        foreach ((string filePath, MarlinParser.FileContext context) in parsed)
         {
+            CurrentFile = filePath;
             root.Body.AddRange(((RootBlockNode)astGenerator.VisitFile(context)).Body);
         }
         Messages.LoadMessages(astGenerator.Messages);
@@ -71,9 +72,10 @@ internal class Builder : IBuilder
         
         // Target invocation
         BaseCompilationTarget target = new LlvmCompilationTarget(this);
-        target.InvokeTarget(root, outPath);
+        bool scc = target.InvokeTarget(root, outPath);
+        Messages.LoadMessages(target.Messages);
         
-        return !Messages.HasErrors;
+        return !Messages.HasErrors && scc;
     }
 
     private MarlinParser.FileContext Parse(string path)
