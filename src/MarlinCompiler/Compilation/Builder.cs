@@ -1,4 +1,5 @@
 ﻿using Antlr4.Runtime;
+using Antlr4.Runtime.Misc;
 using MarlinCompiler.Antlr;
 using MarlinCompiler.Ast;
 using MarlinCompiler.MarlinCompiler.Antlr;
@@ -76,19 +77,26 @@ internal class Builder : IBuilder
     private MarlinParser.FileContext Parse(string path)
     {
         using StreamReader reader = new(path);
-        
-        AntlrInputStream inputStream = new(reader);
-        MarlinLexer lexer = new(inputStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
-        lexer.RemoveErrorListeners();
-        lexer.AddErrorListener(new ErrorListener<int>(this));
-        CommonTokenStream tokenStream = new(lexer);
-        MarlinParser parser = new(tokenStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
-        parser.RemoveErrorListeners();
-        parser.AddErrorListener(new ErrorListener(this));
-        parser.ErrorHandler = new CustomErrorStrategy(this);
 
-        CurrentFile = path;
-        return parser.file();
+        try
+        {
+            AntlrInputStream inputStream = new(reader);
+            MarlinLexer lexer = new(inputStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
+            lexer.RemoveErrorListeners();
+            lexer.AddErrorListener(new ErrorListener<int>(this));
+            CommonTokenStream tokenStream = new(lexer);
+            MarlinParser parser = new(tokenStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
+            parser.RemoveErrorListeners();
+            parser.AddErrorListener(new ErrorListener(this));
+            parser.ErrorHandler = new CustomErrorStrategy(this);
+            
+            CurrentFile = path;
+            return parser.file();
+        }
+        catch (ParseCanceledException ex)
+        {
+            return null;
+        }
     }
 
     private string[] GetFilePaths(string super)
