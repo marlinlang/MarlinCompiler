@@ -1,6 +1,8 @@
 ﻿using Antlr4.Runtime;
 using MarlinCompiler.Antlr;
 using MarlinCompiler.Ast;
+using MarlinCompiler.MarlinCompiler.Antlr;
+using MarlinCompiler.MarlinCompiler.Compilation;
 using MarlinCompiler.MarlinCompiler.Compilation.Targets;
 using MarlinCompiler.MarlinCompiler.Compilation.Targets.LLVM;
 using MarlinCompiler.Symbols;
@@ -29,12 +31,16 @@ internal class Builder : IBuilder
         AstGenerator astGenerator = new(this);
         string[] files = GetFilePaths(path);
         RootBlockNode root = new();
+        List<MarlinParser.FileContext> parsed = new();
         foreach (string file in files)
         {
-            foreach (AstNode child in astGenerator.VisitFile(Parse(file)).Children)
-            {
-                root.Body.Add(child);
-            }
+            parsed.Add(Parse(file));
+        }
+        if (Messages.HasErrors) return false;
+
+        foreach (MarlinParser.FileContext context in parsed)
+        {
+            root.Body.Add(astGenerator.VisitFile(context));
         }
         Messages.LoadMessages(astGenerator.Messages);
         if (Messages.HasErrors) return false;
@@ -72,10 +78,14 @@ internal class Builder : IBuilder
         using StreamReader reader = new(path);
         
         AntlrInputStream inputStream = new(reader);
-        MarlinLexer lexer = new(inputStream);
+        MarlinLexer lexer = new(inputStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
+        lexer.RemoveErrorListeners();
+        lexer.AddErrorListener(new ErrorListener<int>(this));
         CommonTokenStream tokenStream = new(lexer);
         MarlinParser parser = new(tokenStream, DisregardTextWriter.Use, DisregardTextWriter.Use);
+        parser.RemoveErrorListeners();
         parser.AddErrorListener(new ErrorListener(this));
+        parser.ErrorHandler = new CustomErrorStrategy(this);
 
         CurrentFile = path;
         return parser.file();
@@ -86,7 +96,7 @@ internal class Builder : IBuilder
         // super directory is a file itself
         if (File.Exists(super))
         {
-            return new[] {super};
+            return new[] { super };
         }
 
         List<string> paths = new();

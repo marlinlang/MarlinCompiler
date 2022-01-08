@@ -1,0 +1,27 @@
+﻿// Console interaction library for Marlin
+module std;
+
+public class Console
+{
+    public static void Print(string x)
+    {
+        // TODO: Implement loops
+        NativeConsoleInterfaces.PutCharacter('Y');
+        NativeConsoleInterfaces.PutCharacter('o');
+        NativeConsoleInterfaces.PutCharacter('u');
+        NativeConsoleInterfaces.PutCharacter(' ');
+        NativeConsoleInterfaces.PutCharacter('f');
+        NativeConsoleInterfaces.PutCharacter('o');
+        NativeConsoleInterfaces.PutCharacter('r');
+        NativeConsoleInterfaces.PutCharacter('g');
+        NativeConsoleInterfaces.PutCharacter('o');
+        NativeConsoleInterfaces.PutCharacter('t');
+        NativeConsoleInterfaces.PutCharacter(' ');
+        NativeConsoleInterfaces.PutCharacter('P');
+        NativeConsoleInterfaces.PutCharacter('r');
+        NativeConsoleInterfaces.PutCharacter('i');
+        NativeConsoleInterfaces.PutCharacter('n');
+        NativeConsoleInterfaces.PutCharacter('t');
+        NativeConsoleInterfaces.PutCharacter('!');
+    }
+}

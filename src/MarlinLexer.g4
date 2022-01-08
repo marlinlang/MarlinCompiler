@@ -1,9 +1,6 @@
 lexer grammar MarlinLexer;
 
-channels { COMMENTS_CHANNEL }
-
-SINGLE_LINE_COMMENT:     '//'  .*?                -> channel(COMMENTS_CHANNEL);
-BLOCK_COMMENT:           '/*'  .*? '*/'           -> channel(COMMENTS_CHANNEL);
+WHITESPACES: (BlockComment|SingleLineComment|[ \n\t\r])+               -> channel(HIDDEN);
 
 MODULE:         'module';
 CLASS:          'class';
@@ -55,4 +52,11 @@ fragment DoubleNumber
     | [-+]? '.' [0-9]+
     ;
 
-WHITESPACES:             [ \n\t\r]+               -> channel(HIDDEN);
+fragment SingleLineComment
+    : '//' ~[\r\n]*
+    ;
+
+fragment BlockComment
+    : '/*'  .*? '*/'
+    ;
+

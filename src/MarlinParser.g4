@@ -4,8 +4,9 @@ options { tokenVocab=MarlinLexer; }
 
 // Top level definition
 file
-    : moduleName
-        typeDeclaration*
+    : (moduleName
+        typeDeclaration*)?
+        EOF
     ;
 
 // Fragments
@@ -21,6 +22,7 @@ moduleName
 modifier
     : PRIVATE
     | PUBLIC
+    | INTERNAL
     | STATIC
     | READONLY
     | SEALED
