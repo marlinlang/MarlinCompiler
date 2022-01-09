@@ -1,5 +1,6 @@
 ﻿using MarlinCompiler.Ast;
 using MarlinCompiler.Symbols;
+using Ubiquity.NET.Llvm.DebugInfo;
 using Ubiquity.NET.Llvm.Instructions;
 using Ubiquity.NET.Llvm.Interop;
 using Ubiquity.NET.Llvm.Types;
@@ -35,7 +36,6 @@ public partial class LlvmCompilationTarget
 
     private Value GetDefaultValue(ITypeRef ty)
     {
-        // Native types
         switch (ty.ToString())
         {
             case "i1":
@@ -92,13 +92,7 @@ public partial class LlvmCompilationTarget
 
             if (prop.IsNative)
             {
-                propType = prop.Type.Name switch
-                {
-                    "bool" => _context.BoolType,
-                    "int" => _context.Int32Type,
-                    "char" => _context.Int32Type,
-                    _ => throw new NotImplementedException(prop.Type.Name)
-                };
+                propType = GetNativeTypeRef(prop.Type);
             }
             else
             {
@@ -110,9 +104,26 @@ public partial class LlvmCompilationTarget
                 func.Parameters[0],
                 GetPropertyIndex(decl, prop.Name)
             );
-            Value defaultValue = GetDefaultValue(propType);
+            Value defaultValue;
+            if (prop.Type.IsArray)
+            {
+                defaultValue = CreateArray(
+                    propType,
+                    Box(
+                        GetTypeRef("std::Integer"),
+                        _context.CreateConstant(0)
+                    )
+                );
+            }
+            else
+            {
+                // get def value for native type todo
+                defaultValue = GetDefaultValue(propType);
+            }
             _instructionBuilder.Store(
-                defaultValue,
+                prop.Type.IsArray
+                    ? propType.CreatePointerType().GetNullValue()
+                    : propType.GetNullValue(),
                 gep
             );
         }

@@ -71,9 +71,14 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                     elements[i++] = _context.VoidType;
                     foreach (VariableDeclarationNode property in properties)
                     {
-                        elements[i++] = property.IsNative
+                        elements[i] = property.IsNative
                             ? GetNativeTypeRef(property.Type)
                             : GetTypeRef(property.Type);
+                        if (property.Type.IsArray)
+                        {
+                            elements[i] = elements[i].CreatePointerType();
+                        }
+                        i++;
                     }
 
                     type.SetBody(false, elements);
@@ -120,9 +125,14 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                 for (int i = 0; i < properties.Length; i++)
                 {
                     VariableDeclarationNode property = (VariableDeclarationNode) properties[i];
-                    elements[i++] = property.IsNative
+                    elements[i] = property.IsNative
                         ? GetNativeTypeRef(property.Type)
                         : GetTypeRef(property.Type);
+                    if (property.Type.IsArray)
+                    {
+                        //elements[i] = elements[i].CreatePointerType();
+                    }
+                    i++;
                 }
 
                 type.SetBody(false, elements);
@@ -147,7 +157,7 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitMemberAccessNode(MemberAccessNode node)
     {
-        throw new NotImplementedException();
+        throw new InvalidOperationException();
     }
 
     public Value VisitMethodDeclarationNode(MethodDeclarationNode node)

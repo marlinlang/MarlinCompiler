@@ -71,10 +71,15 @@ entry:
 define void @"std::String.ctor"(%"std::String"* %0) {
 entry:
   %1 = getelementptr inbounds %"std::String", %"std::String"* %0, i32 0, i32 0
-  %boxPtr = alloca %"std::Character"
-  %2 = getelementptr inbounds %"std::Character", %"std::Character"* %boxPtr, i32 0, i32 0
+  %boxPtr = alloca %"std::Integer"
+  %2 = getelementptr inbounds %"std::Integer", %"std::Integer"* %boxPtr, i32 0, i32 0
   store i32 0, i32* %2
-  store %"std::Character"* %boxPtr, %"std::Character"** %1
+  %3 = getelementptr inbounds %"std::Integer", %"std::Integer"* %boxPtr, i32 0, i32 0
+  %4 = load i32, i32* %3
+  %5 = mul i32 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i32), %4
+  %6 = call i32 @malloc(i32 %5)
+  %7 = inttoptr i32 %6 to %"std::Character"*
+  store %"std::Character"* null, %"std::Character"** %1
   ret void
 }
 
