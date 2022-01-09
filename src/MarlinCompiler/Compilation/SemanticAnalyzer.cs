@@ -167,6 +167,14 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
                 node.Symbol = found;
         }
 
+        else
+        {
+            foreach (AstNode arg in node.Args)
+            {
+                Visit(arg);
+            }
+        }
+
         return node;
     }
 
