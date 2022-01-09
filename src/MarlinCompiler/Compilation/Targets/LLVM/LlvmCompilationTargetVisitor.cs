@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Ast;
+﻿using System.Runtime.InteropServices.ComTypes;
+using MarlinCompiler.Ast;
 using MarlinCompiler.Compilation;
 using MarlinCompiler.Symbols;
 using Ubiquity.NET.Llvm.DebugInfo;
@@ -294,20 +295,74 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitVariableAssignmentNode(VariableAssignmentNode node)
     {
-        throw new NotImplementedException();
+        Value varPtr = (Value) node.Symbol.CustomTargetData;
+        Value assignValue = _instructionBuilder.Load(Visit(node.Value));
+
+        if (node.Member.ArrayIndex != null)
+        {
+            Value idx = _instructionBuilder.Load(
+                Unbox(GetTypeRef("std::Integer"), Visit(node.Member.ArrayIndex))
+            );
+            idx.Name = "array_index";
+            
+            Value gep = _instructionBuilder.GetElementPtrInBounds(
+                ((IPointerType)varPtr.NativeType).ElementType,
+                varPtr,
+                new []
+                {
+                    idx
+                }
+            );
+            gep.Name = "array_element_gep";
+            
+            _instructionBuilder.Store(
+                assignValue,
+                gep
+            );
+        }
+        else
+        {
+            _instructionBuilder.Store(assignValue, varPtr);
+        }
+        
+        return null;
     }
 
     public Value VisitVariableDeclarationNode(VariableDeclarationNode node)
     {
         // Called only for local variables
 
-        Alloca ptr = _instructionBuilder.Alloca(GetTypeRef(node.Type));
-        ptr.Name = node.Name;
-
-        if (node.Value != null)
+        Value ptr;
+        if (node.Type.IsArray)
         {
-            _instructionBuilder.Store(_instructionBuilder.Load(Visit(node.Value)), ptr);
+            if (node.Value != null)
+            {
+                ptr = Visit(node.Value);
+            }
+            else
+            {
+                // create 0 size array
+                ptr = CreateArray(
+                    GetTypeRef(node.Type.Name[..^2]),
+                    Box(
+                        GetTypeRef("std::Integer"),
+                        _context.CreateConstant(0)
+                    )
+                );
+            }
         }
+        else
+        {
+            ptr = _instructionBuilder.Alloca(GetTypeRef(node.Type));
+            ptr.Name = node.Name;
+
+            if (node.Value != null)
+            {
+                _instructionBuilder.Store(_instructionBuilder.Load(Visit(node.Value)), ptr);
+            }
+        }
+
+        node.Symbol.CustomTargetData = ptr;
         
         return ptr;
     }
@@ -324,20 +379,6 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitArrayInitializerNode(ArrayInitializerNode node)
     {
-        ITypeRef elementType = GetTypeRef(node.ArrayType);
-        Value elementCount = Visit(node.ElementCount);
-
-        elementCount = Unbox(elementCount.NativeType, elementCount);
-
-        return _instructionBuilder.BitCast(
-            _instructionBuilder.Call(
-                _cMalloc,
-                _instructionBuilder.Mul(
-                    _context.CreateConstant(elementType.IntegerBitWidth),
-                    elementCount
-                )
-            ),
-            elementType
-        );
+        return CreateArray(GetTypeRef(node.ArrayType), Visit(node.ElementCount));
     }
 }

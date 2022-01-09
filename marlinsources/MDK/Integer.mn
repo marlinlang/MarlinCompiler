@@ -4,5 +4,5 @@ module std;
 
 public struct Integer
 {
-    public int native __value__;
+    internal int native Value;
 }

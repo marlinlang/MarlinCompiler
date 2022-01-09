@@ -56,7 +56,6 @@ public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
             if (!_module.Verify(out string verifyErr))
             {
                 Messages.Error(verifyErr);
-                return false;
             }
 
             if (!_module.WriteToTextFile(outPath, out string writeErr))

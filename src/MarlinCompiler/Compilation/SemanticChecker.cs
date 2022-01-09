@@ -193,9 +193,13 @@ internal class SemanticChecker : BaseAstVisitor<AstNode>
             
             if (symbol is VariableSymbol varSymbol)
             {
+                bool isVariableArray = node.Member.ArrayIndex != null && varSymbol.Type.EndsWith("[]");
+                string useSuperType = isVariableArray ? varSymbol.Type[..^2] : varSymbol.Type;
+                
                 string valueType = SemanticUtils.GetNodeTypeName(node.Value);
-                TypeSymbol super = (TypeSymbol) node.Symbol.Lookup(varSymbol.Type);
+                TypeSymbol super = (TypeSymbol) node.Symbol.Lookup(useSuperType);
                 TypeSymbol sub = (TypeSymbol) node.Symbol.Lookup(valueType);
+                
                 if (!SemanticUtils.AreTypesCompatible(super, sub))
                 {
                     Messages.Error(

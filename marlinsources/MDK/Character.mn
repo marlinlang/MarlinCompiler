@@ -2,5 +2,5 @@
 
 public struct Character
 {
-    public int native __value__;
+    internal int native Value;
 }

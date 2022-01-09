@@ -2,5 +2,5 @@
 
 public struct Boolean
 {
-    public bool native __value__;
+    internal bool native Value;
 }

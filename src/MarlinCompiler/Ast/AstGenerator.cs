@@ -379,6 +379,9 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
                 case "private":
                     vis = MemberVisibility.Private;
                     break;
+                case "internal":
+                    vis = MemberVisibility.Internal;
+                    break;
                 case "public":
                     vis = MemberVisibility.Public;
                     break;
@@ -386,7 +389,8 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
                     isStatic = true;
                     break;
                 default:
-                    Messages.Error($"Unsupported modifier {modifierText} for variable");
+                    Messages.Error($"Unsupported modifier {modifierText} for variable",
+                        new FileLocation(_builder, modifier.Start));
                     break;
             }
             
