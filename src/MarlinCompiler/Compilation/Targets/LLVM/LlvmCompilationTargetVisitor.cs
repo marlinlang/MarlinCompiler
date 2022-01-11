@@ -281,6 +281,12 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
         return _instructionBuilder.Call((Value) node.Symbol.CustomTargetData, args.ToArray());
     }
 
+    public Value VisitNullNode(NullNode node)
+    {
+        // TODO
+        throw new NotImplementedException();
+    }
+
     public Value VisitReturnNode(ReturnNode node)
     {
         if (node.Value == null)

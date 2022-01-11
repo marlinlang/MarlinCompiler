@@ -3,10 +3,10 @@ source_filename = "Program"
 
 %"std::Void" = type {}
 %"std::Character" = type { i32 }
-%"std::String" = type { %"std::Character"* }
 %"std::Boolean" = type { i1 }
 %"std::Console" = type { void }
 %"std::Integer" = type { i32 }
+%"std::String" = type { %"std::Character"* }
 
 declare i32 @malloc(i32)
 
@@ -37,7 +37,6 @@ entry:
 
 define %"std::Void"* @"app::Program.Main"() {
 entry:
-  %x = alloca %"std::String"
   %boxPtr = alloca %"std::Void"
   ret %"std::Void"* %boxPtr
 }

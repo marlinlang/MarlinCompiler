@@ -53,6 +53,7 @@ expression
     : LPAREN expression RPAREN
     | methodCall
     | memberAccess
+    | nullLiteral
     | booleanLiteral
     | stringLiteral
     | characterLiteral
@@ -151,4 +152,8 @@ characterLiteral
 numberLiteral
     : INTEGER
     | DOUBLE
+    ;
+ 
+nullLiteral
+    : NULL
     ;

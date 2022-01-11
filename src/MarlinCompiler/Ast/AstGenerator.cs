@@ -470,6 +470,11 @@ public sealed class AstGenerator : IMarlinParserVisitor<AstNode>
         );
     }
 
+    public AstNode VisitNullLiteral(MarlinParser.NullLiteralContext context)
+    {
+        return new NullNode(context);
+    }
+
     public AstNode VisitBooleanLiteral(MarlinParser.BooleanLiteralContext context)
     {
         return new BooleanNode(context, context.TRUE() != null);

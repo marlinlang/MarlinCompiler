@@ -205,6 +205,11 @@ internal class SemanticAnalyzer : BaseAstVisitor<AstNode>
         return node;
     }
 
+    public override AstNode VisitNullNode(NullNode node)
+    {
+        return node;
+    }
+
     public override TypeReferenceNode VisitTypeReferenceNode(TypeReferenceNode node)
     {
         string useName = node.IsArray ? node.Name[..^2] : node.Name;

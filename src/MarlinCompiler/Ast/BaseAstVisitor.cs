@@ -83,7 +83,13 @@ public abstract class BaseAstVisitor<TResult> : IAstVisitor<TResult>
         VisitChildren(node);
         return default;
     }
-    
+
+    public virtual TResult VisitNullNode(NullNode node)
+    {
+        VisitChildren(node);
+        return default;
+    }
+
     public virtual TResult VisitReturnNode(ReturnNode node)
     { 
         VisitChildren(node);

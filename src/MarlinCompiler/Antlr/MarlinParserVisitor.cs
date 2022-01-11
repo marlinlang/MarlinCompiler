@@ -200,5 +200,11 @@ public interface IMarlinParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitNumberLiteral([NotNull] MarlinParser.NumberLiteralContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="MarlinParser.nullLiteral"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitNullLiteral([NotNull] MarlinParser.NullLiteralContext context);
 }
 } // namespace MarlinCompiler.Antlr
