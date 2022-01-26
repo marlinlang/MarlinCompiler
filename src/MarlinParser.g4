@@ -42,7 +42,6 @@ expression
     | (
         literal
       | methodCall
-      | 
       )                             #ValueExpression
     ;
 
