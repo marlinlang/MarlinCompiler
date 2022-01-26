@@ -24,12 +24,15 @@ DOT:            '.';
 COMMA:          ',';
 COLON:          ':';
 SEMICOLON:      ';';
+QUESTION:       '?';
 LBRACE:         '{';
 RBRACE:         '}';
 LPAREN:         '(';
 RPAREN:         ')';
 LBRACKET:       '[';
 RBRACKET:       ']';
+LANGLE:         '<';
+RANGLE:         '>';
 ASSIGN:         '=';
 QUOTE:          '\'';
 DOUBLE_QUOTE:   '"';
@@ -38,7 +41,7 @@ ARROW:          '=>';
 
 IDENTIFIER:              ([A-Za-z_])([0-9A-Za-z_]*);
 INTEGER:                 WholeNumber | HexNumber;
-NORMAL_STRING:           DOUBLE_QUOTE (~["])* DOUBLE_QUOTE;
+STRING:                  DOUBLE_QUOTE (~["])* DOUBLE_QUOTE;
 CHARACTER:               QUOTE (EscapeSequence|~[']) QUOTE;
 DOUBLE:                  DoubleNumber;
 

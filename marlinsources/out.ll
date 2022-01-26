@@ -3,9 +3,10 @@ source_filename = "Program"
 
 %"std::Void" = type {}
 %"std::Character" = type { i32 }
-%"std::Boolean" = type { i1 }
-%"std::Console" = type { void }
+%"app::Test" = type { %"vtable.app::Test"*, %"std::Integer" }
+%"vtable.app::Test" = type { %"std::Void"* (%"app::Test"*) }
 %"std::Integer" = type { i32 }
+%"std::Boolean" = type { i1 }
 %"std::String" = type { %"std::Character"* }
 
 declare i32 @malloc(i32)
@@ -35,8 +36,15 @@ entry:
   ret %"std::Character"* %boxPtr
 }
 
+define %"std::Void"* @"app::Test.Shveps"(%"app::Test"* %0) {
+entry:
+  %boxPtr = alloca %"std::Void"
+  ret %"std::Void"* %boxPtr
+}
+
 define %"std::Void"* @"app::Program.Main"() {
 entry:
+  %test = alloca %"app::Test"
   %boxPtr = alloca %"std::Void"
   ret %"std::Void"* %boxPtr
 }
@@ -52,11 +60,6 @@ define void @"std::Character.ctor"(%"std::Character"* %0) {
 entry:
   %1 = getelementptr inbounds %"std::Character", %"std::Character"* %0, i32 0, i32 0
   store i32 0, i32* %1
-  ret void
-}
-
-define void @"std::Console.ctor"(%"std::Console"* %0) {
-entry:
   ret void
 }
 
@@ -84,5 +87,15 @@ entry:
 
 define void @"std::Void.ctor"(%"std::Void"* %0) {
 entry:
+  ret void
+}
+
+define void @"app::Test.ctor"(%"app::Test"* %0) {
+entry:
+  %1 = getelementptr inbounds %"app::Test", %"app::Test"* %0, i32 0, i32 1
+  %boxPtr = alloca %"std::Integer"
+  %2 = getelementptr inbounds %"std::Integer", %"std::Integer"* %boxPtr, i32 0, i32 0
+  store i32 0, i32* %2
+  store %"std::Integer" zeroinitializer, %"std::Integer"* %1
   ret void
 }

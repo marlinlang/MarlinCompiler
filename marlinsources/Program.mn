@@ -1,9 +1,17 @@
 ﻿module app;
 
+public class Test
+{
+    int x;
+    
+    void Shveps() {}
+}
+
 public static class Program
 {
     public static void Main()
     {
-        
+        app::Test test;
+        test.x = 15;
     }
 }

@@ -4,156 +4,64 @@ options { tokenVocab=MarlinLexer; }
 
 // Top level definition
 file
-    : (moduleName
-        typeDeclaration*)?
+    : (moduleDefinition typeDeclaration*)?
         EOF
     ;
 
-// Fragments
-typeName
-    : typeName LBRACKET RBRACKET
-    | IDENTIFIER (DOUBLE_COLON IDENTIFIER)*
+moduleDefinition
+    : MODULE IDENTIFIER (DOUBLE_COLON IDENTIFIER)*
     ;
 
-moduleName
-    : MODULE typeName SEMICOLON
-    ;
-
-modifier
-    : PRIVATE
-    | PUBLIC
-    | INTERNAL
-    | STATIC
-    | READONLY
-    | SEALED
-    ;
-
-expectArgs
-    : LPAREN (expectArg (COMMA expectArg)*)? RPAREN
-    ;
-
-expectArg
-    : typeName IDENTIFIER
-    ;
-
-giveArgs
-    : LPAREN (expression (COMMA expression)*)? RPAREN
-    ;
-
-// Base rules
-statement
-    : methodCall                SEMICOLON
-    | localVariableDeclaration  SEMICOLON
-    | variableAssignment        SEMICOLON
-    | return                    SEMICOLON
-    | nativeCall                SEMICOLON
-    ;
-
-expression
-    : LPAREN expression RPAREN
-    | methodCall
-    | memberAccess
-    | nullLiteral
-    | booleanLiteral
-    | stringLiteral
-    | characterLiteral
-    | numberLiteral
-    | arrayInitializer
-    | nativeCall
-    ;
-
-// Containers (types and methods)
 typeDeclaration
-    : classDeclaration
-    | structDeclaration
+    : MODIFIER* CLASS IDENTIFIER typeBody SEMICOLON         #ClassTypeDeclaration
+    | MODIFIER* STRUCT IDENTIFIER typeBody SEMICOLON        #StructTypeDeclaration
+    | MODIFIER* INTERFACE IDENTIFIER typeBody SEMICOLON     #InterfaceTypeDeclaration
     ;
 
-classDeclaration
-    : modifier* CLASS IDENTIFIER (COLON typeName (COMMA typeName)*)? LBRACE classMember* RBRACE
+typeBody
+    : ((variableDeclaration|methodDeclaration) SEMICOLON)*
     ;
-
-structDeclaration
-    : modifier* STRUCT IDENTIFIER LBRACE structMember* RBRACE
+    
+variableDeclaration
+    : MODIFIER* typeName (ASSIGN expression)?
     ;
 
 methodDeclaration
-    : modifier* typeName IDENTIFIER methodBody
+    : MODIFIER* typeName IDENTIFIER LPAREN (typeName IDENTIFIER (COMMA typeName IDENTIFIER)*)? RPAREN
     ;
 
-// Subrules (statements and expressions)
+typeName
+    : (IDENTIFIER (DOUBLE_COLON IDENTIFIER)) name=IDENTIFIER (LANGLE typeName RANGLE)
+    ;
+
+expression
+    // x.y.z is allowed by this rule
+    // if we included it in member we'd get LL(*) trouble :(
+    : expression DOT expression     #UnfoldExpression
+    
+    | (
+        literal
+      | methodCall
+      | 
+      )                             #ValueExpression
+    ;
+
 methodCall
-    : memberAccess giveArgs
+    : member LPAREN (expression (COMMA expression)*)? RPAREN
     ;
 
-variableDeclaration
-    : modifier* typeName NATIVE? IDENTIFIER (ASSIGN expression)?
+member
+    : typeName DOT IDENTIFIER           #TypeMemberAccess
+    | variableAccess DOT IDENTIFIER     #VariableMemberAccess
+    ;
+    
+variableAccess
+    : IDENTIFIER
     ;
 
-localVariableDeclaration
-    : typeName IDENTIFIER (ASSIGN expression)?
-    ;
-
-variableAssignment
-    : memberAccess ASSIGN expression
-    ;
-
-memberAccess
-    // std::Console.WriteLine
-    : (typeName DOT)? IDENTIFIER (LBRACKET expression RBRACKET)?
-    // x.Parent.Node.Something
-    | memberAccess DOT memberAccess
-    // x
-    | IDENTIFIER (LBRACKET expression RBRACKET)?
-    ;
-
-arrayInitializer
-    : NEW typeName LBRACKET expression RBRACKET
-    | NEW typeName LBRACKET RBRACKET LBRACE expression (COMMA expression)* RBRACKET
-    ;
-
-nativeCall
-    : AT LBRACKET giveArgs RBRACKET
-    ;
-
-return
-    : RETURN expression?
-    ;
-
-// Bodies
-classMember // this is expected to have more coming!
-    : variableDeclaration       SEMICOLON
-    | methodDeclaration
-    ;
-
-structMember
-    : variableDeclaration       SEMICOLON
-    | methodDeclaration
-    ;
-
-methodBody
-    : expectArgs ARROW expression SEMICOLON
-    | expectArgs LBRACE statement* RBRACE
-    ;
-
-// Complex literals
-booleanLiteral
-    : TRUE
-    | FALSE
-    ;
-
-stringLiteral
-    : NORMAL_STRING
-    ;
-
-characterLiteral
-    : CHARACTER
-    ;
-
-numberLiteral
-    : INTEGER
-    | DOUBLE
-    ;
- 
-nullLiteral
-    : NULL
+literal
+    : STRING        #StringLiteral
+    | INTEGER       #IntegerLiteral
+    | DOUBLE        #DoubleLiteral
+    | CHARACTER     #CharacterLiteral
     ;
