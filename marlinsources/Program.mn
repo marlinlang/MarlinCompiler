@@ -1,17 +1,8 @@
-﻿module app;
+﻿using std;
 
-public class Test
-{
-    int x;
-    
-    void Shveps() {}
-}
+module app;
 
-public static class Program
+internal class Test
 {
-    public static void Main()
-    {
-        app::Test test;
-        test.x = 15;
-    }
+    public static int Pluh;
 }

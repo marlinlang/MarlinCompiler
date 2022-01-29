@@ -1,0 +1,42 @@
+﻿using std;
+
+module examples;
+
+public class Animal
+{
+    public string Name;
+    public int AgeYears;
+    
+    public bool Hungry -> { get, private set };
+    
+    public constructor(string name, int ageYears)
+    {
+        Name = name;
+        AgeYears = ageYears;
+    }
+    
+    public void Feed()
+    {
+        Hungry = false;
+    }
+    
+    public virtual void Pet()
+    {
+        std::Console.PrintLine("Grr!");
+    }
+}
+
+public class Dog : Animal
+{
+    public string CollarColor;
+
+    public constructor(string name, int ageYears, string collarColor) : super(name, ageYears)
+    {
+        CollarColor = collarColor;
+    }
+    
+    public override void Pet()
+    {
+        std::Console.PrintLine("<3");
+    }
+}

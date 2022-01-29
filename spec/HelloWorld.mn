@@ -1,0 +1,12 @@
+﻿using std;
+
+module examples;
+
+public static class HelloWorld
+{
+    public static int Main()
+    {
+        std::Console.PrintLine("Hello, world!");
+        return 0;
+    }
+}

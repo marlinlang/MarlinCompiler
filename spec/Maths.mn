@@ -1,0 +1,42 @@
+﻿using std;
+
+module examples;
+
+public static class Maths
+{
+    public static void BasicIntegerArithmetic()
+    {
+        int x = 12;
+        int y = 24;
+        
+        int z = 12 + 24; // 36
+    }
+    
+    public static void BasicDoubleArithmethic()
+    {
+        double x = 12.4;
+        double y = 6.2;
+        
+        double z = x / y; // 2
+    }
+    
+    public static void HelperMethods()
+    {
+        double sqrt = std::Math.Sqrt(81); // 9
+        
+        // rounding reminder: .5 or over means we go up, otherwise we don't change the number
+        // e.g. 12.5 rounds to 13, just like 12.9 rounds to 13
+        // but 12.1 rounds down to 12
+        
+        // Round gives us integers
+        int round1 = std::Math.Round(12.3); // 12
+        int round2 = std::Math.Round(12.5); // 13
+        int round3 =  std::Math.Round(12.8); // 13
+        
+        // RoundDecimal gives us doubles
+        // second arg is how many decimal numbers should be left
+        double decRound1 = std::Math.RoundDecimal(12.33, 1); // 12.3, first decimal place
+        double decRound2 = std::Math.RoundDecimal(12.355, 2); // 12.36, second decimal place
+        double decRound2 = std::Math.RoundDecimal(12.3582, 2); // 12.358, third decimal place
+    }
+}
