@@ -171,7 +171,7 @@ public sealed class CompilationUnitParser
         // We'll cheat: we'll make a new parser and a new Tokens instance
         // this way we can advance without really screwing up our own state
         // bonus: we can access all private methods!
-        CompilationUnitParser tempParser = new(new Tokens(_tokens), _path);
+        CompilationUnitParser tempParser = CreateSubParser();
         
         // Type members are method declarations and property declarations
         // Both start off with modifiers, type name and then the name of the member
@@ -315,37 +315,176 @@ public sealed class CompilationUnitParser
         //   method call                        (accessPath dot)? identifier tuple semicolon
         //   todo more
 
-        if (_tokens.NextIsOfType(TokenType.Identifier))
+        CompilationUnitParser parser;
+        
+        // Try statements
+        
+        // Variable declaration
+        try
         {
-            // local var decl, var assignment or method call
-            Node[] accessPath = GrabAccessPath();
-            
-            
+            parser = CreateSubParser();
+            string type = parser.GrabTypeName(); // var type
+            string name = parser.GrabNextByExpecting(TokenType.Identifier);
+            if (parser.MessageCollection.HasFatalErrors) throw new ParseException("", null);
 
-            throw new NotImplementedException(); // temporary for the commit
-        }
-        else
-        {
-            Token? peek = _tokens.PeekToken();
-            if (peek == null)
+            Token next = parser._tokens.GrabToken();
+            if (next.Type == TokenType.Semicolon || next.Type == TokenType.Assign)
             {
-                throw new CancelParsingException("Premature EOF");
+                return ExpectLocalVariableDeclaration(); // use regular parser, not subparser!
+            }
+        }
+        catch (ParseException) {}
+        
+        // Try getting an expression chain (method call/assignment)
+        try
+        {
+            parser = CreateSubParser();
+            parser.ExpectMember();
+
+            return ExpectMember(); // should work if the subparser didn't error
+        }
+        catch (ParseException) {}
+        
+        // Cannot figure out what this is
+        throw new ParseException("Expected statement", _tokens.PeekToken());
+    }
+
+    /// <summary>
+    /// Expects a member access chain.
+    /// </summary>
+    /// <remarks>This consumes the last part of the method in the chain as well.</remarks>
+    private ExpressionNode ExpectMember()
+    {
+        ExpressionNode parent = ExpectExpression(true);
+        while (_tokens.NextIsOfType(TokenType.Dot))
+        {
+            _tokens.Skip(); // .
+
+            ExpressionNode nextExpr = ExpectExpression();
+
+            if (nextExpr is IndexableExpressionNode idx)
+            {
+                idx.Target = parent;
+            }
+            else
+            {
+                // no need for exception
+                MessageCollection.Error(
+                    "Cannot access member of non-indexable expression",
+                    _tokens.CurrentToken.Location
+                );
             }
             
-            throw new ParseException($"Expected statement, got {peek}", peek);
+            parent = new AccessChain(parent, nextExpr);
         }
+
+        return parent;
+    }
+
+    /// <summary>
+    /// Expects a local variable declaration.
+    /// </summary>
+    private VariableNode ExpectLocalVariableDeclaration()
+    {
+        string type = GrabTypeName();
+        string name = GrabNextByExpecting(TokenType.Identifier);
+        ExpressionNode value = null;
+        
+        if (_tokens.NextIsOfType(TokenType.Assign))
+        {
+            _tokens.Skip(); // =
+            value = ExpectExpression();
+        }
+        
+        RequireSemicolon();
+
+        return new LocalVariableDeclaration(new TypeReferenceNode(type), name, value);
+    }
+
+    /// <summary>
+    /// Expects a method call.
+    /// </summary>
+    private MethodCallNode ExpectMethodCall()
+    {
+        string name = GrabNextByExpecting(TokenType.Identifier);
+        ExpressionNode[] args = GrabTupleValues();
+        return new MethodCallNode(name, args);
     }
 
     /// <summary>
     /// Expects any expression.
     /// </summary>
-    private ExpressionNode ExpectExpression()
+    private ExpressionNode ExpectExpression(bool doNotGiveAccessPaths)
     {
-        throw new NotImplementedException();
+        Token? next = _tokens.PeekToken();
+        if (next == null) throw new CancelParsingException("Expected expression, got EOF");
+
+        switch (next.Type)
+        {
+            case TokenType.Integer:
+            case TokenType.Decimal:
+            case TokenType.New:
+                throw new NotImplementedException();
+            
+            case TokenType.Identifier:
+                Token? peek = _tokens.PeekToken(2);
+                if (peek == null) throw new CancelParsingException("Expected expression, got EOF");
+
+                if (peek.Type == TokenType.Dot && !doNotGiveAccessPaths)
+                {
+                    return ExpectMember();
+                }
+                else if (peek.Type == TokenType.LeftParen)
+                {
+                    return ExpectMethodCall();
+                }
+                else
+                {
+                    // Regular member access
+                    _tokens.Skip(); // the id
+                    return new MemberAccessNode(next.Value); // use the id's value,
+                    // not the one of the next token
+                }
+            
+            default:
+                throw new ParseException($"Expected expression, got {next}", next);
+        }
     }
 
     /// <summary>
-    /// Utility method for expecting an argument list
+    /// Utility method for expecting a value list.
+    /// </summary>
+    private ExpressionNode[] GrabTupleValues()
+    {
+        GrabNextByExpecting(TokenType.LeftParen);
+        List<ExpressionNode> expressions = new();
+        
+        while (true)
+        {
+            expressions.Add(ExpectExpression());
+
+            Token next = _tokens.PeekToken();
+            if (next.Type == TokenType.RightParen)
+            {
+                break;
+            }
+            else if (next.Type == TokenType.Comma)
+            {
+                continue;
+            }
+            else
+            {
+                MessageCollection.Error($"Expected comma or ), got {next}", next.Location);
+            }
+        }
+        
+        GrabNextByExpecting(TokenType.RightParen);
+
+        return expressions.ToArray();
+    }
+
+    /// <summary>
+    /// Utility method for expecting an argument list.
     /// </summary>
     private VariableNode[] GrabTupleTypeDefinition()
     {
@@ -515,18 +654,6 @@ public sealed class CompilationUnitParser
     }
 
     /// <summary>
-    /// Grabs an access path to a property/method.
-    /// </summary>
-    private Node[] GrabAccessPath()
-    {
-        List<Node> accessPath = new();
-
-        throw new NotImplementedException();
-
-        return accessPath.ToArray();
-    }
-
-    /// <summary>
     /// Utility method for reading a type name.
     /// </summary>
     private string GrabTypeName()
@@ -614,6 +741,16 @@ public sealed class CompilationUnitParser
         {
             MessageCollection.Error("Expected semicolon", fail?.Location ?? new FileLocation(_path));
         }
+    }
+
+    /// <summary>
+    /// Creates a new parser at the same position and file path. This is used to test
+    /// possible ahead syntax without needing to backtrack.
+    /// </summary>
+    /// <remarks>Creating a new parser has its overhead. Use with caution.</remarks>
+    private CompilationUnitParser CreateSubParser()
+    {
+        return new CompilationUnitParser(new Tokens(_tokens), _path);
     }
 
     /// <summary>

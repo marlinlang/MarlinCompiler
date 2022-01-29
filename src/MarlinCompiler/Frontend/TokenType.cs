@@ -10,6 +10,7 @@ public enum TokenType
     Class,              // class
     Struct,             // struct
     Using,              // using
+    New,                // new
     Modifier,           // public, private, protected, internal, static, readonly 
     
     // Numbers

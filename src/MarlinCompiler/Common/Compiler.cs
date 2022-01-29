@@ -48,12 +48,21 @@ public sealed class Compiler
             Console.ForegroundColor = msg.PrintColor;
             Console.WriteLine(msg.ToString());
         }
-        Console.ResetColor();
 
-        if (MessageCollection.Count() != 0)
+        string failedPassed = MessageCollection.HasFatalErrors ? "failed" : "successful";
+        Console.ForegroundColor = MessageCollection.HasFatalErrors ? ConsoleColor.Red : ConsoleColor.Green;
+        int count = MessageCollection.Count();
+        if (count > 0)
         {
-            Console.WriteLine($"Compilation {(MessageCollection.HasFatalErrors ? "failed" : "passed")} with {MessageCollection.Count()} messages");
+            Console.WriteLine();
+            Console.WriteLine($"Build {failedPassed} with {count} message{(count == 1 ? "" : 's')}");
         }
+        else
+        {
+            Console.WriteLine($"Build {failedPassed} with no messages");
+        }
+        
+        Console.ResetColor();
 
         // return code:
         //   no messages:               0
@@ -75,7 +84,7 @@ public sealed class Compiler
         // Lexing
         foreach (string path in _filePaths)
         {
-            lexed[path] = new Tokens(Lex(path));
+            lexed[path] = Lex(path);
         }
         
         // Parsing
@@ -93,7 +102,7 @@ public sealed class Compiler
         }
     }
 
-    private Lexer.Token[] Lex(string path)
+    private Tokens Lex(string path)
     {
         Lexer.Token[] tokens = new Lexer(File.ReadAllText(path), path).Lex();
         foreach (Lexer.Token tok in tokens.Where(x => x.Type == TokenType.Invalid))
@@ -101,7 +110,7 @@ public sealed class Compiler
             MessageCollection.Error($"Unknown token '{tok.Value}'", tok.Location);
         }
 
-        return tokens;
+        return new Tokens(tokens);
     }
 
     #endregion

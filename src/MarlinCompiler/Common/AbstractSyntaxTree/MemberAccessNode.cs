@@ -3,18 +3,19 @@
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
 /// <summary>
-/// A node which references a parent and tries to get a member within it.
+/// A class representing accessing a local variable or member
 /// </summary>
-public sealed class MemberAccessNode : Node
+public class MemberAccessNode : IndexableExpressionNode
 {
-    public Node Parent { get; }
-    public Node Member { get; }
+    public string MemberName { get; }
 
-    public MemberAccessNode(Node parent, Node member)
+    public MemberAccessNode(string memberName)
     {
-        Parent = parent;
-        Member = member;
+        MemberName = memberName;
     }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor) => visitor.MemberAccess(this);
+    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.MemberAccess(this);
+    }
 }
