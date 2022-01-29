@@ -167,23 +167,29 @@ public sealed class CompilationUnitParser
     /// </summary>
     private Node ExpectTypeMember()
     {
-        // conveniently, both methods and properties use the type and then a name
-        // Left paren opens a method, otherwise expect a property
-        // Properties will always have at least 3 tokens, so we're safe unless we reach EOF
-        Token? afterNameAndType = _tokens.PeekNextTokenBySkipping(TokenType.Modifier, 2);
-        if (afterNameAndType == null)
-        {
-            throw new CancelParsingException("Expected type member, but reached EOF prematurely");
-        }
+        // We gotta look a bit ahead to understand what this actually is
+        // We'll cheat: we'll make a new parser and a new Tokens instance
+        // this way we can advance without really screwing up our own state
+        // bonus: we can access all private methods!
+        CompilationUnitParser tempParser = new(new Tokens(_tokens), _path);
         
-        if (afterNameAndType.Type == TokenType.LeftParen)
+        // Type members are method declarations and property declarations
+        // Both start off with modifiers, type name and then the name of the member
+        // but then methods have a left paren, which is what we'll use to determine
+        // which one we have
+        tempParser.GrabModifiers(); // don't care about those
+        tempParser.GrabTypeName(); // don't care about this either
+        tempParser.GrabNextByExpecting(TokenType.Identifier); // nope
+        
+        // and now we can just check if the next token is a left paren
+        if (tempParser._tokens.NextIsOfType(TokenType.LeftParen))
         {
-            // Method
+            // Method!
             return ExpectMethodDeclaration();
         }
         else
         {
-            // (hopefully) a property
+            // Property! (probably, it'll handle validation itself)
             return ExpectPropertyDeclaration();
         }
     }
@@ -223,7 +229,7 @@ public sealed class CompilationUnitParser
     private Node ExpectMethodDeclaration()
     {
         string[] modifiers = GrabModifiers();
-        string type = GrabNextByExpecting(TokenType.Identifier);
+        string type = GrabTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         VariableNode[] args = GrabTupleTypeDefinition();
@@ -276,7 +282,7 @@ public sealed class CompilationUnitParser
     private Node ExpectPropertyDeclaration()
     {
         string[] modifiers = GrabModifiers();
-        string type = GrabNextByExpecting(TokenType.Identifier);
+        string type = GrabTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         Node? value = null;
@@ -313,6 +319,8 @@ public sealed class CompilationUnitParser
         {
             // local var decl, var assignment or method call
             Node[] accessPath = GrabAccessPath();
+            
+            
 
             throw new NotImplementedException(); // temporary for the commit
         }
@@ -430,7 +438,7 @@ public sealed class CompilationUnitParser
 
         if (token.Type != expected)
         {
-            MessageCollection.Error($"Expected {expected}, got {token.Type}");
+            MessageCollection.Error($"Expected {expected}, got {token.Type}", token.Location);
         }
 
         return token.Value;
@@ -519,10 +527,38 @@ public sealed class CompilationUnitParser
     }
 
     /// <summary>
-    /// Utility method for reading a type name. Type names look the exact same way as module paths,
-    /// so this is just a call to GrabModuleName();
+    /// Utility method for reading a type name.
     /// </summary>
-    private string GrabTypeName() => GrabModuleName();
+    private string GrabTypeName()
+    {
+        // In all cases we need an identifier
+        // If the token after it is a double colon, we get module name first
+
+        StringBuilder builder = new();
+        
+        // hack to peek with 2 tokens instead of one
+        // we don't get Invalid type tokens in the lexer
+        // gg ez
+        if (_tokens.PeekToken(2).Type == TokenType.DoubleColon
+            || _tokens.PeekToken(2).Type == TokenType.Dot)
+        {
+            builder.Append(GrabModuleName());
+
+            if (_tokens.NextIsOfType(TokenType.Dot))
+            {
+                _tokens.Skip(); // .
+            }
+            else
+            {
+                throw new ParseException(
+                    $"Expected type name, got module name {builder}",
+                    _tokens.CurrentToken
+                );
+            }
+        }
+
+        return builder.Append(GrabNextByExpecting(TokenType.Identifier)).ToString();
+    }
 
     /// <summary>
     /// Utility method for making an Accessibility flags instance by the given modifiers.

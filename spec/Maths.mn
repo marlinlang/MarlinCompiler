@@ -29,14 +29,14 @@ public static class Maths
         // but 12.1 rounds down to 12
         
         // Round gives us integers
-        int round1 = std::Math.Round(12.3); // 12
-        int round2 = std::Math.Round(12.5); // 13
-        int round3 =  std::Math.Round(12.8); // 13
+        int round1 = std.Math.Round(12.3); // 12
+        int round2 = std.Math.Round(12.5); // 13
+        int round3 =  std.Math.Round(12.8); // 13
         
         // RoundDecimal gives us doubles
         // second arg is how many decimal numbers should be left
-        double decRound1 = std::Math.RoundDecimal(12.33, 1); // 12.3, first decimal place
-        double decRound2 = std::Math.RoundDecimal(12.355, 2); // 12.36, second decimal place
-        double decRound2 = std::Math.RoundDecimal(12.3582, 2); // 12.358, third decimal place
+        double decRound1 = std.Math.RoundDecimal(12.33, 1); // 12.3, first decimal place
+        double decRound2 = std.Math.RoundDecimal(12.355, 2); // 12.36, second decimal place
+        double decRound2 = std.Math.RoundDecimal(12.3582, 2); // 12.358, third decimal place
     }
 }

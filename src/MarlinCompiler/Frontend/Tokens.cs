@@ -28,6 +28,12 @@ public class Tokens
         _position = -1;
     }
 
+    public Tokens(Tokens template)
+    {
+        _tokens = template._tokens;
+        _position = template._position;
+    }
+
     /// <summary>
     /// Returns the next token and advances the position. Null for EOF
     /// </summary>
@@ -39,11 +45,11 @@ public class Tokens
     /// <summary>
     /// Returns the next token without advancing the position. Null for EOF
     /// </summary>
-    public Token PeekToken() =>
-        _position + 1 >= _tokens.Length
+    public Token PeekToken(int with = 1) =>
+        _position + with >= _tokens.Length
             ? null
-            : _tokens[_position + 1];
-
+            : _tokens[_position + with];
+    
     /// <summary>
     /// Skips a token.
     /// </summary>

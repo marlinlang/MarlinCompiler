@@ -4,8 +4,5 @@ module app;
 
 internal class Test
 {
-    public static int Pluh()
-    {
-        int x;
-    }
+    public static std.Integer Pluh() {}
 }
