@@ -39,7 +39,7 @@ public sealed class CompilationUnitParser
         /// </summary>
         public Token OffendingToken { get; }
 
-        public ParseException(string message, Token offendingToken) : base(message)
+        public ParseException(string errorMessage, Token offendingToken) : base(errorMessage)
         {
             OffendingToken = offendingToken;
         }
@@ -50,7 +50,7 @@ public sealed class CompilationUnitParser
     /// </summary>
     private class CancelParsingException : Exception
     {
-        public CancelParsingException(string msg) : base(msg)
+        public CancelParsingException(string reason) : base(reason)
         {
         }
     }
@@ -173,7 +173,7 @@ public sealed class CompilationUnitParser
         Token? afterNameAndType = _tokens.PeekNextTokenBySkipping(TokenType.Modifier, 2);
         if (afterNameAndType == null)
         {
-            throw new ParseException("Expected type member, but reached EOF prematurely", _tokens.LastToken);
+            throw new CancelParsingException("Expected type member, but reached EOF prematurely");
         }
         
         if (afterNameAndType.Type == TokenType.LeftParen)
@@ -235,7 +235,7 @@ public sealed class CompilationUnitParser
             args
         );
 
-        node.Children.AddRange(ExpectTypeBody());
+        node.Children.AddRange(ExpectStatementBody(false));
 
         return node;
     }
@@ -243,7 +243,8 @@ public sealed class CompilationUnitParser
     /// <summary>
     /// Expects a collection of statements surrounded by curly braces.
     /// </summary>
-    private ContainerNode ExpectMethodBody()
+    /// <param name="insideLoop">Are we inside a loop? This enables continue and break statements.</param>
+    private ContainerNode ExpectStatementBody(bool insideLoop)
     {
         ContainerNode node = new();
         GrabNextByExpecting(TokenType.LeftBrace);
@@ -251,7 +252,7 @@ public sealed class CompilationUnitParser
         {
             try
             {
-                Node child = ExpectStatement();
+                Node child = ExpectStatement(insideLoop);
 
                 if (child != null)
                 {
@@ -297,6 +298,45 @@ public sealed class CompilationUnitParser
     }
 
     /// <summary>
+    /// Expects any statement.
+    /// </summary>
+    /// <param name="insideLoop">Is this a statement inside a loop? This enables continue and break statements.</param>
+    private Node ExpectStatement(bool insideLoop)
+    {
+        // Statements:
+        //   local variable declaration         type identifier (assign expr)? semicolon
+        //   variable assignment                (accessPath dot)? identifier assign expr semicolon
+        //   method call                        (accessPath dot)? identifier tuple semicolon
+        //   todo more
+
+        if (_tokens.NextIsOfType(TokenType.Identifier))
+        {
+            // local var decl, var assignment or method call
+            Node[] accessPath = GrabAccessPath();
+
+            throw new NotImplementedException(); // temporary for the commit
+        }
+        else
+        {
+            Token? peek = _tokens.PeekToken();
+            if (peek == null)
+            {
+                throw new CancelParsingException("Premature EOF");
+            }
+            
+            throw new ParseException($"Expected statement, got {peek}", peek);
+        }
+    }
+
+    /// <summary>
+    /// Expects any expression.
+    /// </summary>
+    private ExpressionNode ExpectExpression()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
     /// Utility method for expecting an argument list
     /// </summary>
     private VariableNode[] GrabTupleTypeDefinition()
@@ -306,7 +346,25 @@ public sealed class CompilationUnitParser
         GrabNextByExpecting(TokenType.LeftParen);
         while (!_tokens.NextIsOfType(TokenType.RightParen))
         {
+            string type = GrabTypeName();
+            string name = GrabNextByExpecting(TokenType.Identifier);
+
+            Token? peek = _tokens.PeekToken();
+
+            if (peek == null)
+            {
+                throw new CancelParsingException("Premature EOF while parsing argument list");
+            }
             
+            if (peek.Type == TokenType.Comma)
+            {
+                _tokens.Skip(); // ,
+                continue;
+            }
+            else if (peek.Type != TokenType.RightParen)
+            {
+                throw new ParseException($"Expected comma or closing paren, got {peek}", peek);
+            }
         }
         GrabNextByExpecting(TokenType.RightParen);
 
@@ -367,7 +425,7 @@ public sealed class CompilationUnitParser
 
         if (token == null)
         {
-            throw new ParseException($"Expected {expected}, but file ended", _tokens.LastToken);
+            throw new CancelParsingException($"Expected {expected}, but file ended");
         }
 
         if (token.Type != expected)
@@ -449,13 +507,22 @@ public sealed class CompilationUnitParser
     }
 
     /// <summary>
-    /// Utility method for reading a type name.
+    /// Grabs an access path to a property/method.
     /// </summary>
-    private string GrabTypeName()
+    private Node[] GrabAccessPath()
     {
-        // TODO
+        List<Node> accessPath = new();
+
         throw new NotImplementedException();
+
+        return accessPath.ToArray();
     }
+
+    /// <summary>
+    /// Utility method for reading a type name. Type names look the exact same way as module paths,
+    /// so this is just a call to GrabModuleName();
+    /// </summary>
+    private string GrabTypeName() => GrabModuleName();
 
     /// <summary>
     /// Utility method for making an Accessibility flags instance by the given modifiers.

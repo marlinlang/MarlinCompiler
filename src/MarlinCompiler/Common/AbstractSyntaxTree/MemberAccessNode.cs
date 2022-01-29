@@ -2,6 +2,9 @@
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
+/// <summary>
+/// A node which references a parent and tries to get a member within it.
+/// </summary>
 public sealed class MemberAccessNode : Node
 {
     public Node Parent { get; }

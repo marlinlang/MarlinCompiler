@@ -40,4 +40,9 @@ public interface IAstVisitor<T>
     /// Visits a method declaration.
     /// </summary>
     public virtual T MethodDeclaration(MethodDeclarationNode node) => default;
+
+    /// <summary>
+    /// Visits a local variable.
+    /// </summary>
+    public virtual T LocalVariable(LocalVariableDeclaration node) => default;
 }

@@ -2,6 +2,9 @@
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
+/// <summary>
+/// A type definition. Do not use directly - use inheritors.
+/// </summary>
 public class TypeDefinitionNode : ContainerNode
 {
     /// <summary>

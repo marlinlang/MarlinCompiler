@@ -2,6 +2,9 @@
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
+/// <summary>
+/// Base variable node. Used for arguments. Use inheritors for anything else.
+/// </summary>
 public class VariableNode : Node
 {
     public TypeReferenceNode Type { get; }

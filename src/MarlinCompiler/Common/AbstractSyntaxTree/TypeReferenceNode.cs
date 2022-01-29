@@ -2,6 +2,9 @@
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
+/// <summary>
+/// A reference to a type.
+/// </summary>
 public sealed class TypeReferenceNode : Node
 {
     public string FullName { get; set; }

@@ -39,7 +39,9 @@ type_member =   member_variable_declaration | method_declaration;
 
 member_variable_declaration =   [{modifier}], variable_declaration, semicolon;
 
-method_declaration =    [{modifier}], type_name_path, expect_args,  
+method_declaration =    [{modifier}], type_name_path, expect_args, method_body;
+
+type_name_path = module_name_path; (* they're the same syntax *)
 
 (* TERMINALS *)
 semicolon =     ";";

@@ -2,6 +2,9 @@
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
+/// <summary>
+/// Class declaration.
+/// </summary>
 public class ClassTypeDefinitionNode : TypeDefinitionNode
 {
     /// <summary>

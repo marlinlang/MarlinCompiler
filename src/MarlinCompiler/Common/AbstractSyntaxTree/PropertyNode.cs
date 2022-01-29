@@ -2,6 +2,9 @@
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
+/// <summary>
+/// A class property.
+/// </summary>
 public class PropertyNode : VariableNode
 {
     public Accessibility Accessibility { get; }

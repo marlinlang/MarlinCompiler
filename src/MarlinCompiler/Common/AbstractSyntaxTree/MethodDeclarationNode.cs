@@ -2,6 +2,9 @@
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
+/// <summary>
+/// A method declaration.
+/// </summary>
 public class MethodDeclarationNode : ContainerNode
 {
     public Accessibility Accessibility { get; }
