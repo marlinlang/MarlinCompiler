@@ -2,5 +2,5 @@
 
 public class IndexableExpressionNode : ExpressionNode
 {
-    public ExpressionNode Target { get; set; }
+    public IndexableExpressionNode? Target { get; set; }
 }

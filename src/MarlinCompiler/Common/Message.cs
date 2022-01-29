@@ -41,7 +41,8 @@ public record struct Message(string Content)
     {
         MessageFatality.Severe => ConsoleColor.Red,
         MessageFatality.Warning => ConsoleColor.Yellow,
-        MessageFatality.Information => ConsoleColor.Cyan
+        MessageFatality.Information => ConsoleColor.Cyan,
+        _ => throw new NotImplementedException()
     };
     
     public override string ToString()
@@ -51,7 +52,8 @@ public record struct Message(string Content)
                {
                    MessageFatality.Severe => "error",
                    MessageFatality.Warning => "warn",
-                   MessageFatality.Information => "info"
+                   MessageFatality.Information => "info",
+                   _ => throw new NotImplementedException()
                }
                + ": " + Content;
     }

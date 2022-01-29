@@ -6,6 +6,6 @@ internal class Test
 {
     public static std.Integer Pluh()
     {
-        int x = z.y;
+        
     }
 }

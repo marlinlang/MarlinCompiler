@@ -37,7 +37,7 @@ public class Tokens
     /// <summary>
     /// Returns the next token and advances the position. Null for EOF
     /// </summary>
-    public Token GrabToken() =>
+    public Token? GrabToken() =>
         ++_position >= _tokens.Length
             ? null
             : _tokens[_position];
@@ -45,7 +45,7 @@ public class Tokens
     /// <summary>
     /// Returns the next token without advancing the position. Null for EOF
     /// </summary>
-    public Token PeekToken(int with = 1) =>
+    public Token? PeekToken(int with = 1) =>
         _position + with >= _tokens.Length
             ? null
             : _tokens[_position + with];
@@ -61,13 +61,13 @@ public class Tokens
     /// <param name="expected">Expected type</param>
     /// <param name="tok">Variable to which the token will be assigned.</param>
     /// <returns>Whether or not the next token is of the given type. False for no next token.</returns>
-    public bool TryExpect(TokenType expected, out Token? tok)
+    public bool TryExpect(TokenType expected, out Token tok)
     {
-        Token peek = PeekToken();
+        Token? peek = PeekToken();
 
         if (peek == null)
         {
-            tok = null;
+            tok = null!;
             return false;
         }
         else

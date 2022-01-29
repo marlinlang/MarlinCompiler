@@ -72,7 +72,7 @@ public sealed class CompilationUnitParser
     /// <returns>The compilation unit node or null when the token source is empty.</returns>
     public CompilationUnitNode Parse()
     {
-        if (!_tokens.HasNext) return null;
+        if (!_tokens.HasNext) return null!;
 
         return ExpectCompilationUnit();
     }
@@ -93,7 +93,7 @@ public sealed class CompilationUnitParser
             {
                 try
                 {
-                    Node child = ExpectTypeDefinition();
+                    Node? child = ExpectTypeDefinition();
 
                     if (child != null)
                     {
@@ -118,7 +118,7 @@ public sealed class CompilationUnitParser
     /// Expects a type definition.
     /// </summary>
     /// <returns>Null for EOF, otherwise the node of the type def.</returns>
-    private TypeDefinitionNode ExpectTypeDefinition()
+    private TypeDefinitionNode? ExpectTypeDefinition()
     {
         Token? next = _tokens.PeekNextTokenBySkipping(TokenType.Modifier, 0);
 
@@ -304,11 +304,30 @@ public sealed class CompilationUnitParser
     }
 
     /// <summary>
+    /// Expects a local variable declaration.
+    /// </summary>
+    private VariableNode ExpectLocalVariableDeclaration()
+    {
+        string type = GrabTypeName();
+        string name = GrabNextByExpecting(TokenType.Identifier);
+        ExpressionNode? value = null;
+        
+        if (_tokens.NextIsOfType(TokenType.Assign))
+        {
+            _tokens.Skip(); // =
+            value = ExpectExpression();
+        }
+        
+        RequireSemicolon();
+
+        return new LocalVariableDeclaration(new TypeReferenceNode(type), name, value);
+    }
+
+    /// <summary>
     /// Expects any statement.
     /// </summary>
     /// <param name="insideLoop">Is this a statement inside a loop? This enables continue and break statements.</param>
-    private Node ExpectStatement(bool insideLoop)
-    {
+    private Node ExpectStatement(bool insideLoop){
         // Statements:
         //   local variable declaration         type identifier (assign expr)? semicolon
         //   variable assignment                (accessPath dot)? identifier assign expr semicolon
@@ -325,80 +344,49 @@ public sealed class CompilationUnitParser
             parser = CreateSubParser();
             string type = parser.GrabTypeName(); // var type
             string name = parser.GrabNextByExpecting(TokenType.Identifier);
-            if (parser.MessageCollection.HasFatalErrors) throw new ParseException("", null);
+            if (parser.MessageCollection.HasFatalErrors) throw new FormatException();
 
-            Token next = parser._tokens.GrabToken();
+            Token? next = parser._tokens.GrabToken();
+            if (next == null) throw new CancelParsingException("Premature EOF");
             if (next.Type == TokenType.Semicolon || next.Type == TokenType.Assign)
             {
                 return ExpectLocalVariableDeclaration(); // use regular parser, not subparser!
             }
         }
-        catch (ParseException) {}
+        catch (FormatException) {}
         
         // Try getting an expression chain (method call/assignment)
         try
         {
             parser = CreateSubParser();
-            parser.ExpectMember();
+            parser.ExpectExpression();
 
-            return ExpectMember(); // should work if the subparser didn't error
+            ExpressionNode expr = ExpectExpression(); // should work if the subparser didn't error
+
+            if (expr is MethodCallNode || expr is VariableAssignmentNode)
+            {
+                RequireSemicolon();
+                return expr;
+            }
         }
         catch (ParseException) {}
         
         // Cannot figure out what this is
-        throw new ParseException("Expected statement", _tokens.PeekToken());
+        throw new ParseException(
+            $"Expected statement, got {_tokens.PeekToken()!.Type}",
+            _tokens.PeekToken()!
+        );
     }
 
     /// <summary>
-    /// Expects a member access chain.
+    /// Expects a variable assignment.
     /// </summary>
-    /// <remarks>This consumes the last part of the method in the chain as well.</remarks>
-    private ExpressionNode ExpectMember()
+    private VariableAssignmentNode ExpectVariableAssignment()
     {
-        ExpressionNode parent = ExpectExpression(true);
-        while (_tokens.NextIsOfType(TokenType.Dot))
-        {
-            _tokens.Skip(); // .
-
-            ExpressionNode nextExpr = ExpectExpression();
-
-            if (nextExpr is IndexableExpressionNode idx)
-            {
-                idx.Target = parent;
-            }
-            else
-            {
-                // no need for exception
-                MessageCollection.Error(
-                    "Cannot access member of non-indexable expression",
-                    _tokens.CurrentToken.Location
-                );
-            }
-            
-            parent = new AccessChain(parent, nextExpr);
-        }
-
-        return parent;
-    }
-
-    /// <summary>
-    /// Expects a local variable declaration.
-    /// </summary>
-    private VariableNode ExpectLocalVariableDeclaration()
-    {
-        string type = GrabTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
-        ExpressionNode value = null;
-        
-        if (_tokens.NextIsOfType(TokenType.Assign))
-        {
-            _tokens.Skip(); // =
-            value = ExpectExpression();
-        }
-        
-        RequireSemicolon();
-
-        return new LocalVariableDeclaration(new TypeReferenceNode(type), name, value);
+        GrabNextByExpecting(TokenType.Assign);
+        ExpressionNode value = ExpectExpression(); 
+        return new VariableAssignmentNode(name, value);
     }
 
     /// <summary>
@@ -414,14 +402,25 @@ public sealed class CompilationUnitParser
     /// <summary>
     /// Expects any expression.
     /// </summary>
-    private ExpressionNode ExpectExpression(bool doNotGiveAccessPaths)
+    private ExpressionNode ExpectExpression(bool doNotEvaluateOperators = false)
     {
         Token? next = _tokens.PeekToken();
         if (next == null) throw new CancelParsingException("Expected expression, got EOF");
 
+        ExpressionNode expr;
+        
         switch (next.Type)
         {
+            case TokenType.LeftParen:
+                GrabNextByExpecting(TokenType.LeftParen);
+                expr = ExpectExpression();
+                GrabNextByExpecting(TokenType.RightParen);
+                break;
+
             case TokenType.Integer:
+                expr = new IntegerNode(Int32.Parse(_tokens.GrabToken()!.Value));
+                break;
+                
             case TokenType.Decimal:
             case TokenType.New:
                 throw new NotImplementedException();
@@ -430,25 +429,86 @@ public sealed class CompilationUnitParser
                 Token? peek = _tokens.PeekToken(2);
                 if (peek == null) throw new CancelParsingException("Expected expression, got EOF");
 
-                if (peek.Type == TokenType.Dot && !doNotGiveAccessPaths)
+                if (peek.Type == TokenType.LeftParen)
                 {
-                    return ExpectMember();
+                    expr = ExpectMethodCall();
                 }
-                else if (peek.Type == TokenType.LeftParen)
+                else if (peek.Type == TokenType.Assign)
                 {
-                    return ExpectMethodCall();
+                    expr = ExpectVariableAssignment();
                 }
                 else
                 {
                     // Regular member access
                     _tokens.Skip(); // the id
-                    return new MemberAccessNode(next.Value); // use the id's value,
+                    expr = new MemberAccessNode(next.Value); // use the id's value,
                     // not the one of the next token
                 }
+
+                break;
             
             default:
-                throw new ParseException($"Expected expression, got {next}", next);
+                throw new ParseException($"Expected expression, got {next.Type}", next);
         }
+
+        if (doNotEvaluateOperators) return expr;
+        return ExpectExpressionRhs(expr, 0);
+    }
+
+    private ExpressionNode ExpectExpressionRhs(ExpressionNode left, int minimumPrecedence)
+    {
+        // it just works
+        // https://en.wikipedia.org/wiki/Operator-precedence_parser#Pseudocode
+
+        Token? peek = _tokens.PeekToken();
+        if (peek == null) throw new CancelParsingException("Premature EOF");
+
+        // MEMBER ACCESS
+        if (peek.Type == TokenType.Dot)
+        {
+            if (left is not IndexableExpressionNode)
+            {
+                throw new ParseException("Cannot index non-indexable expression", peek);
+            }
+            
+            while (_tokens.NextIsOfType(TokenType.Dot))
+            {
+                peek = _tokens.GrabToken()!; // .
+                ExpressionNode right = ExpectExpression(true);
+
+                if (right is not IndexableExpressionNode)
+                {
+                    throw new ParseException($"Cannot index {right} expression", peek);
+                }
+
+                ((IndexableExpressionNode) right).Target = (IndexableExpressionNode) left;
+                left = right;
+            }
+
+            peek = _tokens.PeekToken();
+        }
+
+        if (peek == null) throw new CancelParsingException("Premature EOF");
+
+        while (peek.Precedence > minimumPrecedence)
+        {
+            Token? op = _tokens.GrabToken();
+            if (op == null) throw new CancelParsingException("Premature EOF");
+            ExpressionNode right = ExpectExpression();
+
+            peek = _tokens.PeekToken();
+            if (peek == null) return left;
+            
+            while (peek.Precedence > op.Precedence
+                   || (peek.IsRightAssocBinOp && peek.Precedence == op.Precedence))
+            {
+                right = ExpectExpressionRhs(right, op.Precedence + (peek.Precedence > op.Precedence ? 0 : 1));
+            }
+
+            left = new BinaryOperatorNode(op.Type, left, right);
+        }
+
+        return left;
     }
 
     /// <summary>
@@ -459,11 +519,14 @@ public sealed class CompilationUnitParser
         GrabNextByExpecting(TokenType.LeftParen);
         List<ExpressionNode> expressions = new();
         
-        while (true)
+        while (!_tokens.NextIsOfType(TokenType.RightParen))
         {
             expressions.Add(ExpectExpression());
 
-            Token next = _tokens.PeekToken();
+            Token? next = _tokens.PeekToken();
+
+            if (next == null) throw new CancelParsingException("Premature EOF");
+            
             if (next.Type == TokenType.RightParen)
             {
                 break;
@@ -553,7 +616,7 @@ public sealed class CompilationUnitParser
 
         while (_tokens.NextIsOfType(TokenType.Modifier))
         {
-            modifiers.Add(_tokens.GrabToken().Value);
+            modifiers.Add(_tokens.GrabToken()!.Value);
         }
 
         return modifiers.ToArray();
@@ -631,14 +694,14 @@ public sealed class CompilationUnitParser
 
         StringBuilder name = new();
         
-        while (_tokens.TryExpect(TokenType.Identifier, out Token? current))
+        while (_tokens.TryExpect(TokenType.Identifier, out Token current))
         {
             _tokens.Skip(); // current token
             name.Append(current.Value);
 
             if (_tokens.NextIsOfType(TokenType.DoubleColon))
             {
-                name.Append(_tokens.GrabToken().Value); // add separator
+                name.Append(_tokens.GrabToken()!.Value); // add separator
 
                 if (!_tokens.TryExpect(TokenType.Identifier, out Token? offending))
                 {
@@ -666,8 +729,8 @@ public sealed class CompilationUnitParser
         // hack to peek with 2 tokens instead of one
         // we don't get Invalid type tokens in the lexer
         // gg ez
-        if (_tokens.PeekToken(2).Type == TokenType.DoubleColon
-            || _tokens.PeekToken(2).Type == TokenType.Dot)
+        if (_tokens.PeekToken(2)!.Type == TokenType.DoubleColon
+            || _tokens.PeekToken(2)!.Type == TokenType.Dot)
         {
             builder.Append(GrabModuleName());
 

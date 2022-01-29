@@ -27,6 +27,7 @@ public enum TokenType
     Assign,             // =
     Equal,              // ==
     NotEqual,           // !=
+    Power,              // ^
     Plus,               // -
     Minus,              // -
     Asterisk,           // *

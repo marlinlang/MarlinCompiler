@@ -12,7 +12,29 @@ public sealed class Lexer
     /// <summary>
     /// A representation of a token.
     /// </summary>
-    public record Token(TokenType Type, string Value, FileLocation Location);
+    public record Token(TokenType Type, string Value, FileLocation Location)
+    {
+        /// <summary>
+        /// The operator precedence of this token
+        /// </summary>
+        public int Precedence => Type switch
+        {
+            TokenType.Dot => 10,
+            TokenType.Plus => 10,
+            
+            _ => 0
+        };
+
+        /// <summary>
+        /// Is this a right-associative operator?
+        /// </summary>
+        public bool IsRightAssocBinOp => Type switch
+        {
+            TokenType.Power => true,
+            
+            _ => false
+        };
+    }
     
     /// <summary>
     /// A definition to use to match a token.
@@ -118,7 +140,7 @@ public sealed class Lexer
     {
         List<Token> tokens = new();
 
-        for (Token current = null; (current = Match()) != null; )
+        for (Token? current = null; (current = Match()) != null; )
         {
             if (current.Type != TokenType.Skip)
             {
@@ -129,7 +151,7 @@ public sealed class Lexer
         return tokens.ToArray();
     }
 
-    private Token Match()
+    private Token? Match()
     {
         string useString = _parseContent.ToString();
         

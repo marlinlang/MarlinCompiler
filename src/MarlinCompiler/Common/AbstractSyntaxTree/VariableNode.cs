@@ -9,9 +9,9 @@ public class VariableNode : Node
 {
     public TypeReferenceNode Type { get; }
     public string Name { get; }
-    public Node Value { get; }
+    public Node? Value { get; }
 
-    public VariableNode(TypeReferenceNode type, string name, Node value)
+    public VariableNode(TypeReferenceNode type, string name, Node? value)
     {
         Type = type;
         Name = name;

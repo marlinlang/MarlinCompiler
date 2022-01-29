@@ -7,7 +7,7 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class LocalVariableDeclaration : VariableNode
 {
-    public LocalVariableDeclaration(TypeReferenceNode type, string name, Node value)
+    public LocalVariableDeclaration(TypeReferenceNode type, string name, Node? value)
         : base(type, name, value)
     {
     }

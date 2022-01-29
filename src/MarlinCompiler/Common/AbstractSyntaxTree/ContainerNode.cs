@@ -25,7 +25,7 @@ public class ContainerNode : Node, IEnumerable<Node>
             visitor.Visit(node);
         }
 
-        return default;
+        return default!;
     }
 
     public IEnumerator<Node> GetEnumerator() => Children.GetEnumerator();
