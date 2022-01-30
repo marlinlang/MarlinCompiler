@@ -91,7 +91,7 @@ public sealed class Compiler
         List<CompilationUnitNode> compilationUnits = new();
         foreach ((string path, Tokens tokens) in lexed)
         {
-            CompilationUnitParser parser = new CompilationUnitParser(tokens, path);
+            FileParser parser = new FileParser(tokens, path);
             CompilationUnitNode node = parser.Parse();
             if (node != null)
             {

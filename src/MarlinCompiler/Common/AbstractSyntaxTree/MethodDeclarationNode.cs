@@ -7,16 +7,19 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class MethodDeclarationNode : ContainerNode
 {
-    public Accessibility Accessibility { get; }
+    public GetAccessibility Accessibility { get; }
     public TypeReferenceNode Type { get; }
     public string Name { get; }
+    public bool IsStatic { get; }
     public VariableNode[] Args { get; }
 
-    public MethodDeclarationNode(Accessibility accessibility, TypeReferenceNode type, string name, VariableNode[] args)
+    public MethodDeclarationNode(GetAccessibility accessibility, TypeReferenceNode type, string name,
+        bool isStatic, VariableNode[] args)
     {
         Accessibility = accessibility;
         Type = type;
         Name = name;
+        IsStatic = isStatic;
         Args = args;
     }
 

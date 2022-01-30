@@ -12,7 +12,7 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     /// </summary>
     public string? BaseTypeFullName { get; set;  }
 
-    public ClassTypeDefinitionNode(string name, Accessibility accessibility, string? baseTypeFullName)
+    public ClassTypeDefinitionNode(string name, GetAccessibility accessibility, string? baseTypeFullName)
         : base(name, accessibility)
     {
         BaseTypeFullName = baseTypeFullName;

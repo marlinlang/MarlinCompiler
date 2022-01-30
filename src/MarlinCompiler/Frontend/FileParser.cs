@@ -12,7 +12,7 @@ namespace MarlinCompiler.Frontend;
 /// - Grab... - method for getting non-nodes, e.g. a type name
 /// - Require... - method that adds an error if something is missing (e.g. semicolon)
 /// </summary>
-public sealed class CompilationUnitParser
+public sealed class FileParser
 {
     /// <summary>
     /// All parser messages.
@@ -59,7 +59,7 @@ public sealed class CompilationUnitParser
     /// Constructor.
     /// </summary>
     /// <param name="filePath">Path to the source file. Used solely for error reporting.</param>
-    public CompilationUnitParser(Tokens tokens, string filePath)
+    public FileParser(Tokens tokens, string filePath)
     {
         MessageCollection = new MessageCollection();
         _tokens = tokens;
@@ -171,7 +171,7 @@ public sealed class CompilationUnitParser
         // We'll cheat: we'll make a new parser and a new Tokens instance
         // this way we can advance without really screwing up our own state
         // bonus: we can access all private methods!
-        CompilationUnitParser tempParser = CreateSubParser();
+        FileParser tempParser = CreateSubParser();
         
         // Type members are method declarations and property declarations
         // Both start off with modifiers, type name and then the name of the member
@@ -204,7 +204,7 @@ public sealed class CompilationUnitParser
         GrabNextByExpecting(TokenType.Class);
         
         string name = GrabNextByExpecting(TokenType.Identifier);
-        Token accessibilityErrTok = _tokens.CurrentToken;
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         
         string? baseClass = null;
         if (_tokens.NextIsOfType(TokenType.Colon))
@@ -215,7 +215,7 @@ public sealed class CompilationUnitParser
         
         ClassTypeDefinitionNode classNode = new ClassTypeDefinitionNode(
             name,
-            MakeAccessibility(modifiers, true, accessibilityErrTok),
+            accessibility,
             baseClass
         );
         
@@ -235,7 +235,7 @@ public sealed class CompilationUnitParser
         VariableNode[] args = GrabTupleTypeDefinition();
 
         MethodDeclarationNode node = new MethodDeclarationNode(
-            MakeAccessibility(modifiers, true, nameToken),
+            VisibilityFromModifiers(modifiers),
             new TypeReferenceNode(type),
             name,
             args
@@ -285,8 +285,129 @@ public sealed class CompilationUnitParser
         string type = GrabTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
+        GetAccessibility get = VisibilityFromModifiers(modifiers);
+        SetAccessibility set;
+        SetAccessibility.TryParse(get.ToString(), true, out set);
         Node? value = null;
+        
+        if (_tokens.NextIsOfType(TokenType.Arrow))
+        {
+            _tokens.Skip(); // ->
+            Token? peek = _tokens.PeekToken();
 
+            bool assignedGet = false;
+            bool assignedSet = false;
+            while (true)
+            {
+                if (peek == null) throw new CancelParsingException("Premature EOF");
+                
+                string currentAccessibility = get.ToString().ToLower();
+                
+                if (peek.Type == TokenType.Modifier)
+                {
+                    currentAccessibility = _tokens.GrabToken()!.Value;
+
+                    if (currentAccessibility is not ("public" or "private" or "internal"))
+                    {
+                        MessageCollection.Error(
+                            $"Unknown visibility specifier {currentAccessibility}",
+                            peek.Location
+                        );
+                        currentAccessibility = "internal";
+                    }
+
+                    peek = _tokens.PeekToken();
+                    if (peek == null) throw new CancelParsingException("Premature EOF");
+                }
+
+                if (peek.Type == TokenType.Get)
+                {
+                    if (assignedGet)
+                    {
+                        MessageCollection.Error("Repeated get specifier", peek.Location);
+                    }
+                    assignedGet = true;
+
+                    if (currentAccessibility.ToString().ToLower() != get.ToString().ToLower())
+                    {
+                        MessageCollection.Error(
+                            "Get accessibility must be the same as the accessibility of the property itself.",
+                            peek.Location
+                        );
+                    }
+                    
+                    GetAccessibility.TryParse(currentAccessibility, true, out get);
+                    
+                    _tokens.Skip(); // get
+
+                    if (_tokens.NextIsOfType(TokenType.Comma))
+                    {
+                        _tokens.Skip(); // ,
+                        peek = _tokens.PeekToken();
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else if (peek.Type == TokenType.Set)
+                {
+                    if (assignedSet)
+                    {
+                        MessageCollection.Error("Repeated set specifier", peek.Location);
+                    }
+                    assignedSet = true;
+                    SetAccessibility.TryParse(currentAccessibility, true, out set);
+
+                    if ((short)set > (short)get)
+                    {
+                        MessageCollection.Error(
+                            "Get accessibility cannot be more restrictive than set",
+                            peek.Location
+                        );
+                    }
+                    
+                    _tokens.Skip(); // set
+
+                    if (_tokens.NextIsOfType(TokenType.Comma))
+                    {
+                        _tokens.Skip(); // ,
+                        peek = _tokens.PeekToken();
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    throw new ParseException("Expected specifier", peek);
+                }
+            }
+
+            if (!assignedSet)
+            {
+                set = SetAccessibility.NoModify;
+            }
+            else if (!assignedGet && assignedSet)
+            {
+                MessageCollection.Error(
+                    "Cannot have only set specifier (you must add get as well)",
+                    nameToken.Location
+                );
+            }
+            
+            if (assignedGet && !assignedSet)
+            {
+                MessageCollection.Warn(
+                    "Don't add redundant get specifiers (missing set specifier means readonly anyway)",
+                    nameToken.Location
+                );
+            }
+        }
+        
         if (_tokens.NextIsOfType(TokenType.Assign))
         {
             _tokens.Skip(); // =
@@ -299,7 +420,8 @@ public sealed class CompilationUnitParser
             new TypeReferenceNode(type),
             name,
             value,
-            MakeAccessibility(modifiers, false, nameToken)
+            get,
+            set
         );
     }
 
@@ -334,7 +456,7 @@ public sealed class CompilationUnitParser
         //   method call                        (accessPath dot)? identifier tuple semicolon
         //   todo more
 
-        CompilationUnitParser parser;
+        FileParser parser;
         
         // Try statements
         
@@ -751,44 +873,34 @@ public sealed class CompilationUnitParser
     }
 
     /// <summary>
-    /// Utility method for making an Accessibility flags instance by the given modifiers.
+    /// Understands what the visibility of a symbols is by looking at modifiers.
     /// </summary>
-    /// <param name="modifiers">The modifiers to work with.</param>
-    /// <param name="includeModify">If the Accessibility flags should include a modify flag.</param>
-    /// <param name="errorToken">If no accessibility modifiers are present, a warning will be generated.
-    /// This is the token that will be used for that error's location.</param>
-    private Accessibility MakeAccessibility(string[] modifiers, bool forceNoModify, Token errorToken)
+    private GetAccessibility VisibilityFromModifiers(string[] modifiers)
     {
-        Accessibility get;
-        Accessibility set;
-        
         if (modifiers.Contains("public"))
         {
-            get = Accessibility.PublicAccess;
-            set = Accessibility.PublicModify;
+            return GetAccessibility.Public;
+        }
+        else if (modifiers.Contains("protected"))
+        {
+            return GetAccessibility.Protected;
         }
         else if (modifiers.Contains("private"))
         {
-            get = Accessibility.PrivateAccess;
-            set = Accessibility.PrivateAccess;
+            return GetAccessibility.Private;
         }
         else
         {
             if (!modifiers.Contains("internal"))
             {
                 MessageCollection.Warn(
-                    "Always specify visibility. Using internal visibility.",
-                    errorToken.Location
+                    "Always specify visibility. Using internal.",
+                    _tokens.CurrentToken.Location
                 );
             }
-            
-            get = Accessibility.InternalAccess;
-            set = Accessibility.InternalModify;
-        }
 
-        return forceNoModify
-            ? get | Accessibility.NoModify
-            : get | set;
+            return GetAccessibility.Internal;
+        }
     }
     
     /// <summary>
@@ -811,9 +923,9 @@ public sealed class CompilationUnitParser
     /// possible ahead syntax without needing to backtrack.
     /// </summary>
     /// <remarks>Creating a new parser has its overhead. Use with caution.</remarks>
-    private CompilationUnitParser CreateSubParser()
+    private FileParser CreateSubParser()
     {
-        return new CompilationUnitParser(new Tokens(_tokens), _path);
+        return new FileParser(new Tokens(_tokens), _path);
     }
 
     /// <summary>

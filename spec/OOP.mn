@@ -7,7 +7,9 @@ public class Animal
     public string Name;
     public int AgeYears;
     
-    public bool Hungry -> { get, private set };
+    // Specifiers - restrict usage for the variable
+    //                    VVVVVVVVVVVVVVVV
+    public bool Hungry -> get, private set = false;
     
     public constructor(string name, int ageYears)
     {

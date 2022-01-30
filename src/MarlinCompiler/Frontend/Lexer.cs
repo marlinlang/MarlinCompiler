@@ -53,6 +53,9 @@ public sealed class Lexer
         new TokenDefinition(TokenType.Struct,       new Regex("^struct\\b", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Using,        new Regex("^using\\b", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.New,          new Regex("^new\\b", RegexOptions.Compiled)),
+        new TokenDefinition(TokenType.Get,          new Regex("^get\\b", RegexOptions.Compiled)),
+        new TokenDefinition(TokenType.Set,          new Regex("^set\\b", RegexOptions.Compiled)),
+        new TokenDefinition(TokenType.Operator,     new Regex("^operator\\b", RegexOptions.Compiled)),
         
         new TokenDefinition(TokenType.Modifier,     new Regex(
             "^(public|private|protected|internal|readonly|static)\\b", RegexOptions.Compiled)
@@ -64,6 +67,7 @@ public sealed class Lexer
         new TokenDefinition(TokenType.Decimal,      new Regex("^[-+]?[0-9]*\\.[0-9]+", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Integer,      new Regex("^[-+]?(0x)?[0-9]+", RegexOptions.Compiled)),
         
+        new TokenDefinition(TokenType.Arrow,        new Regex("^->", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.And,          new Regex("^&&", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Or,           new Regex("^\\|\\|", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.DoubleColon,  new Regex("^::", RegexOptions.Compiled)),

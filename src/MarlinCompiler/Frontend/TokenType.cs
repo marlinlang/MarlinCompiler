@@ -11,6 +11,8 @@ public enum TokenType
     Struct,             // struct
     Using,              // using
     New,                // new
+    Operator,           // operator
+    Get, Set,           // get and set
     Modifier,           // public, private, protected, internal, static, readonly 
     
     // Numbers
@@ -21,6 +23,7 @@ public enum TokenType
     Integer,            // Whole numbers
     
     // Operators
+    Arrow,              // ->
     And,                // &&
     Or,                 // ||
     DoubleColon,        // ::

@@ -7,12 +7,16 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class PropertyNode : VariableNode
 {
-    public Accessibility Accessibility { get; }
+    public bool IsStatic { get; }
+    public GetAccessibility GetAccessibility { get; }
+    public SetAccessibility SetAccessibility { get; }
 
-    public PropertyNode(TypeReferenceNode type, string name, Node? value, Accessibility accessibility)
-        : base(type, name, value)
+    public PropertyNode(TypeReferenceNode type, string name, bool isStatic,
+        Node? value, GetAccessibility get, SetAccessibility set) : base(type, name, value)
     {
-        Accessibility = accessibility;
+        IsStatic = isStatic;
+        GetAccessibility = get;
+        SetAccessibility = set;
     }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

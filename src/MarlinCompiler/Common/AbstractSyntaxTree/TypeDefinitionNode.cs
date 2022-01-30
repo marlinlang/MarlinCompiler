@@ -16,17 +16,12 @@ public class TypeDefinitionNode : ContainerNode
     /// <summary>
     /// The accessibility of the type.
     /// </summary>
-    public Accessibility Accessibility { get; }
+    public GetAccessibility Accessibility { get; }
 
-    public TypeDefinitionNode(string name, Accessibility accessibility)
+    public TypeDefinitionNode(string name, GetAccessibility accessibility)
     {
         LocalName = name;
         Accessibility = accessibility;
-
-        if (!accessibility.HasFlag(Accessibility.NoModify))
-        {
-            throw new InvalidOperationException("You must specify the NoModify accessibility flag for types.");
-        }
     }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
