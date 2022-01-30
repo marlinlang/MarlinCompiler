@@ -873,7 +873,14 @@ public sealed class FileParser
             }
         }
 
-        return builder.Append(GrabNextByExpecting(TokenType.Identifier)).ToString();
+        string name = builder.Append(GrabNextByExpecting(TokenType.Identifier)).ToString();
+        return name switch
+        {
+            "int" => "std.Integer",
+            "double" => "std.Double",
+            "bool" => "std.Boolean",
+            _ => name
+        };
     }
 
     /// <summary>

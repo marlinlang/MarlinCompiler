@@ -14,14 +14,20 @@ public sealed class Compiler
     /// All compilation messages.
     /// </summary>
     public MessageCollection MessageCollection { get; }
+
+    /// <summary>
+    /// The options for this compilation.
+    /// </summary>
+    private readonly CompilationOptions _options;
     
     /// <summary>
     /// Internal list of file paths for compilation.
     /// </summary>
-    private List<string> _filePaths;
+    private readonly List<string> _filePaths;
 
-    public Compiler(string root)
+    public Compiler(string root, CompilationOptions options)
     {
+        _options = options;
         MessageCollection = new MessageCollection();
         _filePaths = new List<string>();
         LoadFilePaths(root);

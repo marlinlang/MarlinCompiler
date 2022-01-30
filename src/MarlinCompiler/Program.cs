@@ -21,8 +21,14 @@ internal static class Program
             new Argument<string>("path", "The path to the file or directory for compilation")
         };
 
-        command.Handler = CommandHandler.Create((string path) => new Compiler(path).Compile());
+        command.Handler = CommandHandler.Create(CompilationHandler);
 
         return command.Invoke(args);
+    }
+
+    private static int CompilationHandler(string path, bool force = false)
+    {
+        CompilationOptions options = CompilationOptions.None;
+        return new Compiler(path, options).Compile();
     }
 }

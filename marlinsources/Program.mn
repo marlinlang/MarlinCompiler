@@ -4,8 +4,10 @@ module app;
 
 internal class Test
 {
-    public static std.Integer Pluh()
+    public static int Pluh()
     {
-        
+        int x = 12;
+        x = 24;
+        x.Test();
     }
 }
