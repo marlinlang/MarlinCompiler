@@ -232,12 +232,14 @@ public sealed class FileParser
         string type = GrabTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
+        ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
         VariableNode[] args = GrabTupleTypeDefinition();
 
         MethodDeclarationNode node = new MethodDeclarationNode(
             VisibilityFromModifiers(modifiers),
             new TypeReferenceNode(type),
             name,
+            modifiers.Contains("static"),
             args
         );
 
@@ -285,6 +287,7 @@ public sealed class FileParser
         string type = GrabTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
+        ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private");
         GetAccessibility get = VisibilityFromModifiers(modifiers);
         SetAccessibility set;
         SetAccessibility.TryParse(get.ToString(), true, out set);
@@ -419,6 +422,7 @@ public sealed class FileParser
         return new PropertyNode(
             new TypeReferenceNode(type),
             name,
+            modifiers.Contains("static"),
             value,
             get,
             set
@@ -915,6 +919,23 @@ public sealed class FileParser
         else
         {
             MessageCollection.Error("Expected semicolon", fail?.Location ?? new FileLocation(_path));
+        }
+    }
+
+    /// <summary>
+    /// Adds an error for every modifier that's not in the allowed modifiers.
+    /// </summary>
+    /// <param name="modifiers">Modifiers to check.</param>
+    /// <param name="errorToken">The token to use for error reporting.</param>
+    /// <param name="allowed">Allowed modifiers.</param>
+    private void ApplyModifierFilters(string[] modifiers, Token errorToken, params string[] allowed)
+    {
+        foreach (string mod in modifiers)
+        {
+            if (!allowed.Contains(mod))
+            {
+                MessageCollection.Error($"Invalid modifier {mod}", errorToken.Location);
+            }
         }
     }
 
