@@ -157,7 +157,7 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
 
     public Value VisitMemberAccessNode(MemberAccessNode node)
     {
-        return (Value) node.Symbol.CustomTargetData;
+        throw new InvalidOperationException();
     }
 
     public Value VisitMethodDeclarationNode(MethodDeclarationNode node)
@@ -255,38 +255,6 @@ public partial class LlvmCompilationTarget : IAstVisitor<Value>
                 {
                     Value arg = Visit(givenArgs[0]);
                     return _instructionBuilder.Call(_cPutChar, _instructionBuilder.Load(arg));
-                }
-                case "temp_printstr":
-                {
-                    Value str = Visit(givenArgs[0]);
-
-                    // std::Character**
-                    Value charArrayPtr = _instructionBuilder.GetStructElementPointer(
-                        GetTypeRef("std::String"),
-                        str,
-                        0u
-                    );
-                    charArrayPtr.Name = "E";
-
-                    // std::Character*
-                    Value ptr = _instructionBuilder.GetElementPtrInBounds(
-                        GetTypeRef("std::Character"),
-                        _instructionBuilder.Load(charArrayPtr),
-                        new []
-                        {
-                            _context.CreateConstant(0)
-                        }
-                    );
-                    
-                    // Now we get the i32 out of the character ptr
-                    // i32*
-                    ptr = _instructionBuilder.GetStructElementPointer(
-                        GetTypeRef("std::Character"),
-                        ptr,
-                        0u
-                    );
-                    
-                    return _instructionBuilder.Call(_cPutChar, _instructionBuilder.Load(ptr));
                 }
                 default:
                 {

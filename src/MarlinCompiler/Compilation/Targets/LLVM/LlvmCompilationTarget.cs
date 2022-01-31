@@ -3,8 +3,6 @@ using MarlinCompiler.Ast;
 using MarlinCompiler.Compilation;
 using Ubiquity.NET.Llvm;
 using Ubiquity.NET.Llvm.Instructions;
-using Ubiquity.NET.Llvm.Interop;
-using Ubiquity.NET.Llvm.Types;
 using Ubiquity.NET.Llvm.Values;
 using static Ubiquity.NET.Llvm.Interop.Library;
 
@@ -47,26 +45,13 @@ public partial class LlvmCompilationTarget : BaseCompilationTarget, IDisposable
 
     public override bool InvokeTarget(AstNode root, string outPath)
     {
-        using (ILibLlvm lib = InitializeLLVM())
+        using (InitializeLLVM())
         {
             foreach (Phase phase in Enum.GetValues(typeof(Phase)))
             {
                 _currentGenerationPhase = phase;
                 Visit(root);
             }
-            
-            // Create main function
-            IFunctionType mainFuncTy = _context.GetFunctionType(_context.Int32Type, Array.Empty<ITypeRef>());
-            IrFunction mainFunc = _module.CreateFunction("main", mainFuncTy);
-            BasicBlock entry = mainFunc.AppendBasicBlock("entry");
-            _instructionBuilder.PositionAtEnd(entry);
-
-            if (_module.TryGetFunction("app::Program.Main", out IrFunction fn))
-            {
-                _instructionBuilder.Call(fn);
-            }
-
-            _instructionBuilder.Return(_context.CreateConstant(90));
 
             if (!_module.Verify(out string verifyErr))
             {
