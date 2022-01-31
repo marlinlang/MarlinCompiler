@@ -1,7 +1,0 @@
-﻿// Console interaction library for Marlin
-module std;
-
-public class Console
-{
-    
-}

@@ -1,9 +1,11 @@
-﻿module app;
+﻿using std;
 
-public static class Program
+module app;
+
+internal class Test
 {
-    public static void Main()
+    public static int Pluh()
     {
-        string x;
+        (12) . ToString();
     }
 }

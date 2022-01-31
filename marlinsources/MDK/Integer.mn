@@ -1,8 +1,0 @@
-﻿// Integer boxing type
-
-module std;
-
-public struct Integer
-{
-    internal int native Value;
-}

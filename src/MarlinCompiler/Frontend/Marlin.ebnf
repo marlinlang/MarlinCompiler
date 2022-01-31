@@ -1,0 +1,51 @@
+﻿(* THE MARLIN PROGRAMMING LANGUAGE *)
+(*          EBNF  GRAMMAR          *)
+
+(*
+   Whitespaces are inferred by concatenation. This means that
+   wherever you see a comma, a whitespace is valid to exist
+   
+   ? ... ? (the special sequence) is used to denote regex 
+*)
+
+compilation_unit =  [{using_directive}],
+                    module_name_directive,
+                    [{type_definition}];
+
+using_directive =   "using",
+                    module_name_path,
+                    semicolon;
+
+module_name_directive = "module",
+                        module_name_path,
+                        semicolon;
+
+type_definition =   class_definition | struct_definition;
+
+module_name_path =  identifier,
+                    [{
+                        "::", identifier
+                    }];
+
+class_definition =  [{modifier}], "class", identifier, base_type_list, brace_left,
+                    [{type_member}],
+                    brace_right;
+
+struct_definition = [{modifier}], "struct", identifier, brace_left,
+                    [{type_member}],
+                    brace_right;
+
+type_member =   member_variable_declaration | method_declaration;
+
+member_variable_declaration =   [{modifier}], variable_declaration, semicolon;
+
+method_declaration =    [{modifier}], type_name_path, expect_args, method_body;
+
+type_name_path = [module_name_path, "."], identifier;
+
+(* TERMINALS *)
+semicolon =     ";";
+brace_left =    "{";
+brace_right =   "}";
+modifier =      "public" | "private" | "protected" | "internal" | "readonly" | "static";
+identifier =    ? [A-Z_][a-z0-9_]* ?
