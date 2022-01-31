@@ -58,7 +58,7 @@ public sealed class Lexer
         new TokenDefinition(TokenType.Operator,     new Regex("^operator\\b", RegexOptions.Compiled)),
         
         new TokenDefinition(TokenType.Modifier,     new Regex(
-            "^(public|private|protected|internal|readonly|static)\\b", RegexOptions.Compiled)
+            "^(public|private|protected|internal|static)\\b", RegexOptions.Compiled)
         ),
         
         new TokenDefinition(TokenType.String,       new Regex("^\".*\"", RegexOptions.Compiled)),

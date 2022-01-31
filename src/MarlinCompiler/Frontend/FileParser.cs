@@ -453,7 +453,8 @@ public sealed class FileParser
     /// Expects any statement.
     /// </summary>
     /// <param name="insideLoop">Is this a statement inside a loop? This enables continue and break statements.</param>
-    private Node ExpectStatement(bool insideLoop){
+    private Node ExpectStatement(bool insideLoop)
+    {
         // Statements:
         //   local variable declaration         type identifier (assign expr)? semicolon
         //   variable assignment                (accessPath dot)? identifier assign expr semicolon
@@ -500,7 +501,7 @@ public sealed class FileParser
         // Cannot figure out what this is
         throw new ParseException(
             $"Expected statement, got {_tokens.PeekToken()!.Type}",
-            _tokens.PeekToken()!
+            _tokens.GrabToken()!
         );
     }
 
@@ -592,10 +593,10 @@ public sealed class FileParser
         // MEMBER ACCESS
         if (peek.Type == TokenType.Dot)
         {
-            if (left is not IndexableExpressionNode)
+            /*if (left is not IndexableExpressionNode)
             {
                 throw new ParseException("Cannot index non-indexable expression", peek);
-            }
+            }*/
             
             while (_tokens.NextIsOfType(TokenType.Dot))
             {
@@ -607,7 +608,7 @@ public sealed class FileParser
                     throw new ParseException($"Cannot index {right} expression", peek);
                 }
 
-                ((IndexableExpressionNode) right).Target = (IndexableExpressionNode) left;
+                ((IndexableExpressionNode) right).Target = left;
                 left = right;
             }
 

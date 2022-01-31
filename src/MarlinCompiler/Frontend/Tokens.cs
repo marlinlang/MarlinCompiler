@@ -20,7 +20,7 @@ public class Tokens
     public Token CurrentToken => _tokens[Math.Clamp(_position, 0, _tokens.Length-1)];
 
     private readonly Token[] _tokens;
-    private int _position;
+    public int _position;
 
     public Tokens(Token[] tokens)
     {
