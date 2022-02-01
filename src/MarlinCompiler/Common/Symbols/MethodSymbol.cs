@@ -3,6 +3,11 @@
 public sealed class MethodSymbol : Symbol
 {
     /// <summary>
+    /// Is the method static?
+    /// </summary>
+    public bool IsStatic { get; }
+
+    /// <summary>
     /// The return type of this method.
     /// </summary>
     public TypeSymbol? Type { get; }
@@ -12,8 +17,9 @@ public sealed class MethodSymbol : Symbol
     /// </summary>
     public List<VariableSymbol> Args { get; }
 
-    public MethodSymbol(string name, TypeSymbol? type, List<VariableSymbol> args) : base(name)
+    public MethodSymbol(string name, bool isStatic, TypeSymbol? type, List<VariableSymbol> args) : base(name)
     {
+        IsStatic = isStatic;
         Type = type;
         Args = args;
     }

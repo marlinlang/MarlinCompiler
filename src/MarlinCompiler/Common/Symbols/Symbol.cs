@@ -18,7 +18,15 @@ public class Symbol : IEnumerable<Symbol>
     /// Custom data.
     /// </summary>
     public object? Tag { get; set; }
+    
+    /// <summary>
+    /// ID of the symbol. Used to prevent duplicate symbols under one parent.
+    /// </summary>
+    private string _id = Guid.NewGuid().ToString();
 
+    /// <summary>
+    /// The children of the symbol.
+    /// </summary>
     private readonly List<Symbol> _children;
 
     protected Symbol(string name)
@@ -34,6 +42,11 @@ public class Symbol : IEnumerable<Symbol>
     /// </summary>
     public void AddChild(Symbol symbol)
     {
+        if (_children.Find(x => x._id == symbol._id) != default)
+        {
+            return;
+        }
+        
         symbol.Parent = this;
         _children.Add(symbol);
     }

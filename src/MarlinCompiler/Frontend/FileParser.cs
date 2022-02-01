@@ -322,12 +322,20 @@ public sealed class FileParser
         string[] modifiers = GrabModifiers();
         string type = GrabTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
+        bool isNative = false;
         Token nameToken = _tokens.CurrentToken;
+        
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private");
         GetAccessibility get = VisibilityFromModifiers(modifiers);
         SetAccessibility set;
         SetAccessibility.TryParse(get.ToString(), true, out set);
         Node? value = null;
+
+        if (_tokens.NextIsOfType(TokenType.Native))
+        {
+            isNative = true;
+            _tokens.Skip(); // native
+        }
         
         if (_tokens.NextIsOfType(TokenType.Arrow))
         {
@@ -459,6 +467,7 @@ public sealed class FileParser
             new TypeReferenceNode(type) { Location = nameToken.Location },
             name,
             modifiers.Contains("static"),
+            isNative,
             value,
             get,
             set

@@ -11,6 +11,7 @@ public enum TokenType
     Struct,             // struct
     Using,              // using
     New,                // new
+    Native,             // native
     Operator,           // operator
     Get, Set,           // get and set
     Modifier,           // public, private, protected, internal, static, readonly 

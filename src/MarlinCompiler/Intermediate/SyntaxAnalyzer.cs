@@ -113,6 +113,8 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
             node.Symbol = new TypePropertySymbol(
                 node.Name, 
                 (TypeSymbol?) Visit(node.Type).Symbol,
+                node.IsStatic,
+                node.IsNative,
                 node.GetAccessibility,
                 node.SetAccessibility
             );
@@ -144,7 +146,7 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
             }
 
             Visit(node.Type);
-            node.Symbol = new MethodSymbol(node.Name, (TypeSymbol?) node.Type.Symbol, args);
+            node.Symbol = new MethodSymbol(node.Name, node.IsStatic, (TypeSymbol?) node.Type.Symbol, args);
             
             foreach (VariableNode arg in node.Args)
             {
