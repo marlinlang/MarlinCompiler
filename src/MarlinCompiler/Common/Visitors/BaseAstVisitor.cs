@@ -16,6 +16,11 @@ public class BaseAstVisitor<T> : IAstVisitor<T>
         throw new NotImplementedException();
     }
 
+    public virtual T StructDefinition(StructTypeDefinitionNode node)
+    {
+        throw new NotImplementedException();
+    }
+
     public virtual T TypeReference(TypeReferenceNode node)
     {
         throw new NotImplementedException();

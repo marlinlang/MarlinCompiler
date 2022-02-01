@@ -20,6 +20,11 @@ public interface IAstVisitor<T>
     public virtual T ClassDefinition(ClassTypeDefinitionNode node) => throw new NotImplementedException();
     
     /// <summary>
+    /// Visits a struct declaration.
+    /// </summary>
+    public virtual T StructDefinition(StructTypeDefinitionNode node) => throw new NotImplementedException();
+    
+    /// <summary>
     /// Visits a type reference.
     /// </summary>
     public virtual T TypeReference(TypeReferenceNode node) => throw new NotImplementedException();

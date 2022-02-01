@@ -88,6 +88,22 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
         return node;
     }
 
+    public override Node StructDefinition(StructTypeDefinitionNode node)
+    {
+        if (_currentPass == Pass.MakeTypeSymbols)
+        {
+            node.Symbol = new StructTypeSymbol(node.LocalName, node.ModuleName, node.Accessibility);
+        }
+        else
+        {
+            _scope.Push(node.Symbol!);
+            Visit(node.Children, node.Symbol);
+            _scope.Pop();
+        }
+
+        return node;
+    }
+
     public override Node Property(PropertyNode node)
     {
         if (_currentPass == Pass.MakeMembers)

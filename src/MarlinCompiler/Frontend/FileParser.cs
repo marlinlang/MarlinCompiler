@@ -137,6 +137,7 @@ public sealed class FileParser
         return next.Type switch
         {
             TokenType.Class => ExpectClassDefinition(),
+            TokenType.Struct => ExpectStructDefinition(),
             _ => throw new ParseException($"Expected type definition, got {next.Type}", next)
         };
     }
@@ -221,7 +222,7 @@ public sealed class FileParser
             baseClass = GrabNextByExpecting(TokenType.Identifier);
         }
         
-        ClassTypeDefinitionNode classNode = new ClassTypeDefinitionNode(
+        ClassTypeDefinitionNode classNode = new(
             name,
             _moduleName,
             accessibility,
@@ -229,7 +230,32 @@ public sealed class FileParser
         ) { Location = nameToken.Location };
         
         classNode.Children.AddRange(ExpectTypeBody());
+        
         return classNode;
+    }
+    
+    /// <summary>
+    /// Expects a struct definition.
+    /// </summary>
+    private StructTypeDefinitionNode ExpectStructDefinition()
+    {
+        string[] modifiers = GrabModifiers();
+
+        GrabNextByExpecting(TokenType.Struct);
+        
+        string name = GrabNextByExpecting(TokenType.Identifier);
+        Token nameToken = _tokens.CurrentToken;
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        
+        StructTypeDefinitionNode structNode = new(
+            name,
+            _moduleName,
+            accessibility
+        ) { Location = nameToken.Location };
+        
+        structNode.Children.AddRange(ExpectTypeBody());
+        
+        return structNode;
     }
 
     /// <summary>
