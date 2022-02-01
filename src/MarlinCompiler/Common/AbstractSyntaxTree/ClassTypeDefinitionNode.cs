@@ -10,12 +10,12 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     /// <summary>
     /// The type that this class inherits from, incl. module path 
     /// </summary>
-    public string? BaseTypeFullName { get; set;  }
-
-    public ClassTypeDefinitionNode(string name, GetAccessibility accessibility, string? baseTypeFullName)
-        : base(name, accessibility)
+    public string? BaseType { get; set;  }
+    
+    public ClassTypeDefinitionNode(string name, string module, GetAccessibility accessibility, string? baseType)
+        : base(name, module, accessibility)
     {
-        BaseTypeFullName = baseTypeFullName;
+        BaseType = baseType;
     }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

@@ -30,6 +30,11 @@ public sealed class FileParser
     private readonly string _path;
 
     /// <summary>
+    /// The current module's name. There can be only one module per file.
+    /// </summary>
+    private string _moduleName;
+
+    /// <summary>
     /// An exception for parse errors.
     /// </summary>
     private class ParseException : Exception
@@ -64,6 +69,7 @@ public sealed class FileParser
         MessageCollection = new MessageCollection();
         _tokens = tokens;
         _path = filePath;
+        _moduleName = "<global>";
     }
     
     /// <summary>
@@ -84,6 +90,7 @@ public sealed class FileParser
     {
         string[] dependencies = GrabUsingDirectives();
         string name = GrabModuleDirective();
+        _moduleName = name;
 
         CompilationUnitNode node = new(name, dependencies);
 
@@ -204,6 +211,7 @@ public sealed class FileParser
         GrabNextByExpecting(TokenType.Class);
         
         string name = GrabNextByExpecting(TokenType.Identifier);
+        Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         
         string? baseClass = null;
@@ -215,9 +223,10 @@ public sealed class FileParser
         
         ClassTypeDefinitionNode classNode = new ClassTypeDefinitionNode(
             name,
+            _moduleName,
             accessibility,
             baseClass
-        );
+        ) { Location = nameToken.Location };
         
         classNode.Children.AddRange(ExpectTypeBody());
         return classNode;
@@ -230,6 +239,7 @@ public sealed class FileParser
     {
         string[] modifiers = GrabModifiers();
         string type = GrabTypeName();
+        Token typeToken = _tokens.CurrentToken;
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
@@ -237,11 +247,11 @@ public sealed class FileParser
 
         MethodDeclarationNode node = new MethodDeclarationNode(
             VisibilityFromModifiers(modifiers),
-            new TypeReferenceNode(type),
+            new TypeReferenceNode(type) { Location = typeToken.Location },
             name,
             modifiers.Contains("static"),
             args
-        );
+        ) { Location = nameToken.Location };
 
         node.Children.AddRange(ExpectStatementBody(false));
 
@@ -420,13 +430,13 @@ public sealed class FileParser
         RequireSemicolon();
 
         return new PropertyNode(
-            new TypeReferenceNode(type),
+            new TypeReferenceNode(type) { Location = nameToken.Location },
             name,
             modifiers.Contains("static"),
             value,
             get,
             set
-        );
+        ) { Location = nameToken.Location };
     }
 
     /// <summary>
@@ -435,7 +445,9 @@ public sealed class FileParser
     private VariableNode ExpectLocalVariableDeclaration()
     {
         string type = GrabTypeName();
+        Token typeToken = _tokens.CurrentToken;
         string name = GrabNextByExpecting(TokenType.Identifier);
+        Token nameToken = _tokens.CurrentToken;
         ExpressionNode? value = null;
         
         if (_tokens.NextIsOfType(TokenType.Assign))
@@ -446,7 +458,10 @@ public sealed class FileParser
         
         RequireSemicolon();
 
-        return new LocalVariableDeclaration(new TypeReferenceNode(type), name, value);
+        return new LocalVariableDeclaration(
+            new TypeReferenceNode(type) { Location = typeToken.Location },
+            name, value
+        ) { Location = nameToken.Location };
     }
 
     /// <summary>
@@ -511,9 +526,10 @@ public sealed class FileParser
     private VariableAssignmentNode ExpectVariableAssignment()
     {
         string name = GrabNextByExpecting(TokenType.Identifier);
+        Token nameToken = _tokens.CurrentToken;
         GrabNextByExpecting(TokenType.Assign);
         ExpressionNode value = ExpectExpression(); 
-        return new VariableAssignmentNode(name, value);
+        return new VariableAssignmentNode(name, value) { Location = nameToken.Location };
     }
 
     /// <summary>
@@ -522,8 +538,9 @@ public sealed class FileParser
     private MethodCallNode ExpectMethodCall()
     {
         string name = GrabNextByExpecting(TokenType.Identifier);
+        Token nameToken = _tokens.CurrentToken;
         ExpressionNode[] args = GrabTupleValues();
-        return new MethodCallNode(name, args);
+        return new MethodCallNode(name, args) { Location = nameToken.Location };
     }
 
     /// <summary>
@@ -545,7 +562,7 @@ public sealed class FileParser
                 break;
 
             case TokenType.Integer:
-                expr = new IntegerNode(Int32.Parse(_tokens.GrabToken()!.Value));
+                expr = new IntegerNode(Int32.Parse(_tokens.GrabToken()!.Value)) { Location = next.Location };
                 break;
                 
             case TokenType.Decimal:
@@ -568,7 +585,8 @@ public sealed class FileParser
                 {
                     // Regular member access
                     _tokens.Skip(); // the id
-                    expr = new MemberAccessNode(next.Value); // use the id's value,
+                    expr = new MemberAccessNode(next.Value) { Location = next.Location};
+                    // use the id's value,
                     // not the one of the next token
                 }
 
@@ -632,7 +650,7 @@ public sealed class FileParser
                 right = ExpectExpressionRhs(right, op.Precedence + (peek.Precedence > op.Precedence ? 0 : 1));
             }
 
-            left = new BinaryOperatorNode(op.Type, left, right);
+            left = new BinaryOperatorNode(op.Type, left, right) { Location = op.Location };
         }
 
         return left;
@@ -685,6 +703,13 @@ public sealed class FileParser
         {
             string type = GrabTypeName();
             string name = GrabNextByExpecting(TokenType.Identifier);
+            Token nameToken = _tokens.CurrentToken;
+            vars.Add(new VariableNode(
+                    new TypeReferenceNode(type) { Location = nameToken.Location },
+                    name,
+                    null
+                ) { Location = nameToken.Location }
+            );
 
             Token? peek = _tokens.PeekToken();
 
@@ -864,6 +889,7 @@ public sealed class FileParser
             if (_tokens.NextIsOfType(TokenType.Dot))
             {
                 _tokens.Skip(); // .
+                builder.Append('.');
             }
             else
             {

@@ -5,7 +5,6 @@ namespace MarlinCompiler.Common.Visitors;
 /// <summary>
 /// A visitor that supports all AST nodes.
 /// </summary>
-/// <typeparam name="T"></typeparam>
 public interface IAstVisitor<T>
 {
     public T Visit(Node node) => node.AcceptVisitor(this);
@@ -13,51 +12,50 @@ public interface IAstVisitor<T>
     /// <summary>
     /// Visits a member access.
     /// </summary>
-    /// <remarks>Keep in mind that the left side might be a <see cref="CompilerInsertedPlaceholderNode"/></remarks>
-    public virtual T MemberAccess(MemberAccessNode node) => default!;
+    public virtual T MemberAccess(MemberAccessNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits a class declaration.
     /// </summary>
-    public virtual T ClassDefinition(ClassTypeDefinitionNode node) => default!;
+    public virtual T ClassDefinition(ClassTypeDefinitionNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits a type reference.
     /// </summary>
-    public virtual T TypeReference(TypeReferenceNode node) => default!;
+    public virtual T TypeReference(TypeReferenceNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits type property members.
     /// </summary>
-    public virtual T Property(PropertyNode node) => default!;
+    public virtual T Property(PropertyNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a method declaration.
     /// </summary>
-    public virtual T MethodDeclaration(MethodDeclarationNode node) => default!;
+    public virtual T MethodDeclaration(MethodDeclarationNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a local variable.
     /// </summary>
-    public virtual T LocalVariable(LocalVariableDeclaration node) => default!;
+    public virtual T LocalVariable(LocalVariableDeclaration node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a method call.
     /// </summary>
-    public virtual T MethodCall(MethodCallNode node) => default!;
+    public virtual T MethodCall(MethodCallNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a variable assignment.
     /// </summary>
-    public virtual T VariableAssignment(VariableAssignmentNode node) => default!;
+    public virtual T VariableAssignment(VariableAssignmentNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a tuple.
     /// </summary>
-    public virtual T Tuple(TupleNode node) => default!;
+    public virtual T Tuple(TupleNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits an integer.
     /// </summary>
-    public virtual T Integer(IntegerNode node) => default!;
+    public virtual T Integer(IntegerNode node) => throw new NotImplementedException();
 }

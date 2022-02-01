@@ -1,11 +1,6 @@
-﻿using std;
-
-module app;
+﻿module app;
 
 internal class Test
 {
-    public static int Pluh()
-    {
-        (12) . ToString();
-    }
+    
 }

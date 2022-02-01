@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Frontend;
+using MarlinCompiler.Intermediate;
 using TokenType = MarlinCompiler.Frontend.TokenType;
 
 namespace MarlinCompiler.Common;
@@ -30,6 +32,13 @@ public sealed class Compiler
         _options = options;
         MessageCollection = new MessageCollection();
         _filePaths = new List<string>();
+
+        string? mdkPath = Environment.GetEnvironmentVariable("MDK");
+        if (mdkPath != null)
+        {
+            LoadFilePaths(mdkPath);
+        }
+        
         LoadFilePaths(root);
     }
 
@@ -39,51 +48,26 @@ public sealed class Compiler
     /// <returns>Program exit code.</returns>
     public int Compile()
     {
-        FrontendCompilation();
-        IntermediateCompilation();
+        List<CompilationUnitNode> units = FrontendCompilation();
+        ContainerNode program = IntermediateCompilation(units);
 
         if (!MessageCollection.HasFatalErrors)
         {
-            BackendCompilation();
+            BackendCompilation(program);
         }
 
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
-        
-        foreach (Message msg in MessageCollection)
-        {
-            Console.ForegroundColor = msg.PrintColor;
-            Console.WriteLine(msg.ToString());
-        }
-
-        string failedPassed = MessageCollection.HasFatalErrors ? "failed" : "successful";
-        Console.ForegroundColor = MessageCollection.HasFatalErrors ? ConsoleColor.Red : ConsoleColor.Green;
-        int count = MessageCollection.Count();
-        if (count > 0)
-        {
-            Console.WriteLine();
-            Console.WriteLine($"Build {failedPassed} with {count} message{(count == 1 ? "" : 's')}");
-        }
-        else
-        {
-            Console.WriteLine($"Build {failedPassed} with no messages");
-        }
-        
-        Console.ResetColor();
+        PrintMessages();
 
         // return code:
         //   no messages:               0
         //   warnings/info messages:    100
         //   fatal errors:              200
-        return MessageCollection.HasFatalErrors
-            ? 200
-            : MessageCollection.Count() > 0
-                ? 100
-                : 0;
+        return GetReturnCode();
     }
 
     #region Frontend
 
-    private void FrontendCompilation()
+    private List<CompilationUnitNode> FrontendCompilation()
     {
         Dictionary<string, Tokens> lexed = new();
 
@@ -106,6 +90,8 @@ public sealed class Compiler
 
             MessageCollection.AddRange(parser.MessageCollection);
         }
+
+        return compilationUnits;
     }
 
     private Tokens Lex(string path)
@@ -123,15 +109,28 @@ public sealed class Compiler
 
     #region Intermediate
 
-    private void IntermediateCompilation()
+    private ContainerNode IntermediateCompilation(List<CompilationUnitNode> units)
     {
+        // Combine roots of compilation units
+        ContainerNode root = new();
+        foreach (CompilationUnitNode compilationUnit in units)
+        {
+            root.Children.Add(compilationUnit);
+        }
+        
+        // Semantic analysis
+        SyntaxAnalyzer analyzer = new();
+        analyzer.Analyze(root);
+        MessageCollection.AddRange(analyzer.MessageCollection);
+
+        return root;
     }
 
     #endregion
 
     #region Backend
 
-    private void BackendCompilation()
+    private void BackendCompilation(ContainerNode program)
     {
     }
 
@@ -162,6 +161,47 @@ public sealed class Compiler
         {
             LoadFilePaths(dir);
         }
+    }
+
+    /// <summary>
+    /// Returns the appropriate return code.
+    /// </summary>
+    private int GetReturnCode()
+    {
+        return MessageCollection.HasFatalErrors
+            ? 200
+            : MessageCollection.Count() > 0
+                ? 100
+                : 0;
+    }
+
+    /// <summary>
+    /// Prints the MessageCollection to the console.
+    /// </summary>
+    private void PrintMessages()
+    {
+        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        
+        foreach (Message msg in MessageCollection)
+        {
+            Console.ForegroundColor = msg.PrintColor;
+            Console.WriteLine(msg.ToString());
+        }
+
+        string failedPassed = MessageCollection.HasFatalErrors ? "failed" : "successful";
+        Console.ForegroundColor = MessageCollection.HasFatalErrors ? ConsoleColor.Red : ConsoleColor.Green;
+        int count = MessageCollection.Count();
+        if (count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Build {failedPassed} with {count} message{(count == 1 ? "" : 's')}");
+        }
+        else
+        {
+            Console.WriteLine($"Build {failedPassed} with no messages");
+        }
+        
+        Console.ResetColor();
     }
 
     #endregion
