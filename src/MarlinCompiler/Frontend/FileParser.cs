@@ -942,7 +942,9 @@ public sealed class FileParser
         string name = builder.Append(GrabNextByExpecting(TokenType.Identifier)).ToString();
         return name switch
         {
+            "void" => "std.Void",
             "int" => "std.Integer",
+            "char" => "std.Character",
             "double" => "std.Double",
             "bool" => "std.Boolean",
             _ => name
