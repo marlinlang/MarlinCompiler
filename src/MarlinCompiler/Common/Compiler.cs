@@ -115,7 +115,7 @@ public sealed class Compiler
         ContainerNode root = new();
         foreach (CompilationUnitNode compilationUnit in units)
         {
-            root.Children.Add(compilationUnit);
+            root.Children.AddRange(compilationUnit.Children);
         }
         
         // Semantic analysis

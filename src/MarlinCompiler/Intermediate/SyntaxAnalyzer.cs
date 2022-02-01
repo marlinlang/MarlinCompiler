@@ -55,11 +55,16 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
     /// </summary>
     public void Analyze(ContainerNode program)
     {
+        RootSymbol root = new RootSymbol();
+        _scope.Push(root);
+        
         foreach (Pass pass in Enum.GetValues<Pass>())
         {
             _currentPass = pass;
-            Visit(program);
+            Visit(program.Children, root);
         }
+
+        _scope.Pop();
     }
     
     #region Visitor methods
@@ -73,14 +78,14 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
     {
         if (_currentPass == Pass.MakeTypeSymbols)
         {
-            node.Symbol = new ClassTypeSymbol(node.LocalName, node.ModuleName, node.Accessibility)
-            {
-                BaseClass = node.BaseType
-            };
+            node.Symbol = new ClassTypeSymbol(node.LocalName, node.ModuleName, node.Accessibility);
         }
         else
         {
             _scope.Push(node.Symbol!);
+
+            ((ClassTypeSymbol) node.Symbol).BaseClass = FindType(node.BaseType);
+            
             Visit(node.Children, node.Symbol);
             _scope.Pop();
         }

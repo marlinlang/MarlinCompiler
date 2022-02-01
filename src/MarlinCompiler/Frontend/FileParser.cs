@@ -215,11 +215,15 @@ public sealed class FileParser
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         
-        string? baseClass = null;
+        string baseClass = null;
         if (_tokens.NextIsOfType(TokenType.Colon))
         {
             _tokens.Skip(); // colon
             baseClass = GrabNextByExpecting(TokenType.Identifier);
+        }
+        else if (_moduleName + ".Object" != "std.Object") // don't make the base obj inherit from itself lol
+        {
+            baseClass = "std.Object";
         }
         
         ClassTypeDefinitionNode classNode = new(
