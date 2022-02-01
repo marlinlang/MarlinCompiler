@@ -24,7 +24,7 @@ public class Animal
     
     public virtual void Pet()
     {
-        std.Console.PrintLine("Grr!");
+        std::Console.PrintLine("Grr!");
     }
 }
 
@@ -39,6 +39,6 @@ public class Dog : Animal
     
     public override void Pet()
     {
-        std.Console.PrintLine("<3");
+        std::Console.PrintLine("<3");
     }
 }

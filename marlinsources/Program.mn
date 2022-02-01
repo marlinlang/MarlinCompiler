@@ -1,16 +1,9 @@
 ﻿module app;
 
-internal class Data
-{
-    public app.Data X() {}
-}
-
-internal class Test
+internal class Program
 {
     public void Main()
     {
-        app.Test.Test().X().Z();
+        std::array<int> array;
     }
-    
-    private static app.Data Test() {}
 }

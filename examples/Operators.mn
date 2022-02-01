@@ -6,7 +6,7 @@ internal class Vector3
     public double Y;
     public double Z;
     
-    public static Vector3 Zero = new Vector3(0, 0, 0); 
+    public static examples::Vector3 Zero = new examples::Vector3(0, 0, 0); 
     
     public constructor(double x, double y, double z)
     {
@@ -15,43 +15,43 @@ internal class Vector3
         Z = z;
     }
     
-    public static Vector3 operator+(Vector3 left, Vector3 right)
+    public static examples::Vector3 operator+(examples::Vector3 left, examples::Vector3 right)
     {
-        return new Vector3(
+        return new examples::Vector3(
             left.X + right.X,
             left.Y + right.Y,
             left.Z + right.Z
         );
     }
     
-    public static Vector3 operator-(Vector3 left, Vector3 right)
+    public static examples::Vector3 operator-(examples::Vector3 left, examples::Vector3 right)
     {
-        return new Vector3(
+        return new examples::Vector3(
             left.X - right.X,
             left.Y - right.Y,
             left.Z - right.Z
         );
     }
     
-    public static Vector3 operator*(Vector3 left, Vector3 right)
+    public static examples::Vector3 operator*(examples::Vector3 left, examples::Vector3 right)
     {
-        return new Vector3(
+        return new examples::Vector3(
             left.X * right.X,
             left.Y * right.Y,
             left.Z * right.Z
         );
     }
     
-    public static Vector3 operator/(Vector3 left, Vector3 right)
+    public static examples::Vector3 operator/(examples::Vector3 left, examples::Vector3 right)
     {
-        return new Vector3(
+        return new examples::Vector3(
             left.X / right.X,
             left.Y / right.Y,
             left.Z / right.Z
         );
     }
     
-    public static Vector3 operator==(Vector3 left, Vector3 right)
+    public static examples::Vector3 operator==(examples::Vector3 left, examples::Vector3 right)
     {
         return left.X == right.X
             && left.Y == right.Y

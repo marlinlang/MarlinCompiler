@@ -19,7 +19,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="mdk\std\native" />
       <Folder Include="src\MarlinCompiler\Backend" />
+      <Folder Include="src\MarlinCompiler\Intermediate" />
     </ItemGroup>
 
 </Project>

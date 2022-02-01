@@ -1,8 +1,6 @@
 ﻿using System.Diagnostics;
 using MarlinCompiler.Common.AbstractSyntaxTree;
-using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Frontend;
-using MarlinCompiler.Intermediate;
 using TokenType = MarlinCompiler.Frontend.TokenType;
 
 namespace MarlinCompiler.Common;
@@ -118,15 +116,7 @@ public sealed class Compiler
             root.Children.AddRange(compilationUnit.Children);
         }
         
-        // Syntax analysis
-        SyntaxAnalyzer analyzer = new();
-        analyzer.Analyze(root);
-        MessageCollection.AddRange(analyzer.MessageCollection);
         
-        // Semantic checking
-        SemanticChecker checker = new();
-        checker.Visit(root);
-        MessageCollection.AddRange(checker.MessageCollection);
 
         return root;
     }

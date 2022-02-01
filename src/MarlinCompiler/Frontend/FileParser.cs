@@ -186,7 +186,7 @@ public sealed class FileParser
         // but then methods have a left paren, which is what we'll use to determine
         // which one we have
         tempParser.GrabModifiers(); // don't care about those
-        tempParser.GrabTypeName(); // don't care about this either
+        tempParser.ExpectTypeName(); // don't care about this either
         tempParser.GrabNextByExpecting(TokenType.Identifier); // nope
         
         // and now we can just check if the next token is a left paren
@@ -268,8 +268,7 @@ public sealed class FileParser
     private Node ExpectMethodDeclaration()
     {
         string[] modifiers = GrabModifiers();
-        string type = GrabTypeName();
-        Token typeToken = _tokens.CurrentToken;
+        TypeReferenceNode type = ExpectTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
@@ -277,7 +276,7 @@ public sealed class FileParser
 
         MethodDeclarationNode node = new MethodDeclarationNode(
             VisibilityFromModifiers(modifiers),
-            new TypeReferenceNode(type) { Location = typeToken.Location },
+            type,
             name,
             modifiers.Contains("static"),
             args
@@ -324,7 +323,7 @@ public sealed class FileParser
     private Node ExpectPropertyDeclaration()
     {
         string[] modifiers = GrabModifiers();
-        string type = GrabTypeName();
+        TypeReferenceNode type = ExpectTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         bool isNative = false;
         Token nameToken = _tokens.CurrentToken;
@@ -468,7 +467,7 @@ public sealed class FileParser
         RequireSemicolon();
 
         return new PropertyNode(
-            new TypeReferenceNode(type) { Location = nameToken.Location },
+            type,
             name,
             modifiers.Contains("static"),
             isNative,
@@ -483,8 +482,7 @@ public sealed class FileParser
     /// </summary>
     private VariableNode ExpectLocalVariableDeclaration()
     {
-        string type = GrabTypeName();
-        Token typeToken = _tokens.CurrentToken;
+        TypeReferenceNode type = ExpectTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ExpressionNode? value = null;
@@ -498,7 +496,7 @@ public sealed class FileParser
         RequireSemicolon();
 
         return new LocalVariableDeclarationNode(
-            new TypeReferenceNode(type) { Location = typeToken.Location },
+            type,
             name, value
         ) { Location = nameToken.Location };
     }
@@ -523,7 +521,7 @@ public sealed class FileParser
         try
         {
             parser = CreateSubParser();
-            string type = parser.GrabTypeName(); // var type
+            parser.ExpectTypeName(); // var type
             string name = parser.GrabNextByExpecting(TokenType.Identifier);
             if (parser.MessageCollection.HasFatalErrors) throw new FormatException();
 
@@ -623,7 +621,7 @@ public sealed class FileParser
                 else if (peek.Type is TokenType.DoubleColon or TokenType.Colon)
                 {
                     // type name!
-                    expr = new TypeReferenceNode(GrabTypeName()) { Location = peek.Location };
+                    expr = ExpectTypeName();
                 }
                 else
                 {
@@ -746,11 +744,11 @@ public sealed class FileParser
         GrabNextByExpecting(TokenType.LeftParen);
         while (!_tokens.NextIsOfType(TokenType.RightParen))
         {
-            string type = GrabTypeName();
+            TypeReferenceNode type = ExpectTypeName();
             string name = GrabNextByExpecting(TokenType.Identifier);
             Token nameToken = _tokens.CurrentToken;
             vars.Add(new VariableNode(
-                    new TypeReferenceNode(type) { Location = nameToken.Location },
+                    type,
                     name,
                     null
                 ) { Location = nameToken.Location }
@@ -916,42 +914,36 @@ public sealed class FileParser
     /// <summary>
     /// Utility method for reading a type name.
     /// </summary>
-    private string GrabTypeName()
+    private TypeReferenceNode ExpectTypeName()
     {
         // In all cases we need an identifier
         // If the token after it is a double colon, we get module name first
 
-        StringBuilder builder = new();
-        
-        if (_tokens.PeekToken(2)!.Type == TokenType.DoubleColon
-            || _tokens.PeekToken(2)!.Type == TokenType.Colon)
-        {
-            builder.Append(GrabModuleName());
+        string name = GrabModuleName();
 
-            if (_tokens.NextIsOfType(TokenType.Colon))
-            {
-                _tokens.Skip(); // :
-                builder.Append(':');
-            }
-            else
-            {
-                throw new ParseException(
-                    $"Expected type name, got module name {builder}",
-                    _tokens.CurrentToken
-                );
-            }
-        }
-
-        string name = builder.Append(GrabNextByExpecting(TokenType.Identifier)).ToString();
-        return name switch
+        Token nameToken = _tokens.CurrentToken;
+        name = name switch
         {
-            "void" => "std:Void",
-            "int" => "std:Integer",
-            "char" => "std:Character",
-            "double" => "std:Double",
-            "bool" => "std:Boolean",
+            "void" => "std::Void",
+            "int" => "std::Integer",
+            "char" => "std::Character",
+            "double" => "std::Double",
+            "bool" => "std::Boolean",
             _ => name
         };
+
+        TypeReferenceNode? generic = null;
+
+        if (_tokens.NextIsOfType(TokenType.LeftAngle))
+        {
+            _tokens.Skip(); // <
+
+            generic = ExpectTypeName();
+            
+            GrabNextByExpecting(TokenType.RightAngle);
+        }
+
+        return new TypeReferenceNode(name, generic) { Location = nameToken.Location };
     }
 
     /// <summary>

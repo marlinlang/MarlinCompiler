@@ -11,7 +11,7 @@ public static class Strings
         string name = "Jake";
         
         string x = greeting + name;
-        string y = std::text.StringUtils.Concatenate(greeting, name);
+        string y = std::text::StringUtils.Concatenate(greeting, name);
         
         bool areEqual = x == y; // true
     }
