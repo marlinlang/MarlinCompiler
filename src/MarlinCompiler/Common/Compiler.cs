@@ -118,10 +118,15 @@ public sealed class Compiler
             root.Children.AddRange(compilationUnit.Children);
         }
         
-        // Semantic analysis
+        // Syntax analysis
         SyntaxAnalyzer analyzer = new();
         analyzer.Analyze(root);
         MessageCollection.AddRange(analyzer.MessageCollection);
+        
+        // Semantic checking
+        SemanticChecker checker = new();
+        checker.Visit(root);
+        MessageCollection.AddRange(checker.MessageCollection);
 
         return root;
     }

@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Common;
+﻿using System.Text;
+using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Common.Visitors;
@@ -71,7 +72,30 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
     
     public override Node MemberAccess(MemberAccessNode node)
     {
-        throw new NotImplementedException();
+        // `this` keyword
+        if (node.MemberName == "this" && node.Target == default)
+        {
+            TypeSymbol? type = (TypeSymbol?) _scope.Peek().Find(x => x is TypeSymbol);
+            node.Symbol = new TypeInstanceSymbol(type);
+            _scope.Peek().AddChild(node.Symbol);
+        }
+        else if (node.Target != default)
+        {
+            Visit(node.Target);
+
+            node.Symbol = node.Target.Symbol?.FindInChildren(node.MemberName);
+            if (node.Symbol is TypePropertySymbol var && !var.IsStatic)
+            {
+                node.Symbol = new TypeInstanceSymbol(var.Type);
+                _scope.Peek().AddChild(node.Symbol);
+            }
+        }
+        else
+        {
+            node.Symbol = _scope.Peek().Find(x => x is VariableSymbol && x.Name == node.MemberName);
+        }
+
+        return node;
     }
 
     public override Node ClassDefinition(ClassTypeDefinitionNode node)
@@ -84,8 +108,11 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
         {
             _scope.Push(node.Symbol!);
 
-            ((ClassTypeSymbol) node.Symbol).BaseClass = FindType(node.BaseType);
-            
+            if (node.BaseType != null)
+            {
+                ((ClassTypeSymbol) node.Symbol!).BaseClass = FindType(node.BaseType);
+            }
+
             Visit(node.Children, node.Symbol);
             _scope.Pop();
         }
@@ -130,7 +157,7 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
             
             if (node.Value != default)
             {
-                ((TypePropertySymbol) node.Symbol!).Value = Visit(node.Value)!.Symbol;
+                ((TypePropertySymbol) node.Symbol!).Value = Visit(node.Value).Symbol;
             }
             _scope.Pop();
         }
@@ -151,7 +178,10 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
             }
 
             Visit(node.Type);
-            node.Symbol = new MethodSymbol(node.Name, node.IsStatic, (TypeSymbol?) node.Type.Symbol, args);
+            node.Symbol = new MethodSymbol(node.Name, node.IsStatic, (TypeSymbol?) node.Type.Symbol, args)
+            {
+                Signature = GetMethodSignature(node)
+            };
             
             foreach (VariableNode arg in node.Args)
             {
@@ -170,29 +200,79 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
         return node;
     }
 
-    public override Node LocalVariable(LocalVariableDeclaration node)
+    public override Node LocalVariable(LocalVariableDeclarationNode node)
     {
-        throw new NotImplementedException();
+        Visit(node.Type);
+        node.Symbol = new VariableSymbol(node.Name, (TypeSymbol?) node.Type.Symbol);
+        
+        _scope.Push(node.Symbol);
+
+        if (node.Value != null)
+        {
+            ((VariableSymbol) node.Symbol!).Value = Visit(node.Value).Symbol;
+        }
+
+        _scope.Pop();
+
+        return node;
     }
 
     public override Node MethodCall(MethodCallNode node)
     {
-        throw new NotImplementedException();
+        // For methods, the parser inserts a `this` variable target if the
+        // programmer didn't provide one, it's safe to imply non-nullability
+        Visit(node.Target!);
+
+        Symbol owner;
+        bool isStatic = false;
+        
+        if (node.Target is MethodCallNode methodCall)
+        {
+            owner = new TypeInstanceSymbol(((MethodCallSymbol) methodCall.Symbol).Method?.Type);
+        }
+        else
+        {
+            owner = node.Target.Symbol;
+            isStatic = node.Target is TypeReferenceNode;
+        }
+        
+        string signature = GetMethodSignature(node);
+        
+        MethodSymbol? method = (MethodSymbol?) owner.Find(
+            x => x is MethodSymbol m && m.Name == node.MethodName && m.Signature == signature
+        );
+        node.Symbol = new MethodCallSymbol(node.Target!.Symbol, method)
+        {
+            Signature = GetMethodSignature(node),
+            StaticallyInvoked = isStatic
+        };
+        
+        return node;
     }
 
     public override Node VariableAssignment(VariableAssignmentNode node)
     {
-        throw new NotImplementedException();
-    }
+        VariableSymbol? var;
+        if (node.Target != null)
+        {
+            Visit(node.Target);
+            var = (VariableSymbol?) node.Target.Symbol?.FindInChildren(node.Name);
+        }
+        else
+        {
+            var = (VariableSymbol?) _scope.Peek().Find(
+                x => x.FindInChildren(node.Name) != null
+            )?.FindInChildren(node.Name);
+        }
 
-    public override Node Tuple(TupleNode node)
-    {
-        throw new NotImplementedException();
+        node.Symbol = new VariableAssignmentSymbol(var, Visit(node.Value).Symbol!);
+        
+        return node;
     }
 
     public override Node Integer(IntegerNode node)
     {
-        node.Symbol = new TypeInstanceSymbol(FindType("std.Integer"));
+        node.Symbol = new TypeInstanceSymbol(FindType("std:Integer"));
         return node;
     }
 
@@ -229,7 +309,53 @@ public sealed class SyntaxAnalyzer : BaseAstVisitor<Node>
     /// <param name="name">The full name of the type, incl. module</param>
     private TypeSymbol? FindType(string name)
     {
-        return (TypeSymbol?) _scope.Peek().Lookup(x => x is TypeSymbol ty && $"{ty.Module}.{ty.Name}" == name);
+        return (TypeSymbol?) _scope.Peek().Find(x => x is TypeSymbol ty && $"{ty.Module}:{ty.Name}" == name);
+    }
+
+    /// <summary>
+    /// Builds a method signature string by the args in the called method. 
+    /// </summary>
+    public static string GetMethodSignature(MethodCallNode call)
+    {
+        StringBuilder builder = new();
+
+        foreach (ExpressionNode arg in call.Args)
+        {
+            builder.Append(arg switch
+            {
+                IntegerNode i => "std:Integer",
+                // TODO: MemberAccessNode
+                MethodCallNode mc => ((MethodCallSymbol?) mc.Symbol)?.Method?.Type?.Name ?? "<???>",
+                _ => throw new NotImplementedException(arg.GetType().Name)
+            });
+
+            if (arg != call.Args.Last())
+            {
+                builder.Append(',');
+            }
+        }
+        
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Builds a method signature string by the args in the declared method. 
+    /// </summary>
+    public static string GetMethodSignature(MethodDeclarationNode declaration)
+    {
+        StringBuilder builder = new();
+
+        foreach (VariableNode arg in declaration.Args)
+        {
+            builder.Append(arg.Type.Symbol?.Name ?? "<???>");
+
+            if (arg != declaration.Args.Last())
+            {
+                builder.Append(',');
+            }
+        }
+        
+        return builder.ToString();
     }
     
     #endregion

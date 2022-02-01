@@ -1,4 +1,6 @@
-﻿namespace MarlinCompiler.Common.Symbols;
+﻿using MarlinCompiler.Intermediate;
+
+namespace MarlinCompiler.Common.Symbols;
 
 public sealed class MethodSymbol : Symbol
 {
@@ -16,11 +18,14 @@ public sealed class MethodSymbol : Symbol
     /// The expected arguments for this method.
     /// </summary>
     public List<VariableSymbol> Args { get; }
+    
+    public string Signature { get; init; }
 
     public MethodSymbol(string name, bool isStatic, TypeSymbol? type, List<VariableSymbol> args) : base(name)
     {
         IsStatic = isStatic;
         Type = type;
         Args = args;
+        Signature = "<not_set>";
     }
 }

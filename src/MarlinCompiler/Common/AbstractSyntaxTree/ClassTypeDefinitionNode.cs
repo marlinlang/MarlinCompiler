@@ -10,9 +10,10 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     /// <summary>
     /// The type that this class inherits from, incl. module path 
     /// </summary>
-    public string BaseType { get; set;  }
+    /// <remarks>Only null for the std.Object type.</remarks>
+    public string? BaseType { get; set;  }
     
-    public ClassTypeDefinitionNode(string name, string module, GetAccessibility accessibility, string baseType)
+    public ClassTypeDefinitionNode(string name, string module, GetAccessibility accessibility, string? baseType)
         : base(name, module, accessibility)
     {
         BaseType = baseType;

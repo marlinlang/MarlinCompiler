@@ -215,7 +215,7 @@ public sealed class FileParser
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         
-        string baseClass = null;
+        string? baseClass = null;
         if (_tokens.NextIsOfType(TokenType.Colon))
         {
             _tokens.Skip(); // colon
@@ -497,7 +497,7 @@ public sealed class FileParser
         
         RequireSemicolon();
 
-        return new LocalVariableDeclaration(
+        return new LocalVariableDeclarationNode(
             new TypeReferenceNode(type) { Location = typeToken.Location },
             name, value
         ) { Location = nameToken.Location };
@@ -620,6 +620,11 @@ public sealed class FileParser
                 {
                     expr = ExpectVariableAssignment();
                 }
+                else if (peek.Type is TokenType.DoubleColon or TokenType.Colon)
+                {
+                    // type name!
+                    expr = new TypeReferenceNode(GrabTypeName()) { Location = peek.Location };
+                }
                 else
                 {
                     // Regular member access
@@ -650,11 +655,6 @@ public sealed class FileParser
         // MEMBER ACCESS
         if (peek.Type == TokenType.Dot)
         {
-            /*if (left is not IndexableExpressionNode)
-            {
-                throw new ParseException("Cannot index non-indexable expression", peek);
-            }*/
-            
             while (_tokens.NextIsOfType(TokenType.Dot))
             {
                 peek = _tokens.GrabToken()!; // .
@@ -692,6 +692,11 @@ public sealed class FileParser
             left = new BinaryOperatorNode(op.Type, left, right) { Location = op.Location };
         }
 
+        if (left is MethodCallNode mc && mc.Target == null)
+        {
+            mc.Target = new MemberAccessNode("this") { Location = mc.Location };
+        }
+        
         return left;
     }
 
@@ -717,6 +722,7 @@ public sealed class FileParser
             }
             else if (next.Type == TokenType.Comma)
             {
+                _tokens.Skip();
                 continue;
             }
             else
@@ -917,18 +923,15 @@ public sealed class FileParser
 
         StringBuilder builder = new();
         
-        // hack to peek with 2 tokens instead of one
-        // we don't get Invalid type tokens in the lexer
-        // gg ez
         if (_tokens.PeekToken(2)!.Type == TokenType.DoubleColon
-            || _tokens.PeekToken(2)!.Type == TokenType.Dot)
+            || _tokens.PeekToken(2)!.Type == TokenType.Colon)
         {
             builder.Append(GrabModuleName());
 
-            if (_tokens.NextIsOfType(TokenType.Dot))
+            if (_tokens.NextIsOfType(TokenType.Colon))
             {
-                _tokens.Skip(); // .
-                builder.Append('.');
+                _tokens.Skip(); // :
+                builder.Append(':');
             }
             else
             {
@@ -942,11 +945,11 @@ public sealed class FileParser
         string name = builder.Append(GrabNextByExpecting(TokenType.Identifier)).ToString();
         return name switch
         {
-            "void" => "std.Void",
-            "int" => "std.Integer",
-            "char" => "std.Character",
-            "double" => "std.Double",
-            "bool" => "std.Boolean",
+            "void" => "std:Void",
+            "int" => "std:Integer",
+            "char" => "std:Character",
+            "double" => "std:Double",
+            "bool" => "std:Boolean",
             _ => name
         };
     }

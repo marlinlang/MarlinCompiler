@@ -1,6 +1,16 @@
 ﻿module app;
 
+internal class Data
+{
+    public app.Data X() {}
+}
+
 internal class Test
 {
+    public void Main()
+    {
+        app.Test.Test().X().Z();
+    }
     
+    private static app.Data Test() {}
 }

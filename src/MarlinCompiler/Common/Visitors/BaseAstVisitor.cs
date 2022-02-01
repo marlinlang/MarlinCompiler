@@ -36,7 +36,7 @@ public class BaseAstVisitor<T> : IAstVisitor<T>
         throw new NotImplementedException();
     }
 
-    public virtual T LocalVariable(LocalVariableDeclaration node)
+    public virtual T LocalVariable(LocalVariableDeclarationNode node)
     {
         throw new NotImplementedException();
     }

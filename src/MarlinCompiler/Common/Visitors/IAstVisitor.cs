@@ -42,7 +42,7 @@ public interface IAstVisitor<T>
     /// <summary>
     /// Visits a local variable.
     /// </summary>
-    public virtual T LocalVariable(LocalVariableDeclaration node) => throw new NotImplementedException();
+    public virtual T LocalVariable(LocalVariableDeclarationNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a method call.

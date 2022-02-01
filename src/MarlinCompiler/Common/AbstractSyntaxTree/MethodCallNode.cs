@@ -8,12 +8,12 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 public class MethodCallNode : IndexableExpressionNode
 {
     public string MethodName { get; }
-    public ExpressionNode[] Arguments { get; }
+    public ExpressionNode[] Args { get; }
 
-    public MethodCallNode(string methodName, ExpressionNode[] arguments)
+    public MethodCallNode(string methodName, ExpressionNode[] args)
     {
         MethodName = methodName;
-        Arguments = arguments;
+        Args = args;
     }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
