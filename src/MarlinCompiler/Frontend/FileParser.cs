@@ -186,6 +186,14 @@ public sealed class FileParser
         // but then methods have a left paren, which is what we'll use to determine
         // which one we have
         tempParser.GrabModifiers(); // don't care about those
+        
+        // If the next token is the 'constructor' keyword, we have a constructor!
+        if (tempParser._tokens.NextIsOfType(TokenType.Constructor))
+        {
+            // Constructor!
+            return ExpectConstructor();
+        }
+        
         tempParser.ExpectTypeName(); // don't care about this either
         tempParser.GrabNextByExpecting(TokenType.Identifier); // nope
         
@@ -262,10 +270,29 @@ public sealed class FileParser
         return structNode;
     }
 
+    private ConstructorDeclarationNode ExpectConstructor()
+    {
+        string[] modifiers = GrabModifiers();
+        GrabNextByExpecting(TokenType.Constructor);
+        Token ctorToken = _tokens.CurrentToken;
+        
+        ApplyModifierFilters(modifiers, ctorToken, "public", "internal", "protected", "private");
+        VariableNode[] args = GrabTupleTypeDefinition();
+
+        ConstructorDeclarationNode node = new(
+            VisibilityFromModifiers(modifiers),
+            args
+        ) { Location = ctorToken.Location };
+
+        node.Children.AddRange(ExpectStatementBody(false));
+
+        return node;
+    }
+
     /// <summary>
     /// Expects a method declaration. 
     /// </summary>
-    private Node ExpectMethodDeclaration()
+    private MethodDeclarationNode ExpectMethodDeclaration()
     {
         string[] modifiers = GrabModifiers();
         TypeReferenceNode type = ExpectTypeName();
@@ -274,7 +301,7 @@ public sealed class FileParser
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
         VariableNode[] args = GrabTupleTypeDefinition();
 
-        MethodDeclarationNode node = new MethodDeclarationNode(
+        MethodDeclarationNode node = new(
             VisibilityFromModifiers(modifiers),
             type,
             name,
@@ -577,7 +604,9 @@ public sealed class FileParser
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ExpressionNode[] args = GrabTupleValues();
-        return new MethodCallNode(name, args) { Location = nameToken.Location };
+
+        bool isNativeCall = _tokens.NextIsOfType(TokenType.At);
+        return new MethodCallNode(name, isNativeCall, args) { Location = nameToken.Location };
     }
 
     /// <summary>
@@ -603,8 +632,11 @@ public sealed class FileParser
                 break;
                 
             case TokenType.Decimal:
-            case TokenType.New:
                 throw new NotImplementedException();
+            
+            case TokenType.New:
+                expr = ExpectNew();
+                break;
             
             case TokenType.Identifier:
                 Token? peek = _tokens.PeekToken(2);
@@ -696,6 +728,49 @@ public sealed class FileParser
         }
         
         return left;
+    }
+
+    /// <summary>
+    /// Expects a new class instance (e.g. new app::Class())
+    /// </summary>
+    private InitializerNode ExpectNew()
+    {
+        _tokens.Skip(); // new
+
+        // don't allow arrays: we'll do it ourselves!
+        TypeReferenceNode type = ExpectTypeName(false);
+
+        if (_tokens.NextIsOfType(TokenType.LeftBracket))
+        {
+            // we have an array
+            _tokens.Skip(); // [
+
+            // get length of array
+            ExpressionNode length = ExpectExpression();
+
+            GrabNextByExpecting(TokenType.RightBracket);
+
+            return new ArrayInitializerNode(type, length);
+        }
+        else if (_tokens.NextIsOfType(TokenType.LeftParen))
+        {
+            // we have a class initializer
+
+            ExpressionNode[] constructorArgs = GrabTupleValues();
+
+            return new NewClassInitializerNode(type, constructorArgs);
+        }
+        else if (!_tokens.HasNext)
+        {
+            throw new CancelParsingException("Premature EOF");
+        }
+        else
+        {
+            throw new ParseException(
+                $"Expected [ or ( after new, got {_tokens.PeekToken()!.Type}",
+                _tokens.PeekToken()!
+            );
+        }
     }
 
     /// <summary>
@@ -900,7 +975,10 @@ public sealed class FileParser
 
                 if (!_tokens.TryExpect(TokenType.Identifier, out Token? offending))
                 {
-                    throw new ParseException("Expected identifier in module name", offending);
+                    throw new ParseException(
+                        $"Expected identifier in module name, got {offending.Type}",
+                        offending
+                    );
                 }
             }
             else
@@ -914,7 +992,8 @@ public sealed class FileParser
     /// <summary>
     /// Utility method for reading a type name.
     /// </summary>
-    private TypeReferenceNode ExpectTypeName()
+    /// <param name="allowArray">If false, left bracket will be ignored even if it exists.</param>
+    private TypeReferenceNode ExpectTypeName(bool allowArray = true)
     {
         // In all cases we need an identifier
         // If the token after it is a double colon, we get module name first
@@ -933,6 +1012,7 @@ public sealed class FileParser
         };
 
         TypeReferenceNode? generic = null;
+        bool isArray = false;
 
         if (_tokens.NextIsOfType(TokenType.LeftAngle))
         {
@@ -943,7 +1023,14 @@ public sealed class FileParser
             GrabNextByExpecting(TokenType.RightAngle);
         }
 
-        return new TypeReferenceNode(name, generic) { Location = nameToken.Location };
+        if (_tokens.NextIsOfType(TokenType.LeftBracket) && allowArray)
+        {
+            _tokens.Skip();
+            GrabNextByExpecting(TokenType.RightBracket);
+            isArray = true;
+        }
+        
+        return new TypeReferenceNode(name, isArray, generic) { Location = nameToken.Location };
     }
 
     /// <summary>

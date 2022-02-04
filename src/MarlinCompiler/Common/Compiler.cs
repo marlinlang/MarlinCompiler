@@ -46,8 +46,8 @@ public sealed class Compiler
     /// <returns>Program exit code.</returns>
     public int Compile()
     {
-        List<CompilationUnitNode> units = FrontendCompilation();
-        ContainerNode program = IntermediateCompilation(units);
+        ContainerNode program = FrontendCompilation();
+        program = IntermediateCompilation(program);
 
         if (!MessageCollection.HasFatalErrors)
         {
@@ -63,11 +63,15 @@ public sealed class Compiler
         return GetReturnCode();
     }
 
-    #region Frontend
+    #region Compilation process
 
-    private List<CompilationUnitNode> FrontendCompilation()
+    /// <summary>
+    /// Performs lexing, parsing and semantic analysis on all the files. 
+    /// </summary>
+    /// <returns>The program under an unified node.</returns>
+    private ContainerNode FrontendCompilation()
     {
-        Dictionary<string, Tokens> lexed = new();
+        /*Dictionary<string, Tokens> lexed = new();
 
         // Lexing
         foreach (string path in _filePaths)
@@ -87,44 +91,38 @@ public sealed class Compiler
             }
 
             MessageCollection.AddRange(parser.MessageCollection);
-        }
+        }*/
 
-        return compilationUnits;
-    }
+        List<CompilationUnitNode> compilationUnits = new();
 
-    private Tokens Lex(string path)
-    {
-        Lexer.Token[] tokens = new Lexer(File.ReadAllText(path), path).Lex();
-        foreach (Lexer.Token tok in tokens.Where(x => x.Type == TokenType.Invalid))
+        Parallel.ForEach(_filePaths, path =>
         {
-            MessageCollection.Error($"Unknown token '{tok.Value}'", tok.Location);
-        }
-
-        return new Tokens(tokens);
-    }
-
-    #endregion
-
-    #region Intermediate
-
-    private ContainerNode IntermediateCompilation(List<CompilationUnitNode> units)
-    {
+            FileParser parser = new FileParser(Lex(path), path);
+            
+            CompilationUnitNode unit = parser.Parse();
+            if (unit != null)
+            {
+                compilationUnits.Add(unit);
+            }
+            
+            MessageCollection.AddRange(parser.MessageCollection);
+        });
+        
         // Combine roots of compilation units
         ContainerNode root = new();
-        foreach (CompilationUnitNode compilationUnit in units)
+        foreach (CompilationUnitNode compilationUnit in compilationUnits)
         {
             root.Children.AddRange(compilationUnit.Children);
         }
-        
-        
 
         return root;
     }
 
-    #endregion
-
-    #region Backend
-
+    private ContainerNode IntermediateCompilation(ContainerNode root)
+    {
+        return root;
+    }
+    
     private void BackendCompilation(ContainerNode program)
     {
     }
@@ -197,6 +195,20 @@ public sealed class Compiler
         }
         
         Console.ResetColor();
+    }
+
+    /// <summary>
+    /// Performs lexical analysis for a file.
+    /// </summary>
+    private Tokens Lex(string path)
+    {
+        Lexer.Token[] tokens = new Lexer(File.ReadAllText(path), path).Lex();
+        foreach (Lexer.Token tok in tokens.Where(x => x.Type == TokenType.Invalid))
+        {
+            MessageCollection.Error($"Unknown token '{tok.Value}'", tok.Location);
+        }
+
+        return new Tokens(tokens);
     }
 
     #endregion

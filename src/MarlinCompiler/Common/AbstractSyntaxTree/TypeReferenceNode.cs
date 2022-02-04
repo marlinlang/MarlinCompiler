@@ -9,8 +9,9 @@ public sealed class TypeReferenceNode : IndexableExpressionNode
 {
     public string FullName { get; set; }
     public TypeReferenceNode? GenericType { get; set; }
+    public bool IsArray { get; }
 
-    public TypeReferenceNode(string fullName, TypeReferenceNode? genericType = null)
+    public TypeReferenceNode(string fullName, bool isArray, TypeReferenceNode? genericType = null)
     {
         FullName = fullName;
         GenericType = genericType;

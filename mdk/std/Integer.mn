@@ -5,4 +5,6 @@ public struct Integer
 {
     //@ Must be first in the struct. Inserted by the compiler.
     public int _value native;
+    
+    private constructor() {}
 }

@@ -38,6 +38,11 @@ public interface IAstVisitor<T>
     /// Visits a method declaration.
     /// </summary>
     public virtual T MethodDeclaration(MethodDeclarationNode node) => throw new NotImplementedException();
+    
+    /// <summary>
+    /// Visits a method declaration.
+    /// </summary>
+    public virtual T ConstructorDeclaration(ConstructorDeclarationNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a local variable.
@@ -63,4 +68,14 @@ public interface IAstVisitor<T>
     /// Visits an integer.
     /// </summary>
     public virtual T Integer(IntegerNode node) => throw new NotImplementedException();
+
+    /// <summary>
+    /// Visits a new class instance initializer.
+    /// </summary>
+    public virtual T NewClassInstance(NewClassInitializerNode node) => throw new NotImplementedException();
+
+    /// <summary>
+    /// Visits an array initializer.
+    /// </summary>
+    public virtual T CreateArray(ArrayInitializerNode node) => throw new NotImplementedException();
 }

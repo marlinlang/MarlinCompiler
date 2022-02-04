@@ -9,6 +9,7 @@ public enum TokenType
     Module,             // module
     Class,              // class
     Struct,             // struct
+    Constructor,        // constructor
     Using,              // using
     New,                // new
     Native,             // native
@@ -31,6 +32,7 @@ public enum TokenType
     Assign,             // =
     Equal,              // ==
     NotEqual,           // !=
+    At,                 // @
     Power,              // ^
     Plus,               // -
     Minus,              // -

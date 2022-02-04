@@ -1,6 +1,10 @@
 ﻿module std;
 
 //@ The no-value of Marlin.
-//@ Unlike some other languages, void is a regular type and can be created.
+//@ Unlike some other languages, void is a regular type.
 //@ It doesn't convey any information, though.
-public struct Void {}
+//@ The constructor is also private, so it cannot relaly be created.
+public struct Void
+{
+    private constructor() {}
+}
