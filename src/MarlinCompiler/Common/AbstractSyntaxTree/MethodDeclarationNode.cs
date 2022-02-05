@@ -15,7 +15,6 @@ public class MethodDeclarationNode : ContainerNode
     public VariableNode[] Args { get; }
     
     public MethodDeclarationSymbol? DeclarationSymbol { get; set; }
-    public TypeReferenceSymbol? ReturnTypeSymbol { get; set; }
 
     public MethodDeclarationNode(GetAccessibility accessibility, TypeReferenceNode type, string name,
         bool isStatic, VariableNode[] args)

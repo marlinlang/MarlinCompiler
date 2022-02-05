@@ -268,8 +268,18 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                     _context.Push(node.Symbol!);
                     Visit(node.Value);
                     _context.Pop();
+                    
+                    string valueType = GetExpressionType(node.Value);
+                    string varType = node.Type.FullName;
+                    if (valueType != varType)
+                    {
+                        MessageCollection.Error(
+                            $"Cannot assign value of type {valueType} to {varType} property",
+                            node.Value.Location
+                        );
+                    }
                 }
-
+                
                 break;
             }
         }
@@ -283,6 +293,8 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         {
             case Pass.InitializeTypeMembers:
             {
+                Visit(node.Type);
+                
                 node.DeclarationSymbol = new MethodDeclarationSymbol(
                     node.Type.TypeSymbol,
                     node.Accessibility,
@@ -296,8 +308,6 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                     signatureList.Add(arg.Type.FullName);
                 }
                 node.DeclarationSymbol.Signature = String.Join(',', signatureList);
-
-                node.ReturnTypeSymbol = ((TypeReferenceNode) Visit(node.Type)).TypeSymbol;
 
                 foreach (VariableNode arg in node.Args)
                 {
@@ -364,7 +374,29 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
 
     public Node LocalVariable(LocalVariableDeclarationNode node)
     {
-        throw new NotImplementedException();
+        node.Symbol = new VariableSymbol(
+            ((TypeReferenceNode) Visit(node.Type)).TypeSymbol,
+            node.Name
+        );
+        
+        if (node.Value != null)
+        {
+            _context.Push(node.Symbol);
+            Visit(node.Value);
+            _context.Pop();
+
+            string valueType = GetExpressionType(node.Value);
+            string varType = node.Type.FullName;
+            if (valueType != varType)
+            {
+                MessageCollection.Error(
+                    $"Cannot assign value of type {valueType} to {varType} variable",
+                    node.Value.Location
+                );
+            }
+        }
+
+        return node;
     }
 
     public Node MethodCall(MethodCallNode node)
@@ -396,7 +428,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
             );
 
             node.DeclarationSymbol = method;
-
+            
             if (method == null)
             {
                 MessageCollection.Error($"Unknown method {node.MethodName}", node.Location);
@@ -460,6 +492,8 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         bool staticAccess = node.Target is TypeReferenceNode;
         if (owner is TypeReferenceSymbol tRef) { owner = tRef.Type; }
 
+        Visit(node.Value);
+        
         if (owner == null)
         {
             MessageCollection.Error($"Cannot find owner of variable {node.Name}", node.Location);
@@ -483,7 +517,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                     {
                         // We tried to call the static method by an instance
                         MessageCollection.Error(
-                            "Cannot call static method with instance, use the type name instead",
+                            $"Cannot access static property with instance, use the type name instead",
                             node.Location
                         );
                     }
@@ -491,7 +525,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                     {
                         // Opposite: we tried to call a non-static method statically
                         MessageCollection.Error(
-                            "Cannot call instance method statically",
+                            "Cannot call instance property statically",
                             node.Location
                         );
                     }
@@ -503,6 +537,17 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                             node.Location
                         );
                     }
+                }
+
+                string valueType = GetExpressionType(node.Value);
+                string varType = var.Type?.Type?.Name ?? "<???>";
+                string varKind = var is PropertyVariableSymbol ? "property" : "variable";
+                if (valueType != varType)
+                {
+                    MessageCollection.Error(
+                        $"Cannot assign value of type {valueType} to {varType} {varKind}",
+                        node.Value.Location
+                    );
                 }
             }
         }
@@ -538,7 +583,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         return node.Target switch
         {
             MemberAccessNode member => member.MemberSymbol,
-            MethodCallNode call => throw new NotImplementedException(),
+            MethodCallNode call => call.DeclarationSymbol!.Type,
             TypeReferenceNode tRef => tRef.TypeSymbol,
             VariableAssignmentNode asn => throw new NotImplementedException(),
             ArrayInitializerNode array => throw new NotImplementedException(),
@@ -595,6 +640,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         return expr switch
         {
             IntegerNode => "std::Integer",
+            
             ArrayInitializerNode arr => arr.Type.FullName,
             MemberAccessNode member => GetMemberType(member),
             MethodCallNode call => call.DeclarationSymbol?.Type?.Type?.Name ?? "<???>",

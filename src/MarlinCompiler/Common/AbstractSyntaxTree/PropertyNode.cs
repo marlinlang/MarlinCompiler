@@ -13,7 +13,7 @@ public class PropertyNode : VariableNode
     public SetAccessibility SetAccessibility { get; }
 
     public PropertyNode(TypeReferenceNode type, string name, bool isStatic, bool isNative,
-        Node? value, GetAccessibility get, SetAccessibility set) : base(type, name, value)
+        ExpressionNode? value, GetAccessibility get, SetAccessibility set) : base(type, name, value)
     {
         IsStatic = isStatic;
         IsNative = isNative;

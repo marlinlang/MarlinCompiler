@@ -2,12 +2,12 @@
 
 internal class Program
 {
-    public static int X = 1;
+    public app::Program X -> get, set;
 
-    public static void Test(std::Integer x) {}
+    public app::Program Test() {}
 
     public void Main()
     {
-        app::Program.X = 2;
+        Test().X.Test().Test().Test().X = Test();
     }
 }

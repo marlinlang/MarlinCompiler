@@ -10,11 +10,11 @@ public class VariableNode : Node
 {
     public TypeReferenceNode Type { get; }
     public string Name { get; }
-    public Node? Value { get; }
+    public ExpressionNode? Value { get; }
 
     public VariableSymbol? Symbol { get; set; }
     
-    public VariableNode(TypeReferenceNode type, string name, Node? value)
+    public VariableNode(TypeReferenceNode type, string name, ExpressionNode? value)
     {
         Type = type;
         Name = name;
