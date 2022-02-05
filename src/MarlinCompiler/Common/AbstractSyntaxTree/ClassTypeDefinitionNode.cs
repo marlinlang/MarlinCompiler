@@ -15,6 +15,11 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     public TypeReferenceNode? BaseType { get; set; }
     
     public bool IsStatic { get; }
+    
+    /// <summary>
+    /// The type that is named by the generic type param
+    /// </summary>
+    public TypeReferenceNode GenericType { get; set; }
 
     public TypeReferenceSymbol? BaseTypeSymbol { get; set; }
     

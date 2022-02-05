@@ -216,12 +216,14 @@ public sealed class FileParser
     private ClassTypeDefinitionNode ExpectClassDefinition()
     {
         string[] modifiers = GrabModifiers();
-
+        
         GrabNextByExpecting(TokenType.Class);
         
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        
+        ApplyModifierFilters(modifiers, nameToken, "public", "internal", "static");
         
         TypeReferenceNode? baseClass = null;
         if (_tokens.NextIsOfType(TokenType.Colon))
@@ -231,7 +233,7 @@ public sealed class FileParser
         }
         else if (_moduleName + "::Object" != "std::Object") // don't make the base obj inherit from itself lol
         {
-            baseClass = new TypeReferenceNode("std::Object", false) { Location = nameToken.Location };
+            baseClass = new TypeReferenceNode("std::Object") { Location = nameToken.Location };
         }
         
         ClassTypeDefinitionNode classNode = new(
@@ -259,6 +261,8 @@ public sealed class FileParser
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        
+        ApplyModifierFilters(modifiers, nameToken, "public", "internal");
         
         StructTypeDefinitionNode structNode = new(
             name,
@@ -1011,14 +1015,14 @@ public sealed class FileParser
             _ => name
         };
 
-        TypeReferenceNode? generic = null;
+        string? genericName = null;
         bool isArray = false;
 
         if (_tokens.NextIsOfType(TokenType.LeftAngle))
         {
             _tokens.Skip(); // <
 
-            generic = ExpectTypeName();
+            genericName = GrabNextByExpecting(TokenType.Identifier);
             
             GrabNextByExpecting(TokenType.RightAngle);
         }
@@ -1030,7 +1034,7 @@ public sealed class FileParser
             isArray = true;
         }
         
-        return new TypeReferenceNode(name, isArray, generic) { Location = nameToken.Location };
+        return new TypeReferenceNode(name) { Location = nameToken.Location };
     }
 
     /// <summary>

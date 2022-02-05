@@ -2,12 +2,10 @@
 
 internal class Program
 {
-    public app::Program X -> get, set;
-
-    public app::Program Test() {}
-
     public void Main()
     {
-        Test().X.Test().Test().Test().X = Test();
+        int a = 1;
+        int b = 2;
+        
     }
 }

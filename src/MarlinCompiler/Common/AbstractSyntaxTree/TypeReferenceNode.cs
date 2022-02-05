@@ -9,15 +9,12 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 public sealed class TypeReferenceNode : IndexableExpressionNode
 {
     public string FullName { get; set; }
-    public TypeReferenceNode? GenericType { get; set; }
-    public bool IsArray { get; }
     
     public TypeReferenceSymbol? TypeSymbol { get; set; }
 
-    public TypeReferenceNode(string fullName, bool isArray, TypeReferenceNode? genericType = null)
+    public TypeReferenceNode(string fullName)
     {
         FullName = fullName;
-        GenericType = genericType;
     }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

@@ -61,7 +61,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         {
             TypeDeclarationSymbol? type =
                 (TypeDeclarationSymbol?) _context.Peek().FindParent(x => x is TypeDeclarationSymbol);
-            node.MemberSymbol = new TypeReferenceSymbol(type, null, false);
+            node.MemberSymbol = new TypeReferenceSymbol(type);
             return node;
         }
         
@@ -222,14 +222,10 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
 
     public Node TypeReference(TypeReferenceNode node)
     {
-        // TODO: Generics
-        
         node.TypeSymbol = new TypeReferenceSymbol(
             (TypeDeclarationSymbol?) _context.Peek().Search(
                 x => x is TypeDeclarationSymbol ty && ty.Name == node.FullName
-            ),
-            null,
-            node.IsArray
+            )
         );
 
         if (node.TypeSymbol == null)

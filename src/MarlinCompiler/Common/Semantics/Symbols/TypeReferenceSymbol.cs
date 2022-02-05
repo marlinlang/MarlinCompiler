@@ -3,13 +3,9 @@
 public class TypeReferenceSymbol : Symbol
 {
     public TypeDeclarationSymbol? Type { get; }
-    public TypeDeclarationSymbol? GenericType { get; }
-    public bool IsArray { get; }
 
-    public TypeReferenceSymbol(TypeDeclarationSymbol? type, TypeDeclarationSymbol? genericType, bool isArray)
+    public TypeReferenceSymbol(TypeDeclarationSymbol? type)
     {
         Type = type;
-        GenericType = genericType;
-        IsArray = isArray;
     }
 }
