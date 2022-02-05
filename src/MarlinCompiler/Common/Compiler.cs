@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
 using MarlinCompiler.Intermediate;
@@ -72,29 +73,7 @@ public sealed class Compiler
     /// <returns>The program under an unified node.</returns>
     private ContainerNode FrontendCompilation()
     {
-        /*Dictionary<string, Tokens> lexed = new();
-
-        // Lexing
-        foreach (string path in _filePaths)
-        {
-            lexed[path] = Lex(path);
-        }
-        
-        // Parsing
-        List<CompilationUnitNode> compilationUnits = new();
-        foreach ((string path, Tokens tokens) in lexed)
-        {
-            FileParser parser = new FileParser(tokens, path);
-            CompilationUnitNode node = parser.Parse();
-            if (node != null)
-            {
-                compilationUnits.Add(node);
-            }
-
-            MessageCollection.AddRange(parser.MessageCollection);
-        }*/
-
-        List<CompilationUnitNode> compilationUnits = new();
+        ConcurrentBag<CompilationUnitNode> compilationUnits = new();
 
         Parallel.ForEach(_filePaths, path =>
         {
@@ -114,6 +93,11 @@ public sealed class Compiler
         foreach (CompilationUnitNode compilationUnit in compilationUnits)
         {
             root.Children.AddRange(compilationUnit.Children);
+        }
+
+        if (root.Children.Find(x => x is ClassTypeDefinitionNode cls && cls.LocalName == "Object") == null)
+        {
+            ;
         }
 
         return root;
@@ -143,6 +127,8 @@ public sealed class Compiler
     /// Its subdirectories will be included as well.</param>
     private void LoadFilePaths(string fromRoot)
     {
+        fromRoot = Path.GetFullPath(fromRoot);
+        
         // Handle path is a file
         if (File.Exists(fromRoot))
         {

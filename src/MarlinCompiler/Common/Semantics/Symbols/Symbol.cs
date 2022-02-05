@@ -14,11 +14,14 @@ public class Symbol
     }
 
     /// <summary>
-    /// Adds a child symbol to this one. Accepts null and does nothing with it.
+    /// Adds a child symbol to this one.
     /// </summary>
-    public void AddChild(Symbol? symbol)
+    public void AddChild(Symbol symbol)
     {
-        if (symbol == null) return;
+        if (symbol == null)
+        {
+            throw new ArgumentNullException("Child node cannot be null");
+        }
         
         symbol.Parent = this;
         
@@ -41,5 +44,15 @@ public class Symbol
         }
 
         return Parent?.Search(predicate);
+    }
+
+    /// <summary>
+    /// Analogical to Search(), but it doesn't look in the children
+    /// </summary>
+    public Symbol? FindParent(Predicate<Symbol> predicate)
+    {
+        return predicate(this)
+            ? this
+            : Parent?.Search(predicate);
     }
 }

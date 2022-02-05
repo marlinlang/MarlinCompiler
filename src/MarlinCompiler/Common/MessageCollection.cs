@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Linq;
 
 namespace MarlinCompiler.Common;
@@ -8,13 +9,13 @@ namespace MarlinCompiler.Common;
 /// </summary>
 public class MessageCollection : IEnumerable<Message>
 {
-    private List<Message> _messages;
+    private ConcurrentBag<Message> _messages;
 
     public bool HasFatalErrors => _messages.Any(x => x.Fatality == MessageFatality.Severe);
 
     public MessageCollection()
     {
-        _messages = new List<Message>();
+        _messages = new ConcurrentBag<Message>();
     }
 
     public void Error(string message, FileLocation? location = null)
@@ -43,8 +44,14 @@ public class MessageCollection : IEnumerable<Message>
             Fatality = MessageFatality.Information
         });
     }
-    
-    public void AddRange(MessageCollection other) => _messages.AddRange(other._messages);
+
+    public void AddRange(MessageCollection other)
+    {
+        foreach (Message msg in other._messages)
+        {
+            _messages.Add(msg);
+        }
+    }
 
     public IEnumerator<Message> GetEnumerator() => _messages.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => _messages.GetEnumerator();

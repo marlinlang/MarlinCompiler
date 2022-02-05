@@ -12,18 +12,18 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         /// <summary>
         /// Create type declaration symbols.
         /// </summary>
-        InitializeTypes,
+        InitializeTypes = 1,
         
         /// <summary>
         /// Create method and property symbols.
         /// For subclasses, find the base class symbol and store it.
         /// </summary>
-        InitializeTypeMembers,
+        InitializeTypeMembers = 2,
         
         /// <summary>
         /// Visit property values and method bodies.
         /// </summary>
-        VisitTypeMembers,
+        VisitTypeMembers = 3,
     }
     
     public MessageCollection MessageCollection { get; }
@@ -43,7 +43,6 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         foreach (Pass pass in Enum.GetValues<Pass>())
         {
             _currentPass = pass;
-            Visit(root);
             VisitChildrenAndParent(root.Children, rootSymbol);
         }
 
@@ -57,6 +56,13 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
 
     public Node MemberAccess(MemberAccessNode node)
     {
+        // handling for `this`
+        if (node.Target == null && node.MemberName == "this")
+        {
+            node.MemberSymbol = _context.Peek().FindParent(x => x is TypeDeclarationSymbol);
+            return node;
+        }
+        
         Symbol? owner = null;
         
         if (node.Target != null)
@@ -212,6 +218,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     public Node TypeReference(TypeReferenceNode node)
     {
         // TODO: Generics
+        
         node.TypeSymbol = new TypeReferenceSymbol(
             (TypeDeclarationSymbol?) _context.Peek().Search(
                 x => x is TypeDeclarationSymbol ty && ty.Name == node.FullName
@@ -219,6 +226,11 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
             null,
             node.IsArray
         );
+
+        if (node.FullName == "std::Object" && node.TypeSymbol.Type == null)
+        {
+            ;
+        }
 
         if (node.TypeSymbol == null)
         {
@@ -452,16 +464,16 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                 switch (x)
                 {
                     case ConstructorDeclarationNode ctor:
-                        parent.AddChild(ctor.DeclarationSymbol);
+                        parent.AddChild(ctor.DeclarationSymbol!);
                         break;
                     case VariableNode var:
-                        parent.AddChild(var.Symbol);
+                        parent.AddChild(var.Symbol!);
                         break;
                     case MethodDeclarationNode methodDecl:
-                        parent.AddChild(methodDecl.DeclarationSymbol);
+                        parent.AddChild(methodDecl.DeclarationSymbol!);
                         break;
                     case TypeDefinitionNode typeDef:
-                        parent.AddChild(typeDef.DeclarationSymbol);
+                        parent.AddChild(typeDef.DeclarationSymbol!);
                         break;
 
                     // Can't set parent for expressions
