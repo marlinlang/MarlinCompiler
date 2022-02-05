@@ -2,10 +2,12 @@
 
 internal class Program
 {
-    public static void Test() {}
+    public static int X = 1;
+
+    public static void Test(std::Integer x) {}
 
     public void Main()
     {
-        //this.Test();
+        app::Program.Test(this.X);
     }
 }

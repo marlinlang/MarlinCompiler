@@ -356,7 +356,7 @@ public sealed class FileParser
         bool isNative = false;
         Token nameToken = _tokens.CurrentToken;
         
-        ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private");
+        ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
         GetAccessibility get = VisibilityFromModifiers(modifiers);
         SetAccessibility set;
         SetAccessibility.TryParse(get.ToString(), true, out set);

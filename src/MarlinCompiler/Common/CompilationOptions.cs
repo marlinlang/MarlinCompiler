@@ -10,4 +10,9 @@ public enum CompilationOptions : short
     /// No special options.
     /// </summary>
     None = 0,
+    
+    /// <summary>
+    /// All errors must be reported with absolute paths.
+    /// </summary>
+    UseAbsolutePaths = 1,
 }

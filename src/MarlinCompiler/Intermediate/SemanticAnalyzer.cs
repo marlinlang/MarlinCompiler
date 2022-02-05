@@ -59,7 +59,9 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         // handling for `this`
         if (node.Target == null && node.MemberName == "this")
         {
-            node.MemberSymbol = _context.Peek().FindParent(x => x is TypeDeclarationSymbol);
+            TypeDeclarationSymbol? type =
+                (TypeDeclarationSymbol?) _context.Peek().FindParent(x => x is TypeDeclarationSymbol);
+            node.MemberSymbol = new TypeReferenceSymbol(type, null, false);
             return node;
         }
         
@@ -82,7 +84,10 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         }
         else
         {
-            Symbol? member = owner.Search(
+            bool staticAccess = node.Target is TypeReferenceNode;
+            if (owner is TypeReferenceSymbol tRef) { owner = tRef.Type; }
+            
+            Symbol? member = owner?.Search(
                 x => x is MethodDeclarationSymbol method && method.Name == node.MemberName
                      || x is VariableSymbol var && var.Name == node.MemberName
             );
@@ -98,11 +103,11 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                 // Don't allow static access of method name without instance
                 // NB: variables and method calls have typeref, not typedecl symbols
                 // If the owner is a typedecl, that means its the actual type itself
-                if (!method.IsStatic && owner is ClassTypeDeclarationSymbol cls && cls.IsStatic)
+                if (!method.IsStatic && staticAccess)
                 {
                     MessageCollection.Error("Cannot access non-static method statically", node.Location);
                 }
-                else if (method.IsStatic && owner is TypeReferenceSymbol)
+                else if (method.IsStatic && !staticAccess)
                 {
                     // Opposite: we tried to access a static method on a non-static value instead of the type itself
                     MessageCollection.Error("Cannot access static method by instance", node.Location);
@@ -113,11 +118,11 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                 // For properties, do the same as for methods
                 if (var is PropertyVariableSymbol prop)
                 {
-                    if (!prop.IsStatic && owner is ClassTypeDeclarationSymbol cls && cls.IsStatic)
+                    if (!prop.IsStatic && staticAccess)
                     {
                         MessageCollection.Error("Cannot access non-static property statically", node.Location);
                     }
-                    else if (prop.IsStatic && owner is TypeReferenceSymbol)
+                    else if (prop.IsStatic && !staticAccess)
                     {
                         MessageCollection.Error("Cannot access static property by instance", node.Location);
                     }
@@ -285,6 +290,13 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                     node.IsStatic
                 );
 
+                List<string> signatureList = new();
+                foreach (VariableNode arg in node.Args)
+                {
+                    signatureList.Add(arg.Type.FullName);
+                }
+                node.DeclarationSymbol.Signature = String.Join(',', signatureList);
+
                 node.ReturnTypeSymbol = ((TypeReferenceNode) Visit(node.Type)).TypeSymbol;
 
                 foreach (VariableNode arg in node.Args)
@@ -369,6 +381,9 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         {
             owner = _context.Peek();
         }
+        
+        bool staticCall = node.Target is TypeReferenceNode;
+        if (owner is TypeReferenceSymbol tRef) { owner = tRef.Type; }
 
         if (owner == null)
         {
@@ -388,7 +403,24 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
             }
             else
             {
-                if (method.IsStatic && owner is TypeReferenceSymbol)
+                // Arg handling
+                List<string> signatureList = new();
+                foreach (ExpressionNode arg in node.Args)
+                {
+                    Visit(arg);
+                    signatureList.Add(GetExpressionType(arg));
+                }
+                string signature = String.Join(',', signatureList);
+
+                if (method.Signature != signature)
+                {
+                    MessageCollection.Error($"Argument mismatch for method {method.Name}:" +
+                                            $"\n\tExpected: ({method.Signature})" +
+                                            $"\n\tGot:      ({signature})", node.Location);
+                }
+
+                // Call semantics
+                if (method.IsStatic && !staticCall)
                 {
                     // We tried to call the static method by an instance
                     MessageCollection.Error(
@@ -396,7 +428,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                         node.Location
                     );
                 }
-                else if (!method.IsStatic && owner is TypeDeclarationSymbol)
+                else if (!method.IsStatic && staticCall)
                 {
                     // Opposite: we tried to call a non-static method statically
                     MessageCollection.Error(
@@ -452,6 +484,10 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         };
     }
 
+    /// <summary>
+    /// Utility method for visiting the list of nodes and setting each child's symbol
+    /// as a sub-symbol for the given parent.
+    /// </summary>
     private void VisitChildrenAndParent(List<Node> children, Symbol? parent)
     {
         children.ForEach(x =>
@@ -485,5 +521,39 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                 }
             }
         });
+    }
+
+    /// <summary>
+    /// Utility method for getting the type of an expression.
+    /// </summary>
+    /// <remarks>Always visit the expression before getting its type!</remarks>
+    private string GetExpressionType(ExpressionNode expr)
+    {
+        return expr switch
+        {
+            IntegerNode => "std::Integer",
+            ArrayInitializerNode arr => arr.Type.FullName,
+            MemberAccessNode member => GetMemberType(member),
+            MethodCallNode call => call.DeclarationSymbol?.Type?.Type?.Name ?? "<???>",
+            NewClassInitializerNode cls => cls.Type.FullName,
+            TypeReferenceNode tRef => tRef.FullName,
+            
+            _ => throw new NotImplementedException()
+        };
+    }
+
+    /// <summary>
+    /// Utility method for getting the type of a member.
+    /// </summary>
+    /// <remarks>Always visit the expression before getting its type!</remarks>
+    private string GetMemberType(MemberAccessNode node)
+    {
+        return node.MemberSymbol switch
+        {
+            VariableSymbol var => var.Type?.Type?.Name ?? "<???>",
+            MethodDeclarationSymbol method => method.Type?.Type?.Name ?? "<???>",
+            TypeReferenceSymbol tRef => tRef.Type?.Name ?? "<???>",
+            _ => throw new NotImplementedException()
+        };
     }
 }

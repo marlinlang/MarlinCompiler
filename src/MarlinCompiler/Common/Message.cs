@@ -44,17 +44,4 @@ public record struct Message(string Content)
         MessageFatality.Information => ConsoleColor.Cyan,
         _ => throw new NotImplementedException()
     };
-    
-    public override string ToString()
-    {
-        return (Location != null ? $"{Location}: " : "")
-               + Fatality switch
-               {
-                   MessageFatality.Severe => "error",
-                   MessageFatality.Warning => "warn",
-                   MessageFatality.Information => "info",
-                   _ => throw new NotImplementedException()
-               }
-               + ": " + Content;
-    }
 }

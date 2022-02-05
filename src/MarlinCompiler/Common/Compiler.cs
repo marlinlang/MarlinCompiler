@@ -27,8 +27,14 @@ public sealed class Compiler
     /// </summary>
     private readonly List<string> _filePaths;
 
+    /// <summary>
+    /// The root path of the project.
+    /// </summary>
+    private readonly string _rootPath;
+
     public Compiler(string root, CompilationOptions options)
     {
+        _rootPath = Path.GetFullPath(root);
         _options = options;
         MessageCollection = new MessageCollection();
         _filePaths = new List<string>();
@@ -93,11 +99,6 @@ public sealed class Compiler
         foreach (CompilationUnitNode compilationUnit in compilationUnits)
         {
             root.Children.AddRange(compilationUnit.Children);
-        }
-
-        if (root.Children.Find(x => x is ClassTypeDefinitionNode cls && cls.LocalName == "Object") == null)
-        {
-            ;
         }
 
         return root;
@@ -169,7 +170,25 @@ public sealed class Compiler
         foreach (Message msg in MessageCollection)
         {
             Console.ForegroundColor = msg.PrintColor;
-            Console.WriteLine(msg.ToString());
+
+            string location = (msg.Location?.ToString() + ": ") ?? "";
+            if (!_options.HasFlag(CompilationOptions.UseAbsolutePaths))
+            {
+                // Truncate paths
+                if (location.StartsWith(_rootPath))
+                {
+                    location = location.Substring(_rootPath.Length);
+                }
+            }
+            
+            Console.WriteLine(location + msg.Fatality switch
+                              {
+                                  MessageFatality.Severe => "error",
+                                  MessageFatality.Warning => "warn",
+                                  MessageFatality.Information => "info",
+                                  _ => throw new NotImplementedException()
+                              }
+                              + ": " + msg.Content);
         }
 
         string failedPassed = MessageCollection.HasFatalErrors ? "failed" : "successful";
