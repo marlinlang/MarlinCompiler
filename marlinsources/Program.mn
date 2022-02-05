@@ -4,6 +4,6 @@ internal class Program
 {
     public void Main()
     {
-        int[] array = new int();
+        
     }
 }

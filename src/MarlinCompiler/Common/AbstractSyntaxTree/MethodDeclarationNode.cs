@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Semantics.Symbols;
+using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -12,6 +13,9 @@ public class MethodDeclarationNode : ContainerNode
     public string Name { get; }
     public bool IsStatic { get; }
     public VariableNode[] Args { get; }
+    
+    public MethodDeclarationSymbol? DeclarationSymbol { get; set; }
+    public TypeReferenceSymbol? ReturnTypeSymbol { get; set; }
 
     public MethodDeclarationNode(GetAccessibility accessibility, TypeReferenceNode type, string name,
         bool isStatic, VariableNode[] args)

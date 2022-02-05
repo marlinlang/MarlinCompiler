@@ -20,7 +20,6 @@
 
     <ItemGroup>
       <Folder Include="src\MarlinCompiler\Backend" />
-      <Folder Include="src\MarlinCompiler\Intermediate" />
     </ItemGroup>
 
 </Project>

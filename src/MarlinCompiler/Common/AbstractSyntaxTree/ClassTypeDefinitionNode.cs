@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Semantics.Symbols;
+using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -11,10 +12,14 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     /// The type that this class inherits from, incl. module path 
     /// </summary>
     /// <remarks>Only null for the std.Object type.</remarks>
-    public string? BaseType { get; set;  }
+    public TypeReferenceNode? BaseType { get; set; }
     
-    public ClassTypeDefinitionNode(string name, string module, GetAccessibility accessibility, string? baseType)
-        : base(name, module, accessibility)
+    public bool IsStatic { get; }
+
+    public TypeReferenceSymbol? BaseTypeSymbol { get; set; }
+    
+    public ClassTypeDefinitionNode(string name, string module, GetAccessibility accessibility,
+        bool isStatic, TypeReferenceNode? baseType) : base(name, module, accessibility)
     {
         BaseType = baseType;
     }

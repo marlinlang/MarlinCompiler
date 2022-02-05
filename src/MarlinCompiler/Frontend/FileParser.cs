@@ -223,21 +223,22 @@ public sealed class FileParser
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         
-        string? baseClass = null;
+        TypeReferenceNode? baseClass = null;
         if (_tokens.NextIsOfType(TokenType.Colon))
         {
             _tokens.Skip(); // colon
-            baseClass = GrabNextByExpecting(TokenType.Identifier);
+            baseClass = ExpectTypeName(false);
         }
-        else if (_moduleName + ".Object" != "std.Object") // don't make the base obj inherit from itself lol
+        else if (_moduleName + "::Object" != "std::Object") // don't make the base obj inherit from itself lol
         {
-            baseClass = "std.Object";
+            baseClass = new TypeReferenceNode("std::Object", false) { Location = nameToken.Location };
         }
         
         ClassTypeDefinitionNode classNode = new(
             name,
             _moduleName,
             accessibility,
+            modifiers.Contains("static"),
             baseClass
         ) { Location = nameToken.Location };
         
@@ -735,7 +736,7 @@ public sealed class FileParser
     /// </summary>
     private InitializerNode ExpectNew()
     {
-        _tokens.Skip(); // new
+        Token newKeyword = _tokens.GrabToken()!;
 
         // don't allow arrays: we'll do it ourselves!
         TypeReferenceNode type = ExpectTypeName(false);
@@ -750,7 +751,7 @@ public sealed class FileParser
 
             GrabNextByExpecting(TokenType.RightBracket);
 
-            return new ArrayInitializerNode(type, length);
+            return new ArrayInitializerNode(type, length) { Location = newKeyword.Location };
         }
         else if (_tokens.NextIsOfType(TokenType.LeftParen))
         {
@@ -758,7 +759,7 @@ public sealed class FileParser
 
             ExpressionNode[] constructorArgs = GrabTupleValues();
 
-            return new NewClassInitializerNode(type, constructorArgs);
+            return new NewClassInitializerNode(type, constructorArgs) { Location = newKeyword.Location };
         }
         else if (!_tokens.HasNext)
         {

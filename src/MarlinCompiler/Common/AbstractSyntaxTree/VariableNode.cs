@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Semantics.Symbols;
+using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -11,6 +12,8 @@ public class VariableNode : Node
     public string Name { get; }
     public Node? Value { get; }
 
+    public VariableSymbol? Symbol { get; set; }
+    
     public VariableNode(TypeReferenceNode type, string name, Node? value)
     {
         Type = type;

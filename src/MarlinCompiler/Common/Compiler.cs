@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
+using MarlinCompiler.Intermediate;
 using TokenType = MarlinCompiler.Frontend.TokenType;
 
 namespace MarlinCompiler.Common;
@@ -120,6 +121,10 @@ public sealed class Compiler
 
     private ContainerNode IntermediateCompilation(ContainerNode root)
     {
+        SemanticAnalyzer analyzer = new();
+        analyzer.Analyze(root);
+        MessageCollection.AddRange(analyzer.MessageCollection);
+        
         return root;
     }
     
