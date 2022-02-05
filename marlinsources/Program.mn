@@ -8,6 +8,6 @@ internal class Program
 
     public void Main()
     {
-        app::Program.Test(this.X);
+        app::Program.X = 2;
     }
 }

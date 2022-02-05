@@ -358,8 +358,7 @@ public sealed class FileParser
         
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
         GetAccessibility get = VisibilityFromModifiers(modifiers);
-        SetAccessibility set;
-        SetAccessibility.TryParse(get.ToString(), true, out set);
+        SetAccessibility set = SetAccessibility.NoModify;
         Node? value = null;
 
         if (_tokens.NextIsOfType(TokenType.Native))

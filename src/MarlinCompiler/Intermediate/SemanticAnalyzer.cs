@@ -444,7 +444,70 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
 
     public Node VariableAssignment(VariableAssignmentNode node)
     {
-        throw new NotImplementedException();
+        Symbol? owner = null;
+        
+        if (node.Target != null)
+        {
+            Visit(node.Target);
+
+            owner = ResolveIndexableExpressionTarget(node);
+        }
+        else
+        {
+            owner = _context.Peek();
+        }
+        
+        bool staticAccess = node.Target is TypeReferenceNode;
+        if (owner is TypeReferenceSymbol tRef) { owner = tRef.Type; }
+
+        if (owner == null)
+        {
+            MessageCollection.Error($"Cannot find owner of variable {node.Name}", node.Location);
+        }
+        else
+        {
+            VariableSymbol? var = (VariableSymbol?) owner.Search(
+                x => x is VariableSymbol var && var.Name == node.Name
+            );
+
+            if (var == null)
+            {
+                MessageCollection.Error($"Unknown variable {node.Name}", node.Location);
+            }
+            else
+            {
+                // Access semantics
+                if (var is PropertyVariableSymbol prop)
+                {
+                    if (prop.IsStatic && !staticAccess)
+                    {
+                        // We tried to call the static method by an instance
+                        MessageCollection.Error(
+                            "Cannot call static method with instance, use the type name instead",
+                            node.Location
+                        );
+                    }
+                    else if (!prop.IsStatic && staticAccess)
+                    {
+                        // Opposite: we tried to call a non-static method statically
+                        MessageCollection.Error(
+                            "Cannot call instance method statically",
+                            node.Location
+                        );
+                    }
+
+                    if (prop.SetAccessibility == SetAccessibility.NoModify)
+                    {
+                        MessageCollection.Error(
+                            "Cannot modify immutable property",
+                            node.Location
+                        );
+                    }
+                }
+            }
+        }
+
+        return node;
     }
 
     public Node Tuple(TupleNode node)
