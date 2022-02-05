@@ -232,11 +232,6 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
             node.IsArray
         );
 
-        if (node.FullName == "std::Object" && node.TypeSymbol.Type == null)
-        {
-            ;
-        }
-
         if (node.TypeSymbol == null)
         {
             MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
@@ -259,6 +254,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                     node.GetAccessibility,
                     node.SetAccessibility
                 );
+
                 break;
             }
             case Pass.VisitTypeMembers:
