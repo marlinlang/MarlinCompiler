@@ -646,7 +646,33 @@ public sealed class FileParser
                 Token? peek = _tokens.PeekToken(2);
                 if (peek == null) throw new CancelParsingException("Expected expression, got EOF");
 
-                if (peek.Type == TokenType.LeftParen)
+                if (peek.Type == TokenType.DoubleColon)
+                {
+                    // Check for method call
+                    int current = 0;
+                    while (_tokens.PeekToken(current).Type == TokenType.DoubleColon)
+                    {
+                        current += 2;
+                    }
+
+                    peek = _tokens.PeekToken(current);
+                    if (peek.Type == TokenType.Dot)
+                    {
+                        expr = ExpectMethodCall();
+                    }
+                    else if (peek.Type == TokenType.Equal)
+                    {
+                        expr = ExpectVariableAssignment();
+                    }
+                    else
+                    {
+                        throw new ParseException(
+                            $"Expected method call or var assign, got {peek.Type}",
+                            peek
+                        );
+                    }
+                }
+                else if (peek.Type == TokenType.LeftParen)
                 {
                     expr = ExpectMethodCall();
                 }
@@ -654,16 +680,14 @@ public sealed class FileParser
                 {
                     expr = ExpectVariableAssignment();
                 }
-                else if (peek.Type is TokenType.DoubleColon or TokenType.Colon)
-                {
-                    // type name!
-                    expr = ExpectTypeName();
-                }
                 else
                 {
                     // Regular member access
                     _tokens.Skip(); // the id
-                    expr = new MemberAccessNode(next.Value) { Location = next.Location};
+                    expr = new MemberAccessNode(next.Value)
+                    {
+                        Location = next.Location
+                    };
                     // use the id's value,
                     // not the one of the next token
                 }
