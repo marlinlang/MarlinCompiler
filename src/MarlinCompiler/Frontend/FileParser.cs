@@ -569,7 +569,6 @@ public sealed class FileParser
         try
         {
             parser = CreateSubParser();
-            parser.ExpectExpression();
 
             ExpressionNode expr = ExpectExpression(); // should work if the subparser didn't error
 
@@ -593,6 +592,20 @@ public sealed class FileParser
     /// </summary>
     private VariableAssignmentNode ExpectVariableAssignment()
     {
+        TypeReferenceNode type = null;
+        if (_tokens.PeekToken(2).Type == TokenType.DoubleColon)
+        {
+            type = ExpectTypeName();
+            if (_tokens.PeekToken().Type == TokenType.Dot)
+            {
+                _tokens.Skip();
+            }
+            else
+            {
+                throw new ParseException("Expected dot after type", _tokens.PeekToken());
+            }
+        }
+        
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         GrabNextByExpecting(TokenType.Assign);
@@ -605,12 +618,29 @@ public sealed class FileParser
     /// </summary>
     private MethodCallNode ExpectMethodCall()
     {
+        TypeReferenceNode type = null;
+        if (_tokens.PeekToken(2).Type == TokenType.DoubleColon)
+        {
+            type = ExpectTypeName();
+            if (_tokens.PeekToken().Type == TokenType.Dot)
+            {
+                _tokens.Skip();
+            }
+            else
+            {
+                throw new ParseException("Expected dot after type", _tokens.PeekToken());
+            }
+        }
+        
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ExpressionNode[] args = GrabTupleValues();
 
         bool isNativeCall = _tokens.NextIsOfType(TokenType.At);
-        return new MethodCallNode(name, isNativeCall, args) { Location = nameToken.Location };
+        return new MethodCallNode(name, isNativeCall, args)
+        {
+            Location = nameToken.Location
+        };
     }
 
     /// <summary>
@@ -649,7 +679,7 @@ public sealed class FileParser
                 if (peek.Type == TokenType.DoubleColon)
                 {
                     // Check for method call
-                    int current = 0;
+                    int current = 2;
                     while (_tokens.PeekToken(current).Type == TokenType.DoubleColon)
                     {
                         current += 2;
@@ -658,9 +688,25 @@ public sealed class FileParser
                     peek = _tokens.PeekToken(current);
                     if (peek.Type == TokenType.Dot)
                     {
-                        expr = ExpectMethodCall();
+                        peek = _tokens.PeekToken(current + 2);
+
+                        if (peek.Type == TokenType.LeftParen)
+                        {
+                            expr = ExpectMethodCall();
+                        }
+                        else if (peek.Type == TokenType.Assign)
+                        {
+                            expr = ExpectVariableAssignment();
+                        }
+                        else
+                        {
+                            throw new ParseException(
+                                $"Expected method call or var assign, got {peek.Type}",
+                                peek
+                            );
+                        }
                     }
-                    else if (peek.Type == TokenType.Equal)
+                    else if (peek.Type == TokenType.Assign)
                     {
                         expr = ExpectVariableAssignment();
                     }
