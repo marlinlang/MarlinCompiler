@@ -1,5 +1,4 @@
-﻿using MarlinCompiler.Common.Semantics.Symbols;
-using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -10,8 +9,6 @@ public class MethodCallNode : IndexableExpressionNode
 {
     public string MethodName { get; }
     public ExpressionNode[] Args { get; }
-    
-    public MethodDeclarationSymbol? DeclarationSymbol { get; set; }
     
     /// <summary>
     /// True for calls to LLVM functions instead of Marlin-defined ones

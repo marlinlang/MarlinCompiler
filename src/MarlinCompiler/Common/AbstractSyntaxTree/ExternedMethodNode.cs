@@ -1,4 +1,3 @@
-using MarlinCompiler.Common.Semantics;
 using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
@@ -20,8 +19,6 @@ public class ExternedMethodNode : Node
     public VariableNode[] ExpectedArgs { get; }
     public ExpressionNode[] PassedArgs { get; }
     
-    public MemberTable MemberTable { get; } = new();
-
     public ExternedMethodNode(GetAccessibility accessibility, TypeReferenceNode type, string? name, bool isStatic,
         VariableNode[] expectedArgs, ExpressionNode[] passedArgs)
     {

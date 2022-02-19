@@ -1,5 +1,4 @@
-﻿using MarlinCompiler.Common.Semantics.Symbols;
-using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -21,8 +20,6 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     /// </summary>
     public TypeReferenceNode? GenericType { get; set; }
 
-    public TypeReferenceSymbol? BaseTypeSymbol { get; set; }
-    
     public ClassTypeDefinitionNode(string name, string module, GetAccessibility accessibility,
         bool isStatic, TypeReferenceNode? baseType) : base(name, module, accessibility)
     {

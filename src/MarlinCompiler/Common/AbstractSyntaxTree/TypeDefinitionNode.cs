@@ -1,6 +1,4 @@
-﻿using MarlinCompiler.Common.Semantics;
-using MarlinCompiler.Common.Semantics.Symbols;
-using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -25,9 +23,6 @@ public class TypeDefinitionNode : ContainerNode
     /// </summary>
     public GetAccessibility Accessibility { get; }
     
-    public TypeDeclarationSymbol? DeclarationSymbol { get; set; }
-    public MemberTable MemberTable { get; } = new();
-
     public TypeDefinitionNode(string name, string module, GetAccessibility accessibility)
     {
         LocalName = name;

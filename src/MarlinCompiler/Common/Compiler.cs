@@ -107,7 +107,7 @@ public sealed class Compiler
     private ContainerNode IntermediateCompilation(ContainerNode root)
     {
         SemanticAnalyzer analyzer = new();
-        analyzer.Analyze(root);
+        //analyzer.Analyze(root);
         MessageCollection.AddRange(analyzer.MessageCollection);
         
         return root;
