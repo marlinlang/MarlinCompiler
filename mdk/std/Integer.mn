@@ -2,5 +2,5 @@
 
 //@ Represents an integer.
 public extern struct Int32 @marlin_int32 {
-    
+    public static std::Int32 ParseInt(std::String x) -> @marlin_int32_parse(x);
 }
