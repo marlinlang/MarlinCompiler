@@ -1,5 +1,4 @@
-﻿using MarlinCompiler.Common.Semantics.Symbols;
-using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -10,8 +9,6 @@ public sealed class TypeReferenceNode : IndexableExpressionNode
 {
     public string FullName { get; set; }
     
-    public TypeReferenceSymbol? TypeSymbol { get; set; }
-
     public TypeReferenceNode(string fullName)
     {
         FullName = fullName;
