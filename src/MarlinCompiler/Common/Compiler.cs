@@ -107,7 +107,7 @@ public sealed class Compiler
     private ContainerNode IntermediateCompilation(ContainerNode root)
     {
         SemanticAnalyzer analyzer = new();
-        //analyzer.Analyze(root);
+        // TODO: analyzer.Analyze(root);
         MessageCollection.AddRange(analyzer.MessageCollection);
         
         return root;
@@ -186,7 +186,7 @@ public sealed class Compiler
                                   MessageFatality.Severe => "error",
                                   MessageFatality.Warning => "warn",
                                   MessageFatality.Information => "info",
-                                  _ => throw new NotImplementedException()
+                                  _ => throw new InvalidOperationException()
                               }
                               + ": " + msg.Content);
         }

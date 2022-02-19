@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Semantics;
 using static MarlinCompiler.Frontend.Lexer;
 
 namespace MarlinCompiler.Frontend;
@@ -34,6 +35,8 @@ public sealed class FileParser
     /// </summary>
     private string _moduleName;
 
+    private readonly Stack<Scope> _scopeStack;
+    
     /// <summary>
     /// An exception for parse errors.
     /// </summary>
@@ -70,6 +73,7 @@ public sealed class FileParser
         _tokens = tokens;
         _path = filePath;
         _moduleName = "<global>";
+        _scopeStack = new Stack<Scope>();
     }
     
     /// <summary>
@@ -93,6 +97,7 @@ public sealed class FileParser
         _moduleName = name;
 
         CompilationUnitNode node = new(name, dependencies);
+        _scopeStack.Push(node.Scope = new Scope());
 
         try
         {
@@ -117,6 +122,8 @@ public sealed class FileParser
         {
             MessageCollection.Info($"Parsing of {_path} cancelled: {ex.Message}");
         }
+
+        _scopeStack.Pop();
 
         return node;
     }
@@ -150,6 +157,8 @@ public sealed class FileParser
     {
         ContainerNode bodyNode = new();
         
+        _scopeStack.Push(bodyNode.Scope = new Scope(_scopeStack.Peek()));
+        
         GrabNextByExpecting(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
@@ -158,6 +167,11 @@ public sealed class FileParser
                 Node child = ExpectTypeMember();
                 if (child != null)
                 {
+                    if (child.Symbol != null)
+                    {
+                        bodyNode.Scope.Add(child.Symbol);
+                    }
+                    
                     bodyNode.Children.Add(child);
                 }
             }
@@ -167,6 +181,8 @@ public sealed class FileParser
             }
         }
         GrabNextByExpecting(TokenType.RightBrace);
+
+        _scopeStack.Pop();
 
         return bodyNode;
     }
@@ -179,14 +195,22 @@ public sealed class FileParser
     {
         ContainerNode bodyNode = new();
         
+        _scopeStack.Push(bodyNode.Scope = new Scope(_scopeStack.Peek()));
+        
         GrabNextByExpecting(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
             try
             {
                 Node child = ExpectExternMethod();
+                
                 if (child != null)
                 {
+                    if (child.Symbol != null)
+                    {
+                        bodyNode.Scope.Add(child.Symbol);
+                    }
+                    
                     bodyNode.Children.Add(child);
                 }
             }
@@ -196,6 +220,8 @@ public sealed class FileParser
             }
         }
         GrabNextByExpecting(TokenType.RightBrace);
+
+        _scopeStack.Pop();
 
         return bodyNode;
     }
@@ -380,8 +406,10 @@ public sealed class FileParser
         {
             Location = nameToken.Location
         };
-        
-        node.Children.AddRange(ExpectExternTypeBody());
+
+        ContainerNode body = ExpectExternTypeBody();
+        node.Scope = body.Scope;
+        node.Children.AddRange(body.Children);
 
         return node;
     }
@@ -426,9 +454,15 @@ public sealed class FileParser
             name,
             modifiers.Contains("static"),
             args
-        ) { Location = nameToken.Location };
+        )
+        {
+            Location = nameToken.Location,
+            Symbol = new Symbol(name, type.FullName, SymbolKind.Method)
+        };
 
-        node.Children.AddRange(ExpectStatementBody(false));
+        ContainerNode body = ExpectStatementBody(false);
+        node.Scope = body.Scope;
+        node.Children.AddRange(body.Children);
 
         return node;
     }
@@ -440,6 +474,9 @@ public sealed class FileParser
     private ContainerNode ExpectStatementBody(bool insideLoop)
     {
         ContainerNode node = new();
+        
+        _scopeStack.Push(node.Scope = new Scope());
+        
         GrabNextByExpecting(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
@@ -449,6 +486,11 @@ public sealed class FileParser
 
                 if (child != null)
                 {
+                    if (child.Symbol != null)
+                    {
+                        node.Scope.Add(child.Symbol);
+                    }
+
                     node.Children.Add(child);
                 }
             }
@@ -459,6 +501,8 @@ public sealed class FileParser
         }
 
         GrabNextByExpecting(TokenType.RightBrace);
+
+        _scopeStack.Pop();
 
         return node;
     }
@@ -619,7 +663,11 @@ public sealed class FileParser
             value,
             get,
             set
-        ) { Location = nameToken.Location };
+        )
+        {
+            Location = nameToken.Location,
+            Symbol = new Symbol(name, type.FullName, SymbolKind.Variable)
+        };
     }
 
     /// <summary>
@@ -651,7 +699,11 @@ public sealed class FileParser
             name,
             mutable,
             value
-        ) { Location = nameToken.Location };
+        )
+        {
+            Location = nameToken.Location,
+            Symbol = new Symbol(name, type.FullName, SymbolKind.Variable)
+        };
     }
 
     /// <summary>

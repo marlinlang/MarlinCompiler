@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using MarlinCompiler.Common.Semantics;
 using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
@@ -13,6 +14,11 @@ public class ContainerNode : Node, IEnumerable<Node>
     /// </summary>
     public List<Node> Children { get; }
 
+    /// <summary>
+    /// The scope of this container.
+    /// </summary>
+    public Scope? Scope { get; set; }
+    
     public ContainerNode()
     {
         Children = new List<Node>();

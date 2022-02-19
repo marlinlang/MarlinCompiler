@@ -42,6 +42,6 @@ public record struct Message(string Content)
         MessageFatality.Severe => ConsoleColor.Red,
         MessageFatality.Warning => ConsoleColor.Yellow,
         MessageFatality.Information => ConsoleColor.Cyan,
-        _ => throw new NotImplementedException()
+        _ => throw new InvalidOperationException()
     };
 }
