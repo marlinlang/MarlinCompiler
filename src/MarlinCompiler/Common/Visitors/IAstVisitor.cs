@@ -12,70 +12,80 @@ public interface IAstVisitor<T>
     /// <summary>
     /// Visits a member access.
     /// </summary>
-    public virtual T MemberAccess(MemberAccessNode node) => throw new NotImplementedException();
+    public T MemberAccess(MemberAccessNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits a class declaration.
     /// </summary>
-    public virtual T ClassDefinition(ClassTypeDefinitionNode node) => throw new NotImplementedException();
+    public T ClassDefinition(ClassTypeDefinitionNode node) => throw new NotImplementedException();
+    
+    /// <summary>
+    /// Visits an externed type declaration.
+    /// </summary>
+    public T ExternedTypeDefinition(ExternedTypeDefinitionNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits a struct declaration.
     /// </summary>
-    public virtual T StructDefinition(StructTypeDefinitionNode node) => throw new NotImplementedException();
+    public T StructDefinition(StructTypeDefinitionNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits a type reference.
     /// </summary>
-    public virtual T TypeReference(TypeReferenceNode node) => throw new NotImplementedException();
+    public T TypeReference(TypeReferenceNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits type property members.
     /// </summary>
-    public virtual T Property(PropertyNode node) => throw new NotImplementedException();
+    public T Property(PropertyNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a method declaration.
     /// </summary>
-    public virtual T MethodDeclaration(MethodDeclarationNode node) => throw new NotImplementedException();
+    public T MethodDeclaration(MethodDeclarationNode node) => throw new NotImplementedException();
+    
+    /// <summary>
+    /// Visits an externed method mapping.
+    /// </summary>
+    public T ExternedMethodMapping(ExternedMethodNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits a method declaration.
     /// </summary>
-    public virtual T ConstructorDeclaration(ConstructorDeclarationNode node) => throw new NotImplementedException();
+    public T ConstructorDeclaration(ConstructorDeclarationNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a local variable.
     /// </summary>
-    public virtual T LocalVariable(LocalVariableDeclarationNode node) => throw new NotImplementedException();
+    public T LocalVariable(LocalVariableDeclarationNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a method call.
     /// </summary>
-    public virtual T MethodCall(MethodCallNode node) => throw new NotImplementedException();
+    public T MethodCall(MethodCallNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a variable assignment.
     /// </summary>
-    public virtual T VariableAssignment(VariableAssignmentNode node) => throw new NotImplementedException();
+    public T VariableAssignment(VariableAssignmentNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a tuple.
     /// </summary>
-    public virtual T Tuple(TupleNode node) => throw new NotImplementedException();
+    public T Tuple(TupleNode node) => throw new NotImplementedException();
     
     /// <summary>
     /// Visits an integer.
     /// </summary>
-    public virtual T Integer(IntegerNode node) => throw new NotImplementedException();
+    public T Integer(IntegerNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits a new class instance initializer.
     /// </summary>
-    public virtual T NewClassInstance(NewClassInitializerNode node) => throw new NotImplementedException();
+    public T NewClassInstance(NewClassInitializerNode node) => throw new NotImplementedException();
 
     /// <summary>
     /// Visits an array initializer.
     /// </summary>
-    public virtual T CreateArray(ArrayInitializerNode node) => throw new NotImplementedException();
+    public T CreateArray(ArrayInitializerNode node) => throw new NotImplementedException();
 }

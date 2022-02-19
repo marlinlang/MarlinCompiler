@@ -1,5 +1,7 @@
-﻿using MarlinCompiler.Common;
+﻿using System.Net.Http.Headers;
+using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Semantics;
 using MarlinCompiler.Common.Semantics.Symbols;
 using MarlinCompiler.Common.Visitors;
 
@@ -93,6 +95,12 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
             );
 
             node.MemberSymbol = member;
+
+            if (member != null)
+            {
+                // obviously owner isn't null if we have the member
+                node.MemberTable = BuildMemberTable(owner!, staticAccess);
+            }
 
             if (member == null)
             {
@@ -567,6 +575,16 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         throw new NotImplementedException();
     }
 
+    public Node ExternedTypeDefinition(ExternedTypeDefinitionNode node)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Node ExternedMethodMapping(ExternedMethodNode node)
+    {
+        throw new NotImplementedException();
+    }
+
     /// <summary>
     /// Utility method to get the symbol of a target of an indexable expression.
     /// </summary>
@@ -656,5 +674,40 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
             TypeReferenceSymbol tRef => tRef.Type?.Name ?? "<???>",
             _ => throw new NotImplementedException()
         };
+    }
+
+    /// <summary>
+    /// Builds a member table.
+    /// </summary>
+    private MemberTable BuildMemberTable(Symbol owner, bool isStaticAccess)
+    {
+        MemberTable table = new();
+        
+        if (owner is VariableSymbol variable)
+        {
+            TypeDeclarationSymbol? type = variable.Type?.Type;
+            if (type != null)
+            {
+                foreach (Symbol member in type.Children)
+                {
+                    switch (member)
+                    {
+                        case TypeDeclarationSymbol decl:
+                            table.Members.Add(new MemberTable.Member(decl, decl, decl.Name));
+                            break;
+                        case PropertyVariableSymbol prop when prop.Type?.Type != null:
+                            table.Members.Add(new MemberTable.Member(prop, prop.Type!.Type, prop.Name));
+                            break;
+                        case MethodDeclarationSymbol method when method.Type?.Type != null:
+                            table.Members.Add(new MemberTable.Member(method, method.Type!.Type, method.Name));
+                            break;
+                        default:
+                            throw new NotImplementedException();
+                    }
+                }
+            }
+        }
+
+        return table;
     }
 }

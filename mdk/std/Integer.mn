@@ -1,4 +1,4 @@
 ﻿module std;
 
 //@ Represents an integer.
-public extern struct Int32 @marlin_int32 {}
+public extern Int32 @marlin_int32 {}

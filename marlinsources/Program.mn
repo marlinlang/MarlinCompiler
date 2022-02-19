@@ -1,9 +1,5 @@
 ﻿module app;
 
-internal class Test {
-    public static void Test() {}
-}
-
 internal class Program {
     public void Main() {
         mut int a = 1;
