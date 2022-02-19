@@ -18,7 +18,10 @@ internal static class Program
         
         RootCommand command = new("Marlin Compiler")
         {
-            new Argument<string>("path", "The path to the file or directory for compilation"),
+            new Argument<string>(
+                "path",
+                "The path to the file or directory for compilation"
+            ),
             new Option(
                 "--verbose",
                 "Paths for errors will be absolute instead of relative"

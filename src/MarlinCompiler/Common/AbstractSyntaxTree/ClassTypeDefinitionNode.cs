@@ -19,7 +19,7 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     /// <summary>
     /// The type that is named by the generic type param
     /// </summary>
-    public TypeReferenceNode GenericType { get; set; }
+    public TypeReferenceNode? GenericType { get; set; }
 
     public TypeReferenceSymbol? BaseTypeSymbol { get; set; }
     

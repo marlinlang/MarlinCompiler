@@ -513,11 +513,17 @@ public sealed class FileParser
     /// </summary>
     private VariableNode ExpectLocalVariableDeclaration()
     {
+        bool mutable = _tokens.NextIsOfType(TokenType.Mutable);
+        if (mutable)
+        {
+            _tokens.Skip(); // mut
+        }
+        
         TypeReferenceNode type = ExpectTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ExpressionNode? value = null;
-        
+
         if (_tokens.NextIsOfType(TokenType.Assign))
         {
             _tokens.Skip(); // =
@@ -528,7 +534,9 @@ public sealed class FileParser
 
         return new LocalVariableDeclarationNode(
             type,
-            name, value
+            name,
+            mutable,
+            value
         ) { Location = nameToken.Location };
     }
 
@@ -552,6 +560,12 @@ public sealed class FileParser
         try
         {
             parser = CreateSubParser();
+
+            if (parser._tokens.NextIsOfType(TokenType.Mutable))
+            {
+                parser._tokens.Skip();
+            }
+            
             parser.ExpectTypeName(); // var type
             string name = parser.GrabNextByExpecting(TokenType.Identifier);
             if (parser.MessageCollection.HasFatalErrors) throw new FormatException();
@@ -592,17 +606,23 @@ public sealed class FileParser
     /// </summary>
     private VariableAssignmentNode ExpectVariableAssignment()
     {
-        TypeReferenceNode type = null;
-        if (_tokens.PeekToken(2).Type == TokenType.DoubleColon)
+        TypeReferenceNode? type = null;
+        if (_tokens.PeekToken(2)?.Type == TokenType.DoubleColon)
         {
             type = ExpectTypeName();
-            if (_tokens.PeekToken().Type == TokenType.Dot)
+
+            if (_tokens.PeekToken() == null)
+            {
+                throw new CancelParsingException("Premature EOF");
+            }
+            
+            if (_tokens.PeekToken()!.Type == TokenType.Dot)
             {
                 _tokens.Skip();
             }
             else
             {
-                throw new ParseException("Expected dot after type", _tokens.PeekToken());
+                throw new ParseException("Expected dot after type", _tokens.PeekToken()!);
             }
         }
         
@@ -618,17 +638,23 @@ public sealed class FileParser
     /// </summary>
     private MethodCallNode ExpectMethodCall()
     {
-        TypeReferenceNode type = null;
-        if (_tokens.PeekToken(2).Type == TokenType.DoubleColon)
+        TypeReferenceNode? type = null;
+        if ((_tokens.PeekToken(2) ?? throw new CancelParsingException("Premature EOF")).Type == TokenType.DoubleColon)
         {
             type = ExpectTypeName();
-            if (_tokens.PeekToken().Type == TokenType.Dot)
+
+            if (_tokens.PeekToken() == default)
+            {
+                throw new CancelParsingException("Premature EOF");
+            }
+            
+            if (_tokens.PeekToken()!.Type == TokenType.Dot)
             {
                 _tokens.Skip();
             }
             else
             {
-                throw new ParseException("Expected dot after type", _tokens.PeekToken());
+                throw new ParseException("Expected dot after type", _tokens.PeekToken()!);
             }
         }
         
@@ -674,21 +700,32 @@ public sealed class FileParser
             
             case TokenType.Identifier:
                 Token? peek = _tokens.PeekToken(2);
-                if (peek == null) throw new CancelParsingException("Expected expression, got EOF");
+                if (peek == default) throw new CancelParsingException("Expected expression, got EOF");
 
                 if (peek.Type == TokenType.DoubleColon)
                 {
                     // Check for method call
                     int current = 2;
-                    while (_tokens.PeekToken(current).Type == TokenType.DoubleColon)
+                    while ((_tokens.PeekToken(current) ?? throw new CancelParsingException("Expected expression, got EOF")).Type == TokenType.DoubleColon)
                     {
                         current += 2;
                     }
 
                     peek = _tokens.PeekToken(current);
+
+                    if (peek == default)
+                    {
+                        throw new CancelParsingException("Premature EOF");
+                    }
+                    
                     if (peek.Type == TokenType.Dot)
                     {
                         peek = _tokens.PeekToken(current + 2);
+
+                        if (peek == default)
+                        {
+                            throw new CancelParsingException("Expected expression, got EOF");
+                        }
 
                         if (peek.Type == TokenType.LeftParen)
                         {
@@ -1086,7 +1123,6 @@ public sealed class FileParser
         };
 
         string? genericName = null;
-        bool isArray = false;
 
         if (_tokens.NextIsOfType(TokenType.LeftAngle))
         {
@@ -1101,7 +1137,6 @@ public sealed class FileParser
         {
             _tokens.Skip();
             GrabNextByExpecting(TokenType.RightBracket);
-            isArray = true;
         }
         
         return new TypeReferenceNode(name) { Location = nameToken.Location };

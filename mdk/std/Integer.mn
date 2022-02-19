@@ -1,10 +1,6 @@
 ﻿module std;
 
-//@ Represents a signed 32-bit number. 
-public struct Integer
-{
-    //@ Must be first in the struct. Inserted by the compiler.
-    public int _value native;
+//@ Represents an integer.
+public extern struct Int32 @marlin_int32 {
     
-    private constructor() {}
 }

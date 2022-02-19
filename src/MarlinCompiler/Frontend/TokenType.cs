@@ -15,6 +15,7 @@ public enum TokenType
     Native,             // native
     Operator,           // operator
     Get, Set,           // get and set
+    Mutable,            // mut
     Modifier,           // public, private, protected, internal, static, readonly 
     
     // Numbers

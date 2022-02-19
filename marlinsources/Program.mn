@@ -1,11 +1,12 @@
 ﻿module app;
 
-internal class Program
-{
-    public void Main()
-    {
-        int a = 1;
+internal class Test {
+    public static void Test() {}
+}
+
+internal class Program {
+    public void Main() {
+        mut int a = 1;
         int b = 2;
-        std::Console.PrintLine();
     }
 }
