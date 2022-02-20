@@ -718,6 +718,7 @@ public sealed class Parser
     private Node ExpectStatement(bool insideLoop)
     {
         // Statements:
+        //   statement block
         //   local variable declaration         type identifier (assign expr)? semicolon
         //   variable assignment                (accessPath dot)? identifier assign expr semicolon
         //   method call                        (accessPath dot)? identifier tuple semicolon
@@ -725,7 +726,12 @@ public sealed class Parser
 
         Parser parser;
         
-        // Try statements
+
+        // Statement block
+        if (_tokens.NextIsOfType(TokenType.LeftBrace))
+        {
+            return ExpectStatementBody(insideLoop);
+        }
         
         // Variable declaration
         try

@@ -4,5 +4,6 @@ internal class Program {
     public void Main() {
         mut int a = 1;
         int b = 2;
+        {}
     }
 }
