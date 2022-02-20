@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Semantics;
+using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -8,6 +9,8 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 public class MemberAccessNode : IndexableExpressionNode
 {
     public string MemberName { get; }
+    
+    public Symbol? MemberSymbol { get; set; }
 
     public MemberAccessNode(string memberName)
     {

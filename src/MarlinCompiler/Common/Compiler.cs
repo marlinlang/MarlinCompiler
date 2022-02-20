@@ -98,11 +98,15 @@ public sealed class Compiler
             
             MessageCollection.AddRange(parser.MessageCollection);
         });
-        
-        // Combine roots of compilation units
-        foreach (CompilationUnitNode compilationUnit in compilationUnits)
+
+        foreach (CompilationUnitNode unit in compilationUnits)
         {
-            root.Children.AddRange(compilationUnit.Children);
+            foreach (ContainerNode child in unit)
+            {
+                root.Children.Add(child);
+                child.Scope!.Parent = root.Scope;
+                root.Scope.Add(child.Symbol!);
+            }
         }
 
         return root;
@@ -111,7 +115,7 @@ public sealed class Compiler
     private ContainerNode IntermediateCompilation(ContainerNode root)
     {
         SemanticAnalyzer analyzer = new();
-        // TODO: analyzer.Analyze(root);
+        analyzer.Visit(root);
         MessageCollection.AddRange(analyzer.MessageCollection);
         
         return root;

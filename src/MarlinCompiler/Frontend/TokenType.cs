@@ -12,7 +12,6 @@ public enum TokenType
     Constructor,        // constructor
     Using,              // using
     New,                // new
-    Native,             // native
     Operator,           // operator
     Get, Set,           // get and set
     Mutable,            // mut

@@ -2,20 +2,20 @@
 
 public class Scope
 {
-    private readonly Scope? _parent;
-    private readonly Dictionary<string, Symbol> _symbols;
-
+    public Scope? Parent { get; set; }
     public Symbol? ScopeInformation { get; set; }
+
+    private readonly Dictionary<string, Symbol> _symbols;
     
     public Scope()
     {
-        _parent = null;
+        Parent = null;
         _symbols = new Dictionary<string, Symbol>();
     }
 
     public Scope(Scope parent)
     {
-        _parent = parent;
+        Parent = parent;
         _symbols = new Dictionary<string, Symbol>();
     }
     
@@ -35,7 +35,7 @@ public class Scope
         // lookup in current or parent scope
         return _symbols.ContainsKey(name)
             ? _symbols[name]
-            : _parent?.Lookup(name);
+            : Parent?.Lookup(name);
     }
 
     /// <summary>
@@ -54,6 +54,14 @@ public class Scope
         catch (ArgumentException)
         {
             throw new SymbolAlreadyExistsException(name, _symbols[name]);
+        }
+    }
+
+    public void AddFrom(Scope scope)
+    {
+        foreach (Symbol symbol in scope._symbols.Values)
+        {
+            Add(symbol);
         }
     }
 }

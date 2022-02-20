@@ -2,8 +2,13 @@
 
 public enum SymbolKind
 {
+    Module,
+    ClassType,
+    StructType,
+    ExternedType,
     Variable,
     Method,
     StaticProperty,
     StaticMethod,
+    ExternedMethod,
 }

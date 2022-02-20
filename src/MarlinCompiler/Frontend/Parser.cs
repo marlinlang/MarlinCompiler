@@ -104,6 +104,9 @@ public sealed class Parser
         CompilationUnitNode node = new(name, dependencies);
         _scopeStack.Push(node.Scope = new Scope(_scopeStack.Peek()));
 
+        node.Symbol = new Symbol(name, "$$module$$", SymbolKind.Module);
+        node.Scope.ScopeInformation = node.Symbol;
+
         try
         {
             while (_tokens.HasNext)
@@ -125,7 +128,7 @@ public sealed class Parser
         }
         catch (CancelParsingException ex)
         {
-            MessageCollection.Info($"Parsing of {_path} cancelled: {ex.Message}");
+            MessageCollection.Info($"Parsing cancelled: {ex.Message}", new FileLocation(_path));
         }
 
         _scopeStack.Pop();
@@ -164,7 +167,7 @@ public sealed class Parser
         
         _scopeStack.Push(bodyNode.Scope = new Scope(_scopeStack.Peek()));
         
-        GrabNextByExpecting(TokenType.LeftBrace);
+        Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
             try
@@ -185,7 +188,7 @@ public sealed class Parser
                 LogErrorAndRecover(ex, true);
             }
         }
-        GrabNextByExpecting(TokenType.RightBrace);
+        Require(TokenType.RightBrace);
 
         _scopeStack.Pop();
 
@@ -202,7 +205,7 @@ public sealed class Parser
         
         _scopeStack.Push(bodyNode.Scope = new Scope(_scopeStack.Peek()));
         
-        GrabNextByExpecting(TokenType.LeftBrace);
+        Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
             try
@@ -224,7 +227,7 @@ public sealed class Parser
                 LogErrorAndRecover(ex, true);
             }
         }
-        GrabNextByExpecting(TokenType.RightBrace);
+        Require(TokenType.RightBrace);
 
         _scopeStack.Pop();
 
@@ -300,16 +303,27 @@ public sealed class Parser
         string mappedMethodName = GrabNextByExpecting(TokenType.Identifier);
         ExpressionNode[] passedArgs = GrabTupleValues();
 
-        RequireSemicolon();
-        
+        Require(TokenType.Semicolon);
+
+        GetAccessibility getAccessibility = VisibilityFromModifiers(modifiers);
+        bool isStatic = modifiers.Contains("static");
         return new ExternedMethodNode(
-            VisibilityFromModifiers(modifiers),
+            getAccessibility,
             type,
             name,
-            modifiers.Contains("static"),
+            isStatic,
             expectedArgs,
             passedArgs
-        ) { Location = nameToken.Location };
+        )
+        {
+            Location = nameToken.Location,
+            Symbol = new Symbol(name ?? "$$constructor$$", type.FullName, SymbolKind.ExternedMethod)
+            {
+                GetAccess = getAccessibility,
+                IsStatic = isStatic,
+                MethodSignature = GetSignature(expectedArgs)
+            }
+        };
     }
     
     /// <summary>
@@ -337,16 +351,31 @@ public sealed class Parser
         {
             baseClass = new TypeReferenceNode("std::Object") { Location = nameToken.Location };
         }
-        
+
+        string fullName = $"{_moduleName}::{name}";
+
+        bool isStatic = modifiers.Contains("static");
         ClassTypeDefinitionNode classNode = new(
             name,
             _moduleName,
             accessibility,
-            modifiers.Contains("static"),
+            isStatic,
             baseClass
-        ) { Location = nameToken.Location };
-        
-        classNode.Children.AddRange(ExpectTypeBody());
+        )
+        {
+            Location = nameToken.Location,
+            Symbol = new Symbol(fullName, fullName, SymbolKind.ClassType)
+            {
+                GetAccess = accessibility,
+                IsStatic = isStatic
+            }
+        };
+
+        ContainerNode typeBody = ExpectTypeBody();
+        typeBody.Scope!.ScopeInformation = classNode.Symbol;
+        classNode.Scope = typeBody.Scope;
+        classNode.Symbol.AttachedScope = classNode.Scope;
+        classNode.Children.AddRange(typeBody);
         
         return classNode;
     }
@@ -365,14 +394,27 @@ public sealed class Parser
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         
         ApplyModifierFilters(modifiers, nameToken, "public", "internal");
+
+        string fullName = $"{_moduleName}::{name}";
         
         StructTypeDefinitionNode structNode = new(
             name,
             _moduleName,
             accessibility
-        ) { Location = nameToken.Location };
+        )
+        {
+            Location = nameToken.Location,
+            Symbol = new Symbol(fullName, fullName, SymbolKind.StructType)
+            {
+                GetAccess = accessibility
+            }
+        };
         
-        structNode.Children.AddRange(ExpectTypeBody());
+        ContainerNode typeBody = ExpectTypeBody();
+        typeBody.Scope!.ScopeInformation = structNode.Symbol;
+        structNode.Scope = typeBody.Scope;
+        structNode.Symbol.AttachedScope = structNode.Scope;
+        structNode.Children.AddRange(typeBody);
         
         return structNode;
     }
@@ -390,8 +432,9 @@ public sealed class Parser
         string? llvmTypeName = null;
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
-
-        if (!modifiers.Contains("static"))
+        bool isStatic = modifiers.Contains("static");
+        
+        if (!isStatic)
         {
             if (_tokens.NextIsOfType(TokenType.At))
             {
@@ -406,14 +449,23 @@ public sealed class Parser
                 );
             }
         }
+
+        string fullName = $"{_moduleName}::{name}";
         
-        ExternedTypeDefinitionNode node = new(name, _moduleName, accessibility, llvmTypeName)
+        ExternedTypeDefinitionNode node = new(name, _moduleName, accessibility, isStatic, llvmTypeName)
         {
-            Location = nameToken.Location
+            Location = nameToken.Location,
+            Symbol = new Symbol(fullName, fullName, SymbolKind.ExternedType)
+            {
+                GetAccess = accessibility,
+                IsStatic = isStatic
+            }
         };
 
         ContainerNode body = ExpectExternTypeBody();
+        body.Scope!.ScopeInformation = node.Symbol;
         node.Scope = body.Scope;
+        node.Symbol.AttachedScope = node.Scope;
         node.Children.AddRange(body.Children);
 
         return node;
@@ -431,12 +483,26 @@ public sealed class Parser
         ApplyModifierFilters(modifiers, ctorToken, "public", "internal", "protected", "private");
         VariableNode[] args = GrabTupleTypeDefinition();
 
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        
         ConstructorDeclarationNode node = new(
-            VisibilityFromModifiers(modifiers),
+            accessibility,
             args
-        ) { Location = ctorToken.Location };
+        )
+        {
+            Location = ctorToken.Location,
+            Symbol = new Symbol("$$constructor$$", "std::Void", SymbolKind.Method)
+            {
+                GetAccess = accessibility,
+                IsStatic = false,
+                MethodSignature = GetSignature(args)
+            }
+        };
 
-        node.Children.AddRange(ExpectStatementBody(false));
+        ContainerNode body = ExpectStatementBody(false);
+        node.Scope = body.Scope;
+        node.Symbol.AttachedScope = node.Scope;
+        node.Children.AddRange(body);
 
         return node;
     }
@@ -453,20 +519,29 @@ public sealed class Parser
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
         VariableNode[] args = GrabTupleTypeDefinition();
 
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        bool isStatic = modifiers.Contains("static");
+        
         MethodDeclarationNode node = new(
-            VisibilityFromModifiers(modifiers),
+            accessibility,
             type,
             name,
-            modifiers.Contains("static"),
+            isStatic,
             args
         )
         {
             Location = nameToken.Location,
             Symbol = new Symbol(name, type.FullName, SymbolKind.Method)
+            {
+                GetAccess = accessibility,
+                IsStatic = isStatic,
+                MethodSignature = GetSignature(args)
+            }
         };
 
         ContainerNode body = ExpectStatementBody(false);
         node.Scope = body.Scope;
+        node.Symbol.AttachedScope = node.Scope;
         node.Children.AddRange(body.Children);
 
         return node;
@@ -480,9 +555,9 @@ public sealed class Parser
     {
         ContainerNode node = new();
         
-        _scopeStack.Push(node.Scope = new Scope());
+        _scopeStack.Push(node.Scope = new Scope(_scopeStack.Peek()));
         
-        GrabNextByExpecting(TokenType.LeftBrace);
+        Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
             try
@@ -505,7 +580,7 @@ public sealed class Parser
             }
         }
 
-        GrabNextByExpecting(TokenType.RightBrace);
+        Require(TokenType.RightBrace);
 
         _scopeStack.Pop();
 
@@ -520,7 +595,6 @@ public sealed class Parser
         string[] modifiers = GrabModifiers();
         TypeReferenceNode type = ExpectTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
-        bool isNative = false;
         Token nameToken = _tokens.CurrentToken;
         
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
@@ -528,12 +602,6 @@ public sealed class Parser
         SetAccessibility set = SetAccessibility.NoModify;
         ExpressionNode? value = null;
 
-        if (_tokens.NextIsOfType(TokenType.Native))
-        {
-            isNative = true;
-            _tokens.Skip(); // native
-        }
-        
         if (_tokens.NextIsOfType(TokenType.Arrow))
         {
             _tokens.Skip(); // ->
@@ -658,13 +726,13 @@ public sealed class Parser
             value = ExpectExpression();
         }
         
-        RequireSemicolon();
+        Require(TokenType.Semicolon);
 
+        bool isStatic = modifiers.Contains("static");
         return new PropertyNode(
             type,
             name,
-            modifiers.Contains("static"),
-            isNative,
+            isStatic,
             value,
             get,
             set
@@ -672,6 +740,11 @@ public sealed class Parser
         {
             Location = nameToken.Location,
             Symbol = new Symbol(name, type.FullName, SymbolKind.Variable)
+            {
+                GetAccess = get,
+                SetAccess = set,
+                IsStatic = isStatic
+            }
         };
     }
 
@@ -697,7 +770,7 @@ public sealed class Parser
             value = ExpectExpression();
         }
         
-        RequireSemicolon();
+        Require(TokenType.Semicolon);
 
         return new LocalVariableDeclarationNode(
             type,
@@ -708,6 +781,11 @@ public sealed class Parser
         {
             Location = nameToken.Location,
             Symbol = new Symbol(name, type.FullName, SymbolKind.Variable)
+            {
+                GetAccess = GetAccessibility.Private,
+                SetAccess = mutable ? SetAccessibility.Private : SetAccessibility.NoModify,
+                IsStatic = false
+            }
         };
     }
 
@@ -726,7 +804,6 @@ public sealed class Parser
 
         Parser parser;
         
-
         // Statement block
         if (_tokens.NextIsOfType(TokenType.LeftBrace))
         {
@@ -765,7 +842,7 @@ public sealed class Parser
 
             if (expr is MethodCallNode || expr is VariableAssignmentNode)
             {
-                RequireSemicolon();
+                Require(TokenType.Semicolon);
                 return expr;
             }
         }
@@ -783,26 +860,6 @@ public sealed class Parser
     /// </summary>
     private VariableAssignmentNode ExpectVariableAssignment()
     {
-        TypeReferenceNode? type = null;
-        if (_tokens.PeekToken(2)?.Type == TokenType.DoubleColon)
-        {
-            type = ExpectTypeName();
-
-            if (_tokens.PeekToken() == null)
-            {
-                throw new CancelParsingException("Premature EOF");
-            }
-            
-            if (_tokens.PeekToken()!.Type == TokenType.Dot)
-            {
-                _tokens.Skip();
-            }
-            else
-            {
-                throw new ParseException("Expected dot after type", _tokens.PeekToken()!);
-            }
-        }
-        
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         GrabNextByExpecting(TokenType.Assign);
@@ -815,26 +872,6 @@ public sealed class Parser
     /// </summary>
     private MethodCallNode ExpectMethodCall()
     {
-        TypeReferenceNode? type = null;
-        if ((_tokens.PeekToken(2) ?? throw new CancelParsingException("Premature EOF")).Type == TokenType.DoubleColon)
-        {
-            type = ExpectTypeName();
-
-            if (_tokens.PeekToken() == null)
-            {
-                throw new CancelParsingException("Premature EOF");
-            }
-            
-            if (_tokens.PeekToken()!.Type == TokenType.Dot)
-            {
-                _tokens.Skip();
-            }
-            else
-            {
-                throw new ParseException("Expected dot after type", _tokens.PeekToken()!);
-            }
-        }
-        
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ExpressionNode[] args = GrabTupleValues();
@@ -859,9 +896,9 @@ public sealed class Parser
         switch (next.Type)
         {
             case TokenType.LeftParen:
-                GrabNextByExpecting(TokenType.LeftParen);
+                Require(TokenType.LeftParen);
                 expr = ExpectExpression();
-                GrabNextByExpecting(TokenType.RightParen);
+                Require(TokenType.RightParen);
                 break;
 
             case TokenType.Integer:
@@ -881,56 +918,7 @@ public sealed class Parser
 
                 if (peek.Type == TokenType.DoubleColon)
                 {
-                    // Check for method call
-                    int current = 2;
-                    while ((_tokens.PeekToken(current) ?? throw new CancelParsingException("Expected expression, got EOF")).Type == TokenType.DoubleColon)
-                    {
-                        current += 2;
-                    }
-
-                    peek = _tokens.PeekToken(current);
-
-                    if (peek == null)
-                    {
-                        throw new CancelParsingException("Premature EOF");
-                    }
-                    
-                    if (peek.Type == TokenType.Dot)
-                    {
-                        peek = _tokens.PeekToken(current + 2);
-
-                        if (peek == null)
-                        {
-                            throw new CancelParsingException("Expected expression, got EOF");
-                        }
-
-                        if (peek.Type == TokenType.LeftParen)
-                        {
-                            expr = ExpectMethodCall();
-                        }
-                        else if (peek.Type == TokenType.Assign)
-                        {
-                            expr = ExpectVariableAssignment();
-                        }
-                        else
-                        {
-                            throw new ParseException(
-                                $"Expected method call or var assign, got {peek.Type}",
-                                peek
-                            );
-                        }
-                    }
-                    else if (peek.Type == TokenType.Assign)
-                    {
-                        expr = ExpectVariableAssignment();
-                    }
-                    else
-                    {
-                        throw new ParseException(
-                            $"Expected method call or var assign, got {peek.Type}",
-                            peek
-                        );
-                    }
+                    expr = ExpectTypeName();
                 }
                 else if (peek.Type == TokenType.LeftParen)
                 {
@@ -942,18 +930,11 @@ public sealed class Parser
                 }
                 else
                 {
-                    // Regular member access
-                    _tokens.Skip(); // the id
-                    expr = new MemberAccessNode(next.Value)
-                    {
-                        Location = next.Location
-                    };
-                    // use the id's value,
-                    // not the one of the next token
+                    expr = new MemberAccessNode(_tokens.GrabToken()!.Value) { Location = peek.Location };
                 }
-
+                
                 break;
-            
+
             default:
                 throw new ParseException($"Expected expression, got {next.Type}", next);
         }
@@ -1037,7 +1018,7 @@ public sealed class Parser
             // get length of array
             ExpressionNode length = ExpectExpression();
 
-            GrabNextByExpecting(TokenType.RightBracket);
+            Require(TokenType.RightBracket);
 
             return new ArrayInitializerNode(type, length) { Location = newKeyword.Location };
         }
@@ -1067,7 +1048,7 @@ public sealed class Parser
     /// </summary>
     private ExpressionNode[] GrabTupleValues()
     {
-        GrabNextByExpecting(TokenType.LeftParen);
+        Require(TokenType.LeftParen);
         List<ExpressionNode> expressions = new();
         
         while (!_tokens.NextIsOfType(TokenType.RightParen))
@@ -1093,7 +1074,7 @@ public sealed class Parser
             }
         }
         
-        GrabNextByExpecting(TokenType.RightParen);
+        Require(TokenType.RightParen);
 
         return expressions.ToArray();
     }
@@ -1105,7 +1086,7 @@ public sealed class Parser
     {
         List<VariableNode> vars = new();
 
-        GrabNextByExpecting(TokenType.LeftParen);
+        Require(TokenType.LeftParen);
         while (!_tokens.NextIsOfType(TokenType.RightParen))
         {
             TypeReferenceNode type = ExpectTypeName();
@@ -1135,7 +1116,7 @@ public sealed class Parser
                 throw new ParseException($"Expected comma or closing paren, got {peek}", peek);
             }
         }
-        GrabNextByExpecting(TokenType.RightParen);
+        Require(TokenType.RightParen);
 
         return vars.ToArray();
     }
@@ -1160,10 +1141,25 @@ public sealed class Parser
                 LogErrorAndRecover(ex, false);
             }
             
-            RequireSemicolon();
+            Require(TokenType.Semicolon);
         }
 
         return dependencies.ToArray();
+    }
+
+    /// <summary>
+    /// Utility method for building a method signature.
+    /// </summary>
+    private string[] GetSignature(VariableNode[] expectedArgs)
+    {
+        string[] arr = new string[expectedArgs.Length];
+
+        for (int i = 0; i < expectedArgs.Length; i++)
+        {
+            arr[i] = expectedArgs[i].Type.FullName;
+        }
+        
+        return arr;
     }
 
     /// <summary>
@@ -1219,7 +1215,7 @@ public sealed class Parser
             try
             {
                 name = GrabModuleName();
-                RequireSemicolon();
+                Require(TokenType.Semicolon);
             }
             catch (ParseException ex)
             {
@@ -1308,13 +1304,13 @@ public sealed class Parser
 
             genericName = GrabNextByExpecting(TokenType.Identifier);
             
-            GrabNextByExpecting(TokenType.RightAngle);
+            Require(TokenType.RightAngle);
         }
 
         if (_tokens.NextIsOfType(TokenType.LeftBracket) && allowArray)
         {
             _tokens.Skip();
-            GrabNextByExpecting(TokenType.RightBracket);
+            Require(TokenType.RightBracket);
         }
         
         return new TypeReferenceNode(name) { Location = nameToken.Location };
@@ -1352,17 +1348,20 @@ public sealed class Parser
     }
     
     /// <summary>
-    /// Utility method for requiring a semicolon.
+    /// Utility method for requiring a token.
     /// </summary>
-    private void RequireSemicolon()
+    private void Require(TokenType expected)
     {
-        if (_tokens.TryExpect(TokenType.Semicolon, out Token? fail))
+        if (_tokens.TryExpect(expected, out Token? fail))
         {
             _tokens.Skip();
         }
         else
         {
-            MessageCollection.Error("Expected semicolon", fail?.Location ?? new FileLocation(_path));
+            MessageCollection.Error(
+                $"Expected {expected}, got {fail?.ToString() ?? "EOF"}",
+                fail?.Location ?? _tokens.LastToken.Location
+            );
         }
     }
 

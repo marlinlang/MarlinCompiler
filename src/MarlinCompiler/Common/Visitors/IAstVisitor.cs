@@ -70,11 +70,6 @@ public interface IAstVisitor<T>
     public T VariableAssignment(VariableAssignmentNode node) => throw new NotImplementedException();
 
     /// <summary>
-    /// Visits a tuple.
-    /// </summary>
-    public T Tuple(TupleNode node) => throw new NotImplementedException();
-    
-    /// <summary>
     /// Visits an integer.
     /// </summary>
     public T Integer(IntegerNode node) => throw new NotImplementedException();

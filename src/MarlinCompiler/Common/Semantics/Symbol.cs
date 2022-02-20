@@ -26,10 +26,17 @@ public class Symbol
     
     #region Metadata
 
+    public Symbol? TypeSymbol { get; set; } = null;
+
+    /// <summary>
+    /// Used for symbols for types, etc.
+    /// </summary>
+    public Scope? AttachedScope { get; set; } = null;
+    
     public GetAccessibility GetAccess { get; set; } = GetAccessibility.Internal;
-    public SetAccessibility SetAccess { get; set; } = SetAccessibility.Internal;
+    public SetAccessibility SetAccess { get; set; } = SetAccessibility.NoModify;
     public bool IsStatic { get; set; } = false;
-    public string MethodSignature { get; set; } = "";
+    public string[] MethodSignature { get; set; } = Array.Empty<string>();
     
     #endregion
 
@@ -38,5 +45,10 @@ public class Symbol
         Name = name;
         Type = type;
         Kind = kind;
+    }
+
+    public override string ToString()
+    {
+        return $"<{Name}, {Type}, {Kind}>";
     }
 }

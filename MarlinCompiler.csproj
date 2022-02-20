@@ -23,4 +23,64 @@
       <Folder Include="src\MarlinCompiler\Backend" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\BinaryOperatorNode.cs">
+        <DependentUpon>ExpressionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\IndexableExpressionNode.cs">
+        <DependentUpon>ExpressionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\IntegerNode.cs">
+        <DependentUpon>ExpressionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\ArrayInitializerNode.cs">
+        <DependentUpon>InitializerNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\InitializerNode.cs">
+        <DependentUpon>ExpressionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\MemberAccessNode.cs">
+        <DependentUpon>ExpressionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\MethodCallNode.cs">
+        <DependentUpon>ExpressionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\NewClassInitializerNode.cs">
+        <DependentUpon>InitializerNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\TypeReferenceNode.cs">
+        <DependentUpon>ExpressionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\VariableAssignmentNode.cs">
+        <DependentUpon>ExpressionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\ConstructorDeclarationNode.cs">
+        <DependentUpon>ContainerNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\CompilationUnitNode.cs">
+        <DependentUpon>ContainerNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\ClassTypeDefinitionNode.cs">
+        <DependentUpon>TypeDefinitionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\TypeDefinitionNode.cs">
+        <DependentUpon>ContainerNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\ExternedTypeDefinitionNode.cs">
+        <DependentUpon>TypeDefinitionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\StructTypeDefinitionNode.cs">
+        <DependentUpon>TypeDefinitionNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\LocalVariableDeclarationNode.cs">
+        <DependentUpon>VariableNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\PropertyNode.cs">
+        <DependentUpon>VariableNode.cs</DependentUpon>
+      </Compile>
+      <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\MethodDeclarationNode.cs">
+        <DependentUpon>ContainerNode.cs</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
 </Project>
