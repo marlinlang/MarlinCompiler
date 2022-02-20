@@ -13,7 +13,7 @@ namespace MarlinCompiler.Frontend;
 /// - Grab... - method for getting non-nodes, e.g. a type name
 /// - Require... - method that adds an error if something is missing (e.g. semicolon)
 /// </summary>
-public sealed class FileParser
+public sealed class Parser
 {
     /// <summary>
     /// All parser messages.
@@ -67,13 +67,18 @@ public sealed class FileParser
     /// Constructor.
     /// </summary>
     /// <param name="filePath">Path to the source file. Used solely for error reporting.</param>
-    public FileParser(Tokens tokens, string filePath)
+    public Parser(Tokens tokens, string filePath, Scope? rootScope)
     {
         MessageCollection = new MessageCollection();
         _tokens = tokens;
         _path = filePath;
         _moduleName = "<global>";
         _scopeStack = new Stack<Scope>();
+
+        if (rootScope != null)
+        {
+            _scopeStack.Push(rootScope);
+        }
     }
     
     /// <summary>
@@ -97,7 +102,7 @@ public sealed class FileParser
         _moduleName = name;
 
         CompilationUnitNode node = new(name, dependencies);
-        _scopeStack.Push(node.Scope = new Scope());
+        _scopeStack.Push(node.Scope = new Scope(_scopeStack.Peek()));
 
         try
         {
@@ -235,7 +240,7 @@ public sealed class FileParser
         // We'll cheat: we'll make a new parser and a new Tokens instance
         // this way we can advance without really screwing up our own state
         // bonus: we can access all private methods!
-        FileParser tempParser = CreateSubParser();
+        Parser tempParser = CreateSubParser();
         
         // Type members are method declarations and property declarations
         // Both start off with modifiers, type name and then the name of the member
@@ -718,7 +723,7 @@ public sealed class FileParser
         //   method call                        (accessPath dot)? identifier tuple semicolon
         //   todo more
 
-        FileParser parser;
+        Parser parser;
         
         // Try statements
         
@@ -1377,9 +1382,9 @@ public sealed class FileParser
     /// possible ahead syntax without needing to backtrack.
     /// </summary>
     /// <remarks>Creating a new parser has its overhead. Use with caution.</remarks>
-    private FileParser CreateSubParser()
+    private Parser CreateSubParser()
     {
-        return new FileParser(new Tokens(_tokens), _path);
+        return new Parser(new Tokens(_tokens), _path, null);
     }
 
     /// <summary>
