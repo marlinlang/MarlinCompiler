@@ -6,9 +6,7 @@ internal static class Utils {
 
 internal class Program {
     public void Main() {
-        mut int a = 1;
-        int b = 2;
-        
-        app::Utils.Test = 1;
+        app::Utils x;
+        x.Test = 1;
     }
 }

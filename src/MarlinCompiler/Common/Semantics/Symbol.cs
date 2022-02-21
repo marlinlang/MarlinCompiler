@@ -32,6 +32,11 @@ public class Symbol
     /// Used for symbols for types, etc.
     /// </summary>
     public Scope? AttachedScope { get; set; } = null;
+
+    /// <summary>
+    /// For properties and methods, this is the symbol of the instance variable.
+    /// </summary>
+    public Symbol? AccessInstance { get; set; } = null;
     
     public GetAccessibility GetAccess { get; set; } = GetAccessibility.Internal;
     public SetAccessibility SetAccess { get; set; } = SetAccessibility.NoModify;
@@ -46,6 +51,23 @@ public class Symbol
         Type = type;
         Kind = kind;
     }
+
+    public static bool operator ==(Symbol? a, Symbol? b)
+    {
+        return a?.Equals(b) ?? (a is null && b is null); // ?? is necessary because of a
+    }
+
+    public static bool operator !=(Symbol? a, Symbol? b)
+    {
+        return !(a == b);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj != null && obj.GetHashCode() == GetHashCode();
+    }
+
+    public override int GetHashCode() => $"{ToString()};{GetAccess};{SetAccess};{IsStatic}".GetHashCode();
 
     public override string ToString()
     {

@@ -93,17 +93,18 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     {
         Scope owner = _currentScope;
         bool staticAccess = false;
-        
+
+        string variableType;
         if (node.Target != null)
         {
             Visit(node.Target);
 
             staticAccess = node.Target is TypeReferenceNode;
 
-            string type = GetNodeType(node);
-            if (type != "???")
+            variableType = node.Target?.Symbol?.Type ?? "???";
+            if (variableType != "???")
             {
-                Symbol? typeSymbol = owner.Lookup(type);
+                Symbol? typeSymbol = owner.Lookup(variableType);
                 if (typeSymbol != null)
                 {
                     owner = typeSymbol.AttachedScope ?? owner;
@@ -111,7 +112,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                 else
                 {
                     MessageCollection.Error(
-                        $"Cannot find parent of {node.Name}",
+                        $"Cannot find type {variableType}",
                         node.Location
                     );
                 }
@@ -124,10 +125,11 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                 );
             }
         }
+        
+        //node.Symbol = owner.Lookup(node.Name);
+        Symbol? var = owner.Lookup(node.Name);
 
-        node.Symbol = owner.Lookup(node.Name);
-
-        if (node.Symbol == null)
+        if (var == null)
         {
             MessageCollection.Error(
                 $"Cannot find variable {node.Name}",
@@ -137,6 +139,8 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         else
         {
             // TODO: Type checking
+            variableType = var.Type;
+            node.Symbol = new Symbol(node.Name, variableType, SymbolKind.VariableReference) { AccessInstance = var };
         }
 
         return node;
@@ -159,14 +163,12 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     {
         Scope owner = _currentScope;
         bool staticAccess = false;
-        
+
         if (node.Target != null)
         {
             Visit(node.Target);
 
-            staticAccess = node.Target is TypeReferenceNode;
-
-            string type = GetNodeType(node);
+            string type = node.Target?.Symbol?.Type ?? "???";
             if (type != "???")
             {
                 Symbol? typeSymbol = owner.Lookup(type);
@@ -177,17 +179,10 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
                 else
                 {
                     MessageCollection.Error(
-                        $"Cannot find parent of {node.MemberSymbol}",
+                        $"Cannot find type {type}",
                         node.Location
                     );
                 }
-            }
-            else
-            {
-                MessageCollection.Error(
-                    $"Cannot find parent of {node.MemberSymbol}",
-                    node.Location
-                );
             }
         }
 
@@ -196,7 +191,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         if (node.Symbol == null)
         {
             MessageCollection.Error(
-                $"Cannot find member {node.MemberName}",
+                $"Cannot find variable {node.MemberName}",
                 node.Location
             );
         }
@@ -215,10 +210,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         {
             ExternedMethodNode externedMethod => externedMethod.Type.FullName,
             InitializerNode initializer => initializer.Type.FullName,
-            MemberAccessNode memberAccess => memberAccess.MemberSymbol?.Type ?? "???",
-            MethodCallNode methodCall => methodCall.Symbol?.Type ?? "???",
             TypeReferenceNode typeReference => typeReference.FullName,
-            IndexableExpressionNode indexableExpression => indexableExpression.Symbol?.Type ?? "???",
             VariableNode variable => variable.Type.FullName,
             TypeDefinitionNode typeDefinition => $"{typeDefinition.ModuleName}::{typeDefinition.LocalName}",
             

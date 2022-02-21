@@ -7,6 +7,7 @@ public enum SymbolKind
     StructType,
     ExternedType,
     Variable,
+    VariableReference, // reference to var, must have AccessInstance to the variable
     Method,
     StaticProperty,
     StaticMethod,

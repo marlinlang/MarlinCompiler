@@ -55,12 +55,12 @@ public sealed class Compiler
     /// <returns>Program exit code.</returns>
     public int Compile()
     {
-        ContainerNode program = FrontendCompilation();
-        program = IntermediateCompilation(program);
+        ContainerNode program = Parse();
+        Analyze(program);
 
         if (!MessageCollection.HasFatalErrors)
         {
-            BackendCompilation(program);
+            Build(program);
         }
 
         PrintMessages();
@@ -75,10 +75,10 @@ public sealed class Compiler
     #region Compilation process
 
     /// <summary>
-    /// Performs lexing, parsing and semantic analysis on all the files. 
+    /// Performs lexing and parsing on all the files.
     /// </summary>
     /// <returns>The program under an unified node.</returns>
-    private ContainerNode FrontendCompilation()
+    private ContainerNode Parse()
     {
         ContainerNode root = new();
 
@@ -112,16 +112,21 @@ public sealed class Compiler
         return root;
     }
 
-    private ContainerNode IntermediateCompilation(ContainerNode root)
+    /// <summary>
+    /// Invokes the semantic analyzer for the given root.
+    /// </summary>
+    private void Analyze(ContainerNode root)
     {
         SemanticAnalyzer analyzer = new();
         analyzer.Visit(root);
         MessageCollection.AddRange(analyzer.MessageCollection);
-        
-        return root;
     }
     
-    private void BackendCompilation(ContainerNode program)
+    /// <summary>
+    /// Invokes LLVM tools to build the program.
+    /// </summary>
+    /// <param name="program"></param>
+    private void Build(ContainerNode program)
     {
     }
 
