@@ -1,14 +1,15 @@
 ﻿module app;
 
 internal static class Utils {
-    public int Test;
+    public static int Test;
+    public int Stuff;
 }
 
 internal class Program {
     public void Main() {
         app::Utils var;
         
-        var.Test = 98;
+        app::Utils.Test = var.Test;
         app::Utils.Test = 1;
     }
 }

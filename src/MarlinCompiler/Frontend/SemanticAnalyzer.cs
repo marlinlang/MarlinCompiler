@@ -107,7 +107,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     public Node VariableAssignment(VariableAssignmentNode node)
     {
         Scope owner = _currentScope;
-        bool staticAccess = false;
+        bool staticAccess = node.Target is TypeReferenceNode;
         
         if (node.Target != null)
         {
@@ -144,11 +144,11 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
             if (staticAccess && node.Symbol.Kind is not (SymbolKind.StaticMethod or SymbolKind.StaticProperty))
             {
                 MessageCollection.Error(
-                    "Attempted to access non-static value statically, use instance instead",
+                    $"Attempted to access non-static value {node.Name} statically, use instance instead",
                     node.Location
                 );
             }
-            else if (node.Symbol.Kind is SymbolKind.Method or SymbolKind.Variable && staticAccess)
+            else if (!staticAccess && node.Symbol.Kind is not (SymbolKind.Method or SymbolKind.Variable))
             {
                 MessageCollection.Error(
                     "Attempted to access static value non-statically, use type name instead",
@@ -184,7 +184,7 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     public Node MemberAccess(MemberAccessNode node)
     {
         Scope owner = _currentScope;
-        bool staticAccess = false;
+        bool staticAccess = node.Target is TypeReferenceNode;
         
         if (node.Target != null)
         {
@@ -208,9 +208,27 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         if (node.Symbol == null)
         {
             MessageCollection.Error(
-                $"Cannot find member {node.MemberName}",
+                $"Cannot find static variable {node.MemberName}",
                 node.Location
             );
+        }
+        else
+        {
+            // We have found the member
+            if (staticAccess && node.Symbol.Kind is not (SymbolKind.StaticMethod or SymbolKind.StaticProperty))
+            {
+                MessageCollection.Error(
+                    $"Attempted to access non-static value {node.MemberName} statically, use instance instead",
+                    node.Location
+                );
+            }
+            else if (!staticAccess && node.Symbol.Kind is not (SymbolKind.Method or SymbolKind.Variable))
+            {
+                MessageCollection.Error(
+                    "Attempted to access static value non-statically, use type name instead",
+                    node.Location
+                );
+            }
         }
 
         return node;

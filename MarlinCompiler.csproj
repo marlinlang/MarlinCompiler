@@ -81,6 +81,15 @@
       <Compile Update="src\MarlinCompiler\Common\AbstractSyntaxTree\MethodDeclarationNode.cs">
         <DependentUpon>ContainerNode.cs</DependentUpon>
       </Compile>
+      <Compile Remove="MarlinCompilerTests\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="MarlinCompilerTests\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="MarlinCompilerTests\**" />
     </ItemGroup>
 
 </Project>
