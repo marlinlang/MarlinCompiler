@@ -540,7 +540,8 @@ public sealed class Parser
         };
 
         ContainerNode body = ExpectStatementBody(false);
-        node.Scope = body.Scope;
+        node.Scope = body.Scope!;
+        node.Scope.ScopeInformation = node.Symbol;
         node.Symbol.AttachedScope = node.Scope;
         node.Children.AddRange(body.Children);
 
