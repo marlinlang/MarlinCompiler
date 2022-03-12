@@ -99,10 +99,10 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     {
         Visit(node.Type);
 
-        foreach (VariableNode arg in node.Args)
+        foreach (VariableNode arg in node.Parameters)
         {
             Visit(arg.Type);
-            if (node.Args.Count(x => x.Name == arg.Name) > 1)
+            if (node.Parameters.Count(x => x.Name == arg.Name) > 1)
             {
                 MessageCollection.Error($"Repeated argument name {arg.Name}", arg.Location);
             }
