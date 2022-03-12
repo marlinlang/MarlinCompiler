@@ -2,6 +2,9 @@
 
 namespace MarlinCompiler.Frontend;
 
+/// <summary>
+/// A list of tokens that you can traverse forwards.
+/// </summary>
 public class Tokens
 {
     /// <summary>
@@ -19,8 +22,15 @@ public class Tokens
     /// </summary>
     public Token CurrentToken => _tokens[Math.Clamp(_position, 0, _tokens.Length-1)];
 
+    /// <summary>
+    /// The internal list of tokens.
+    /// </summary>
     private readonly Token[] _tokens;
-    public int _position;
+    
+    /// <summary>
+    /// The current token position.
+    /// </summary>
+    private int _position;
 
     public Tokens(Token[] tokens)
     {
@@ -83,8 +93,7 @@ public class Tokens
     /// <remarks>Does NOT advance the token position.</remarks>
     /// </summary>
     /// <param name="toSkip">The token type to skip.</param>
-    /// <param name="skipAfter">After the skipped by toSkip tokens,
-    /// how many additional tokens to skip</param>
+    /// <param name="skipAfter">After the skipped by toSkip tokens, how many additional tokens to skip</param>
     /// <returns>The next non-skipped token or null for EOF</returns>
     public Token? PeekNextTokenBySkipping(TokenType toSkip, int skipAfter)
     {

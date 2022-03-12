@@ -4,19 +4,46 @@ using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Visitors;
 
-namespace MarlinCompiler.Intermediate;
+namespace MarlinCompiler.Frontend;
 
-public sealed class SemanticAnalyzer : IAstVisitor<Node>
+public sealed partial class SemanticAnalyzer : IAstVisitor<Node>
 {
     public SemanticAnalyzer()
     {
         MessageCollection = new MessageCollection();
     }
 
+    /// <summary>
+    /// A pass for the analyzer.
+    /// </summary>
+    private enum AnalyzerPass
+    {
+        DefineTypes,
+        DefineTypeMembers,
+        VisitTypeMembers
+    }
+
+    /// <summary>
+    /// A collection of the analyzer messages.
+    /// </summary>
     public MessageCollection MessageCollection { get; }
 
-    public void Visit(Node root)
+    /// <summary>
+    /// The current analyzer pass.
+    /// </summary>
+    private AnalyzerPass _pass;
+    
+    public void Analyze(Node root)
     {
-        return;
+        foreach (AnalyzerPass pass in Enum.GetValues<AnalyzerPass>())
+        {
+            _pass = pass;
+            Visit(root);
+        }
+    }
+    
+    public Node Visit(Node root)
+    {
+        return root.AcceptVisitor(this);
     }
 }

@@ -1,16 +1,6 @@
 ﻿module app;
 
-internal static class Utils {
-    public static int Test;
-    public int Stuff;
-    
-    public int MethodTest(int a, int a) {}
-}
-
 internal class Program {
     public void Main() {
-        app::Utils x;
-        x.Test = 1;
-        y.Test = 2;
     }
 }

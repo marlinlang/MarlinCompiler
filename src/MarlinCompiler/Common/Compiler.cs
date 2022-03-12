@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
+using MarlinCompiler.Backend;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
-using MarlinCompiler.Intermediate;
 using TokenType = MarlinCompiler.Frontend.TokenType;
 
 namespace MarlinCompiler.Common;
@@ -105,7 +105,7 @@ public sealed class Compiler
     private void Analyze(ContainerNode root)
     {
         SemanticAnalyzer analyzer = new();
-        analyzer.Visit(root);
+        analyzer.Analyze(root);
         MessageCollection.AddRange(analyzer.MessageCollection);
     }
     
@@ -115,6 +115,8 @@ public sealed class Compiler
     /// <param name="program"></param>
     private void Build(ContainerNode program)
     {
+        OutputBuilder builder = new(program, _rootPath);
+        builder.BuildLlvm();
     }
 
     #endregion

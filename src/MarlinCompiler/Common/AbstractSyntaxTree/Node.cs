@@ -13,6 +13,11 @@ public abstract class Node
     public FileLocation? Location { get; init; }
 
     /// <summary>
+    /// The metadata attached to this node.
+    /// </summary>
+    public NodeMetadata? Metadata { get; set; }
+    
+    /// <summary>
     /// Routes a visitor to the correct method on itself for this node type.
     /// </summary>
     public abstract T AcceptVisitor<T>(IAstVisitor<T> visitor);
