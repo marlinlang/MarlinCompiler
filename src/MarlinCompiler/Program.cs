@@ -35,13 +35,13 @@ internal static class Program
 
     private static int CompilationHandler(string path, bool verbose)
     {
-        Compiler compiler = new Compiler(path);
+        Compiler compiler = new(path);
         
         int returnCode = compiler.Compile();
         int msgCount = compiler.MessageCollection.Count();
-        bool passed = compiler.MessageCollection.HasFatalErrors;
+        bool fail = compiler.MessageCollection.HasFatalErrors;
         
-        Console.WriteLine($"Build {passed} with {msgCount} message{(msgCount == 1 ? "" : 's')}");
+        Console.WriteLine($"Build {(fail ? "failed" : "passed")} with {msgCount} message{(msgCount == 1 ? "" : 's')}");
         
         foreach (Message msg in compiler.MessageCollection)
         {

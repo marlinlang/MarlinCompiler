@@ -58,8 +58,8 @@ public sealed class Compiler
 
         // return code:
         //   no messages:               0
-        //   warnings/info messages:    100
-        //   fatal errors:              200
+        //   warnings/info messages:    1
+        //   fatal errors:              2
         return GetReturnCode();
     }
 
@@ -154,9 +154,9 @@ public sealed class Compiler
     private int GetReturnCode()
     {
         return MessageCollection.HasFatalErrors
-            ? -2
+            ? 2
             : MessageCollection.Count() > 0
-                ? -1
+                ? 1
                 : 0;
     }
 
