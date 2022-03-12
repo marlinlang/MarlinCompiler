@@ -126,7 +126,6 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
             }
         }
         
-        //node.Symbol = owner.Lookup(node.Name);
         Symbol? var = owner.Lookup(node.Name);
 
         if (var == null)
@@ -148,10 +147,14 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
 
     public Node ConstructorDeclaration(ConstructorDeclarationNode node)
     {
-        // TODO
+        node.Children.ForEach(VisitVoid);
+        
+        return node;
         
         return node;
     }
+    
+    
 
     public Node TypeReference(TypeReferenceNode node)
     {
