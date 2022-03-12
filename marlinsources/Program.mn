@@ -9,8 +9,14 @@ internal static class Utils {
 
 internal class Program {
     public void Main() {
+<<<<<<< Updated upstream
         app::Utils var;
         
         
+=======
+        app::Utils x;
+        x.Test = 1;
+        y.Test = 2;
+>>>>>>> Stashed changes
     }
 }

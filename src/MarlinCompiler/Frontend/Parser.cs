@@ -552,6 +552,7 @@ public sealed class Parser
     /// Expects a collection of statements surrounded by curly braces.
     /// </summary>
     /// <param name="insideLoop">Are we inside a loop? This enables continue and break statements.</param>
+    /// TODO Implement insideLoop
     private ContainerNode ExpectStatementBody(bool insideLoop)
     {
         ContainerNode node = new();
