@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
-using MarlinCompiler.Common.Semantics;
 using static MarlinCompiler.Frontend.Lexer;
 
 namespace MarlinCompiler.Frontend;
@@ -35,8 +34,6 @@ public sealed class Parser
     /// </summary>
     private string _moduleName;
 
-    private readonly Stack<Scope> _scopeStack;
-    
     /// <summary>
     /// An exception for parse errors.
     /// </summary>
@@ -67,18 +64,12 @@ public sealed class Parser
     /// Constructor.
     /// </summary>
     /// <param name="filePath">Path to the source file. Used solely for error reporting.</param>
-    public Parser(Tokens tokens, string filePath, Scope? rootScope)
+    public Parser(Tokens tokens, string filePath)
     {
         MessageCollection = new MessageCollection();
         _tokens = tokens;
         _path = filePath;
         _moduleName = "<global>";
-        _scopeStack = new Stack<Scope>();
-
-        if (rootScope != null)
-        {
-            _scopeStack.Push(rootScope);
-        }
     }
     
     /// <summary>
@@ -102,10 +93,6 @@ public sealed class Parser
         _moduleName = name;
 
         CompilationUnitNode node = new(name, dependencies);
-        _scopeStack.Push(node.Scope = new Scope(_scopeStack.Peek()));
-
-        node.Symbol = new Symbol(name, "$$module$$", SymbolKind.Module);
-        node.Scope.ScopeInformation = node.Symbol;
 
         try
         {
@@ -130,8 +117,6 @@ public sealed class Parser
         {
             MessageCollection.Info($"Parsing cancelled: {ex.Message}", new FileLocation(_path));
         }
-
-        _scopeStack.Pop();
 
         return node;
     }
@@ -165,8 +150,6 @@ public sealed class Parser
     {
         ContainerNode bodyNode = new();
         
-        _scopeStack.Push(bodyNode.Scope = new Scope(_scopeStack.Peek()));
-        
         Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
@@ -175,11 +158,6 @@ public sealed class Parser
                 Node child = ExpectTypeMember();
                 if (child != null)
                 {
-                    if (child.Symbol != null)
-                    {
-                        bodyNode.Scope.Add(child.Symbol);
-                    }
-                    
                     bodyNode.Children.Add(child);
                 }
             }
@@ -189,8 +167,6 @@ public sealed class Parser
             }
         }
         Require(TokenType.RightBrace);
-
-        _scopeStack.Pop();
 
         return bodyNode;
     }
@@ -203,8 +179,6 @@ public sealed class Parser
     {
         ContainerNode bodyNode = new();
         
-        _scopeStack.Push(bodyNode.Scope = new Scope(_scopeStack.Peek()));
-        
         Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
@@ -214,11 +188,6 @@ public sealed class Parser
                 
                 if (child != null)
                 {
-                    if (child.Symbol != null)
-                    {
-                        bodyNode.Scope.Add(child.Symbol);
-                    }
-                    
                     bodyNode.Children.Add(child);
                 }
             }
@@ -228,8 +197,6 @@ public sealed class Parser
             }
         }
         Require(TokenType.RightBrace);
-
-        _scopeStack.Pop();
 
         return bodyNode;
     }
@@ -316,13 +283,7 @@ public sealed class Parser
             passedArgs
         )
         {
-            Location = nameToken.Location,
-            Symbol = new Symbol(name ?? "$$constructor$$", type.FullName, SymbolKind.ExternedMethod)
-            {
-                GetAccess = getAccessibility,
-                IsStatic = isStatic,
-                MethodSignature = GetSignature(expectedArgs)
-            }
+            Location = nameToken.Location
         };
     }
     
@@ -364,17 +325,10 @@ public sealed class Parser
         )
         {
             Location = nameToken.Location,
-            Symbol = new Symbol(fullName, fullName, SymbolKind.ClassType)
-            {
-                GetAccess = accessibility,
-                IsStatic = isStatic
-            }
         };
 
+        // Add type body
         ContainerNode typeBody = ExpectTypeBody();
-        typeBody.Scope!.ScopeInformation = classNode.Symbol;
-        classNode.Scope = typeBody.Scope;
-        classNode.Symbol.AttachedScope = classNode.Scope;
         classNode.Children.AddRange(typeBody);
         
         return classNode;
@@ -403,17 +357,11 @@ public sealed class Parser
             accessibility
         )
         {
-            Location = nameToken.Location,
-            Symbol = new Symbol(fullName, fullName, SymbolKind.StructType)
-            {
-                GetAccess = accessibility
-            }
+            Location = nameToken.Location
         };
         
+        // Type body
         ContainerNode typeBody = ExpectTypeBody();
-        typeBody.Scope!.ScopeInformation = structNode.Symbol;
-        structNode.Scope = typeBody.Scope;
-        structNode.Symbol.AttachedScope = structNode.Scope;
         structNode.Children.AddRange(typeBody);
         
         return structNode;
@@ -454,18 +402,11 @@ public sealed class Parser
         
         ExternedTypeDefinitionNode node = new(name, _moduleName, accessibility, isStatic, llvmTypeName)
         {
-            Location = nameToken.Location,
-            Symbol = new Symbol(fullName, fullName, SymbolKind.ExternedType)
-            {
-                GetAccess = accessibility,
-                IsStatic = isStatic
-            }
+            Location = nameToken.Location
         };
 
+        // Type body
         ContainerNode body = ExpectExternTypeBody();
-        body.Scope!.ScopeInformation = node.Symbol;
-        node.Scope = body.Scope;
-        node.Symbol.AttachedScope = node.Scope;
         node.Children.AddRange(body.Children);
 
         return node;
@@ -490,18 +431,11 @@ public sealed class Parser
             args
         )
         {
-            Location = ctorToken.Location,
-            Symbol = new Symbol("$$constructor$$", "std::Void", SymbolKind.Method)
-            {
-                GetAccess = accessibility,
-                IsStatic = false,
-                MethodSignature = GetSignature(args)
-            }
+            Location = ctorToken.Location
         };
 
+        // Body!!!
         ContainerNode body = ExpectStatementBody(false);
-        node.Scope = body.Scope;
-        node.Symbol.AttachedScope = node.Scope;
         node.Children.AddRange(body);
 
         return node;
@@ -530,19 +464,11 @@ public sealed class Parser
             args
         )
         {
-            Location = nameToken.Location,
-            Symbol = new Symbol(name, type.FullName, SymbolKind.Method)
-            {
-                GetAccess = accessibility,
-                IsStatic = isStatic,
-                MethodSignature = GetSignature(args)
-            }
+            Location = nameToken.Location
         };
 
+        // Body!!!!
         ContainerNode body = ExpectStatementBody(false);
-        node.Scope = body.Scope!;
-        node.Scope.ScopeInformation = node.Symbol;
-        node.Symbol.AttachedScope = node.Scope;
         node.Children.AddRange(body.Children);
 
         return node;
@@ -557,8 +483,6 @@ public sealed class Parser
     {
         ContainerNode node = new();
         
-        _scopeStack.Push(node.Scope = new Scope(_scopeStack.Peek()));
-        
         Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
@@ -568,11 +492,6 @@ public sealed class Parser
 
                 if (child != null)
                 {
-                    if (child.Symbol != null)
-                    {
-                        node.Scope.Add(child.Symbol);
-                    }
-
                     node.Children.Add(child);
                 }
             }
@@ -583,8 +502,6 @@ public sealed class Parser
         }
 
         Require(TokenType.RightBrace);
-
-        _scopeStack.Pop();
 
         return node;
     }
@@ -740,13 +657,7 @@ public sealed class Parser
             set
         )
         {
-            Location = nameToken.Location,
-            Symbol = new Symbol(name, type.FullName, isStatic ? SymbolKind.StaticProperty : SymbolKind.Variable)
-            {
-                GetAccess = get,
-                SetAccess = set,
-                IsStatic = isStatic
-            }
+            Location = nameToken.Location
         };
     }
 
@@ -781,13 +692,7 @@ public sealed class Parser
             value
         )
         {
-            Location = nameToken.Location,
-            Symbol = new Symbol(name, type.FullName, SymbolKind.Variable)
-            {
-                GetAccess = GetAccessibility.Private,
-                SetAccess = mutable ? SetAccessibility.Private : SetAccessibility.NoModify,
-                IsStatic = false
-            }
+            Location = nameToken.Location
         };
     }
 
@@ -1391,7 +1296,7 @@ public sealed class Parser
     /// <remarks>Creating a new parser has its overhead. Use with caution.</remarks>
     private Parser CreateSubParser()
     {
-        return new Parser(new Tokens(_tokens), _path, null);
+        return new Parser(new Tokens(_tokens), _path);
     }
 
     /// <summary>

@@ -1,5 +1,4 @@
-﻿using MarlinCompiler.Common.Semantics;
-using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -13,11 +12,6 @@ public abstract class Node
     /// </summary>
     public FileLocation? Location { get; init; }
 
-    /// <summary>
-    /// The symbol for this node.
-    /// </summary>
-    public Symbol? Symbol { get; set; }
-    
     /// <summary>
     /// Routes a visitor to the correct method on itself for this node type.
     /// </summary>

@@ -1,7 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using MarlinCompiler.Common.AbstractSyntaxTree;
-using MarlinCompiler.Common.Semantics;
 using MarlinCompiler.Frontend;
 using MarlinCompiler.Intermediate;
 using TokenType = MarlinCompiler.Frontend.TokenType;
@@ -73,14 +72,12 @@ public sealed class Compiler
     private ContainerNode Parse()
     {
         ContainerNode root = new();
-
-        root.Scope = new Scope();
         
         ConcurrentBag<CompilationUnitNode> compilationUnits = new();
 
         Parallel.ForEach(_filePaths, path =>
         {
-            Parser parser = new(Lex(path), path, root.Scope);
+            Parser parser = new(Lex(path), path);
             
             CompilationUnitNode unit = parser.Parse();
             if (unit != null)
@@ -96,8 +93,6 @@ public sealed class Compiler
             foreach (ContainerNode child in unit)
             {
                 root.Children.Add(child);
-                child.Scope!.Parent = root.Scope;
-                root.Scope.Add(child.Symbol!);
             }
         }
 

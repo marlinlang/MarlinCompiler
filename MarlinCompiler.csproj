@@ -21,6 +21,7 @@
 
     <ItemGroup>
       <Folder Include="src\MarlinCompiler\Backend" />
+      <Folder Include="src\MarlinCompiler\Common\Semantics" />
     </ItemGroup>
 
 </Project>

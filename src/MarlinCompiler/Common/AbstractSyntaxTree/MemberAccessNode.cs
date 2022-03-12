@@ -1,5 +1,4 @@
-﻿using MarlinCompiler.Common.Semantics;
-using MarlinCompiler.Common.Visitors;
+﻿using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
