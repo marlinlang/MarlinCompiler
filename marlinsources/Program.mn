@@ -3,13 +3,14 @@
 internal static class Utils {
     public static int Test;
     public int Stuff;
+    
+    public int MethodTest(int a, int a) {}
 }
 
 internal class Program {
     public void Main() {
         app::Utils var;
         
-        app::Utils.Test = var.Test;
-        app::Utils.Test = 1;
+        
     }
 }
