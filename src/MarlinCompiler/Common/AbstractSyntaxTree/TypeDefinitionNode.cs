@@ -7,6 +7,13 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class TypeDefinitionNode : ContainerNode
 {
+    public TypeDefinitionNode(string name, string module, GetAccessibility accessibility)
+    {
+        LocalName = name;
+        ModuleName = module;
+        Accessibility = accessibility;
+    }
+    
     /// <summary>
     /// The name of the type without the module path.
     /// E.g., Console instead of std::Console
@@ -22,13 +29,6 @@ public class TypeDefinitionNode : ContainerNode
     /// The accessibility of the type.
     /// </summary>
     public GetAccessibility Accessibility { get; }
-    
-    public TypeDefinitionNode(string name, string module, GetAccessibility accessibility)
-    {
-        LocalName = name;
-        ModuleName = module;
-        Accessibility = accessibility;
-    }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
         => throw new InvalidOperationException($"Cannot visit TypeDefinitions directly. Use subclasses.");

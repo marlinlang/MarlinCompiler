@@ -8,16 +8,16 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class ContainerNode : Node, IEnumerable<Node>
 {
-    /// <summary>
-    /// The children of the node.
-    /// </summary>
-    public List<Node> Children { get; }
-
     public ContainerNode()
     {
         Children = new List<Node>();
     }
     
+    /// <summary>
+    /// The children of the node.
+    /// </summary>
+    public List<Node> Children { get; }
+
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {
         foreach (Node node in Children)

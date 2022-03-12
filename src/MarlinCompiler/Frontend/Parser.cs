@@ -15,6 +15,18 @@ namespace MarlinCompiler.Frontend;
 public sealed class Parser
 {
     /// <summary>
+    /// Constructor.
+    /// </summary>
+    /// <param name="filePath">Path to the source file. Used solely for error reporting.</param>
+    public Parser(Tokens tokens, string filePath)
+    {
+        MessageCollection = new MessageCollection();
+        _tokens = tokens;
+        _path = filePath;
+        _moduleName = "<global>";
+    }
+    
+    /// <summary>
     /// All parser messages.
     /// </summary>
     public MessageCollection MessageCollection { get; }
@@ -59,19 +71,7 @@ public sealed class Parser
         {
         }
     }
-    
-    /// <summary>
-    /// Constructor.
-    /// </summary>
-    /// <param name="filePath">Path to the source file. Used solely for error reporting.</param>
-    public Parser(Tokens tokens, string filePath)
-    {
-        MessageCollection = new MessageCollection();
-        _tokens = tokens;
-        _path = filePath;
-        _moduleName = "<global>";
-    }
-    
+
     /// <summary>
     /// Starts the parse operation.
     /// </summary>

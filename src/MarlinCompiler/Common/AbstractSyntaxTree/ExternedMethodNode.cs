@@ -7,6 +7,17 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class ExternedMethodNode : Node
 {
+    public ExternedMethodNode(GetAccessibility accessibility, TypeReferenceNode type, string? name, bool isStatic,
+        VariableNode[] expectedArgs, ExpressionNode[] passedArgs)
+    {
+        Accessibility = accessibility;
+        Type = type;
+        Name = name;
+        IsStatic = isStatic;
+        ExpectedArgs = expectedArgs;
+        PassedArgs = passedArgs;
+    }
+    
     public GetAccessibility Accessibility { get; }
     public TypeReferenceNode Type { get; }
     
@@ -18,17 +29,6 @@ public class ExternedMethodNode : Node
     public bool IsStatic { get; }
     public VariableNode[] ExpectedArgs { get; }
     public ExpressionNode[] PassedArgs { get; }
-    
-    public ExternedMethodNode(GetAccessibility accessibility, TypeReferenceNode type, string? name, bool isStatic,
-        VariableNode[] expectedArgs, ExpressionNode[] passedArgs)
-    {
-        Accessibility = accessibility;
-        Type = type;
-        Name = name;
-        IsStatic = isStatic;
-        ExpectedArgs = expectedArgs;
-        PassedArgs = passedArgs;
-    }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {

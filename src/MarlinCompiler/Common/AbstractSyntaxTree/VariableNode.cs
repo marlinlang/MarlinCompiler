@@ -7,16 +7,16 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class VariableNode : Node
 {
-    public TypeReferenceNode Type { get; }
-    public string Name { get; }
-    public ExpressionNode? Value { get; }
-
     public VariableNode(TypeReferenceNode type, string name, ExpressionNode? value)
     {
         Type = type;
         Name = name;
         Value = value;
     }
+    
+    public TypeReferenceNode Type { get; }
+    public string Name { get; }
+    public ExpressionNode? Value { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {

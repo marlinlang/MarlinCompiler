@@ -7,12 +7,12 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public sealed class TypeReferenceNode : IndexableExpressionNode
 {
-    public string FullName { get; set; }
-    
     public TypeReferenceNode(string fullName)
     {
         FullName = fullName;
     }
+    
+    public string FullName { get; set; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {

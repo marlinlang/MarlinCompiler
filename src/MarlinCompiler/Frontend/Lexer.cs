@@ -10,6 +10,19 @@ namespace MarlinCompiler.Frontend;
 public sealed class Lexer
 {
     /// <summary>
+    /// Constructor.
+    /// </summary>
+    /// <param name="source">The text to parse.</param>
+    /// <param name="filePath">The file path of the text. Only used for error reporting.</param>
+    public Lexer(string source, string filePath)
+    {
+        _parseContent = new StringBuilder(source.Trim());
+        _filePath = filePath;
+        _startingContent = source;
+        _startingLength = source.Length;
+    }
+    
+    /// <summary>
     /// A representation of a token.
     /// </summary>
     public record Token(TokenType Type, string Value, FileLocation Location)
@@ -129,19 +142,6 @@ public sealed class Lexer
 
             return new FileLocation(_filePath, line, col);
         }
-    }
-    
-    /// <summary>
-    /// Constructor.
-    /// </summary>
-    /// <param name="source">The text to parse.</param>
-    /// <param name="filePath">The file path of the text. Only used for error reporting.</param>
-    public Lexer(string source, string filePath)
-    {
-        _parseContent = new StringBuilder(source.Trim());
-        _filePath = filePath;
-        _startingContent = source;
-        _startingLength = source.Length;
     }
 
     public Token[] Lex()

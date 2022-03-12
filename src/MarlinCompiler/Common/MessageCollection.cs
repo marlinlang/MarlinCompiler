@@ -9,14 +9,14 @@ namespace MarlinCompiler.Common;
 /// </summary>
 public class MessageCollection : IEnumerable<Message>
 {
-    private ConcurrentBag<Message> _messages;
-
-    public bool HasFatalErrors => _messages.Any(x => x.Fatality == MessageFatality.Severe);
-
     public MessageCollection()
     {
         _messages = new ConcurrentBag<Message>();
     }
+    
+    private ConcurrentBag<Message> _messages;
+
+    public bool HasFatalErrors => _messages.Any(x => x.Fatality == MessageFatality.Severe);
 
     public void Error(string message, FileLocation? location = null)
     {

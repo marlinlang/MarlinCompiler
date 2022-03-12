@@ -19,9 +19,4 @@
       <PackageReference Include="Ubiquity.NET.Llvm" Version="10.0.0" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="src\MarlinCompiler\Backend" />
-      <Folder Include="src\MarlinCompiler\Common\Semantics" />
-    </ItemGroup>
-
 </Project>

@@ -4,12 +4,12 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
 public class IntegerNode : ExpressionNode
 {
-    public int Value { get; }
-
     public IntegerNode(int value)
     {
         Value = value;
     }
+    
+    public int Value { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {

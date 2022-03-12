@@ -7,6 +7,12 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class ClassTypeDefinitionNode : TypeDefinitionNode
 {
+    public ClassTypeDefinitionNode(string name, string module, GetAccessibility accessibility,
+        bool isStatic, TypeReferenceNode? baseType) : base(name, module, accessibility)
+    {
+        BaseType = baseType;
+    }
+    
     /// <summary>
     /// The type that this class inherits from, incl. module path 
     /// </summary>
@@ -19,12 +25,6 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     /// The type that is named by the generic type param
     /// </summary>
     public TypeReferenceNode? GenericType { get; set; }
-
-    public ClassTypeDefinitionNode(string name, string module, GetAccessibility accessibility,
-        bool isStatic, TypeReferenceNode? baseType) : base(name, module, accessibility)
-    {
-        BaseType = baseType;
-    }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {

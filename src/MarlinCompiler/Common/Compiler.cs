@@ -12,21 +12,6 @@ namespace MarlinCompiler.Common;
 /// </summary>
 public sealed class Compiler
 {
-    /// <summary>
-    /// All compilation messages.
-    /// </summary>
-    public MessageCollection MessageCollection { get; }
-
-    /// <summary>
-    /// Internal list of file paths for compilation.
-    /// </summary>
-    private readonly List<string> _filePaths;
-
-    /// <summary>
-    /// The root path of the project.
-    /// </summary>
-    private readonly string _rootPath;
-
     public Compiler(string root)
     {
         _rootPath = Path.GetFullPath(root);
@@ -41,6 +26,21 @@ public sealed class Compiler
         
         LoadFilePaths(root);
     }
+    
+    /// <summary>
+    /// All compilation messages.
+    /// </summary>
+    public MessageCollection MessageCollection { get; }
+
+    /// <summary>
+    /// Internal list of file paths for compilation.
+    /// </summary>
+    private readonly List<string> _filePaths;
+
+    /// <summary>
+    /// The root path of the project.
+    /// </summary>
+    private readonly string _rootPath;
 
     /// <summary>
     /// Method for starting the compilation process.

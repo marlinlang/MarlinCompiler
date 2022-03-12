@@ -7,12 +7,12 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class MemberAccessNode : IndexableExpressionNode
 {
-    public string MemberName { get; }
-    
     public MemberAccessNode(string memberName)
     {
         MemberName = memberName;
     }
+    
+    public string MemberName { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {

@@ -7,12 +7,12 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public sealed class NewClassInitializerNode : InitializerNode
 {
-    public ExpressionNode[] ConstructorArgs { get; }
-    
     public NewClassInitializerNode(TypeReferenceNode type, ExpressionNode[] ctorArgs) : base(type)
     {
         ConstructorArgs = ctorArgs;
     }
+    
+    public ExpressionNode[] ConstructorArgs { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {
