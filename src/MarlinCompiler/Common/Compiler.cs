@@ -19,11 +19,6 @@ public sealed class Compiler
     public MessageCollection MessageCollection { get; }
 
     /// <summary>
-    /// The options for this compilation.
-    /// </summary>
-    private readonly CompilationOptions _options;
-    
-    /// <summary>
     /// Internal list of file paths for compilation.
     /// </summary>
     private readonly List<string> _filePaths;
@@ -33,10 +28,9 @@ public sealed class Compiler
     /// </summary>
     private readonly string _rootPath;
 
-    public Compiler(string root, CompilationOptions options)
+    public Compiler(string root)
     {
         _rootPath = Path.GetFullPath(root);
-        _options = options;
         MessageCollection = new MessageCollection();
         _filePaths = new List<string>();
 
@@ -62,8 +56,6 @@ public sealed class Compiler
         {
             Build(program);
         }
-
-        PrintMessages();
 
         // return code:
         //   no messages:               0
@@ -167,57 +159,10 @@ public sealed class Compiler
     private int GetReturnCode()
     {
         return MessageCollection.HasFatalErrors
-            ? 200
+            ? -2
             : MessageCollection.Count() > 0
-                ? 100
+                ? -1
                 : 0;
-    }
-
-    /// <summary>
-    /// Prints the MessageCollection to the console.
-    /// </summary>
-    private void PrintMessages()
-    {
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
-        
-        foreach (Message msg in MessageCollection)
-        {
-            Console.ForegroundColor = msg.PrintColor;
-
-            string location = (msg.Location?.ToString() + ": ") ?? "";
-            if (!_options.HasFlag(CompilationOptions.UseAbsolutePaths))
-            {
-                // Truncate paths
-                if (location.StartsWith(_rootPath))
-                {
-                    location = location.Substring(_rootPath.Length);
-                }
-            }
-            
-            Console.WriteLine(location + msg.Fatality switch
-                              {
-                                  MessageFatality.Severe => "error",
-                                  MessageFatality.Warning => "warn",
-                                  MessageFatality.Information => "info",
-                                  _ => throw new InvalidOperationException()
-                              }
-                              + ": " + msg.Content);
-        }
-
-        string failedPassed = MessageCollection.HasFatalErrors ? "failed" : "successful";
-        Console.ForegroundColor = MessageCollection.HasFatalErrors ? ConsoleColor.Red : ConsoleColor.Green;
-        int count = MessageCollection.Count();
-        if (count > 0)
-        {
-            Console.WriteLine();
-            Console.WriteLine($"Build {failedPassed} with {count} message{(count == 1 ? "" : 's')}");
-        }
-        else
-        {
-            Console.WriteLine($"Build {failedPassed} with no messages");
-        }
-        
-        Console.ResetColor();
     }
 
     /// <summary>

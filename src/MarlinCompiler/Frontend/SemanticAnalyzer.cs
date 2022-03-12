@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Data;
+using System.Net.Http.Headers;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Semantics;
@@ -71,6 +72,20 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     public Node LocalVariable(LocalVariableDeclarationNode node)
     {
         Visit(node.Type);
+
+        string typeName = GetNodeType(node.Type);
+        Symbol? typeSymbol = _currentScope.Lookup(typeName);
+
+        node.Symbol!.AttachedScope = new Scope();
+
+        if (typeSymbol == null)
+        {
+            MessageCollection.Error($"Unknown type {typeName}", node.Location);
+        }
+        else
+        {
+            node.Symbol.AttachedScope.AddFrom(typeSymbol.AttachedScope!);
+        }
         
         if (node.Value != null)
         {
@@ -84,6 +99,15 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     {
         Visit(node.Type);
 
+        foreach (VariableNode arg in node.Args)
+        {
+            Visit(arg.Type);
+            if (node.Args.Count(x => x.Name == arg.Name) > 1)
+            {
+                MessageCollection.Error($"Repeated argument name {arg.Name}", arg.Location);
+            }
+        }
+
         node.Children.ForEach(VisitVoid);
         
         return node;
@@ -92,43 +116,28 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     public Node VariableAssignment(VariableAssignmentNode node)
     {
         Scope owner = _currentScope;
-        bool staticAccess = false;
-
-        string variableType;
+        bool staticAccess = node.Target is TypeReferenceNode;
+        
         if (node.Target != null)
         {
             Visit(node.Target);
 
-            staticAccess = node.Target is TypeReferenceNode;
-
-            variableType = node.Target?.Symbol?.Type ?? "???";
-            if (variableType != "???")
+            if (node.Target.Symbol == null)
             {
-                Symbol? typeSymbol = owner.Lookup(variableType);
-                if (typeSymbol != null)
-                {
-                    owner = typeSymbol.AttachedScope ?? owner;
-                }
-                else
-                {
-                    MessageCollection.Error(
-                        $"Cannot find type {variableType}",
-                        node.Location
-                    );
-                }
+                throw new NoNullAllowedException("Target symbol mustn't be null.");
             }
-            else
+            
+            if (node.Target.Symbol.AttachedScope == null)
             {
-                MessageCollection.Error(
-                    $"Cannot find parent of {node.Name}",
-                    node.Location
-                );
+                throw new NoNullAllowedException("Attached scope of indexable expression mustn't be null.");
             }
+            
+            owner = node.Target.Symbol.AttachedScope;
         }
-        
-        Symbol? var = owner.Lookup(node.Name);
 
-        if (var == null)
+        node.Symbol = owner.Lookup(node.Name);
+
+        if (node.Symbol == null)
         {
             MessageCollection.Error(
                 $"Cannot find variable {node.Name}",
@@ -137,9 +146,32 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         }
         else
         {
-            // TODO: Type checking
-            variableType = var.Type;
-            node.Symbol = new Symbol(node.Name, variableType, SymbolKind.VariableReference) { AccessInstance = var };
+            // We have found the variable/property
+            Visit(node.Value);
+            string valueType = GetNodeType(node.Value);
+
+            if (staticAccess && node.Symbol.Kind is not (SymbolKind.StaticMethod or SymbolKind.StaticProperty))
+            {
+                MessageCollection.Error(
+                    $"Attempted to access non-static value {node.Name} statically, use instance instead",
+                    node.Location
+                );
+            }
+            else if (!staticAccess && node.Symbol.Kind is not (SymbolKind.Method or SymbolKind.Variable))
+            {
+                MessageCollection.Error(
+                    "Attempted to access static value non-statically, use type name instead",
+                    node.Location
+                );
+            }
+            
+            if (node.Symbol.Type != valueType)
+            {
+                MessageCollection.Error(
+                    $"Mismatched types, expected {node.Symbol.Type}, got {valueType}",
+                    node.Location
+                );
+            }
         }
 
         return node;
@@ -147,14 +179,10 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
 
     public Node ConstructorDeclaration(ConstructorDeclarationNode node)
     {
-        node.Children.ForEach(VisitVoid);
-        
-        return node;
+        // TODO
         
         return node;
     }
-    
-    
 
     public Node TypeReference(TypeReferenceNode node)
     {
@@ -165,28 +193,23 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
     public Node MemberAccess(MemberAccessNode node)
     {
         Scope owner = _currentScope;
-        bool staticAccess = false;
-
+        bool staticAccess = node.Target is TypeReferenceNode;
+        
         if (node.Target != null)
         {
             Visit(node.Target);
 
-            string type = node.Target?.Symbol?.Type ?? "???";
-            if (type != "???")
+            if (node.Target.Symbol == null)
             {
-                Symbol? typeSymbol = owner.Lookup(type);
-                if (typeSymbol != null)
-                {
-                    owner = typeSymbol.AttachedScope ?? owner;
-                }
-                else
-                {
-                    MessageCollection.Error(
-                        $"Cannot find type {type}",
-                        node.Location
-                    );
-                }
+                throw new NoNullAllowedException("Target symbol mustn't be null.");
             }
+            
+            if (node.Target.Symbol.AttachedScope == null)
+            {
+                throw new NoNullAllowedException("Attached scope of indexable expression mustn't be null.");
+            }
+            
+            owner = node.Target.Symbol.AttachedScope;
         }
 
         node.Symbol = owner.Lookup(node.MemberName);
@@ -194,9 +217,27 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         if (node.Symbol == null)
         {
             MessageCollection.Error(
-                $"Cannot find variable {node.MemberName}",
+                $"Cannot find static variable {node.MemberName}",
                 node.Location
             );
+        }
+        else
+        {
+            // We have found the member
+            if (staticAccess && node.Symbol.Kind is not (SymbolKind.StaticMethod or SymbolKind.StaticProperty))
+            {
+                MessageCollection.Error(
+                    $"Attempted to access non-static value {node.MemberName} statically, use instance instead",
+                    node.Location
+                );
+            }
+            else if (!staticAccess && node.Symbol.Kind is not (SymbolKind.Method or SymbolKind.Variable))
+            {
+                MessageCollection.Error(
+                    "Attempted to access static value non-statically, use type name instead",
+                    node.Location
+                );
+            }
         }
 
         return node;
@@ -213,7 +254,10 @@ public sealed class SemanticAnalyzer : IAstVisitor<Node>
         {
             ExternedMethodNode externedMethod => externedMethod.Type.FullName,
             InitializerNode initializer => initializer.Type.FullName,
+            MemberAccessNode memberAccess => memberAccess.Symbol?.Type ?? "???",
+            MethodCallNode methodCall => methodCall.Symbol?.Type ?? "???",
             TypeReferenceNode typeReference => typeReference.FullName,
+            IndexableExpressionNode indexableExpression => indexableExpression.Symbol?.Type ?? "???",
             VariableNode variable => variable.Type.FullName,
             TypeDefinitionNode typeDefinition => $"{typeDefinition.ModuleName}::{typeDefinition.LocalName}",
             

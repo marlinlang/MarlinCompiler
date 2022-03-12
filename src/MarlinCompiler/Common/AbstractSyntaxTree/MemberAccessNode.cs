@@ -10,8 +10,6 @@ public class MemberAccessNode : IndexableExpressionNode
 {
     public string MemberName { get; }
     
-    public Symbol? MemberSymbol { get; set; }
-
     public MemberAccessNode(string memberName)
     {
         MemberName = memberName;

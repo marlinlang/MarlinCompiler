@@ -740,7 +740,7 @@ public sealed class Parser
         )
         {
             Location = nameToken.Location,
-            Symbol = new Symbol(name, type.FullName, SymbolKind.Variable)
+            Symbol = new Symbol(name, type.FullName, isStatic ? SymbolKind.StaticProperty : SymbolKind.Variable)
             {
                 GetAccess = get,
                 SetAccess = set,

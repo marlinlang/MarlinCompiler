@@ -57,6 +57,9 @@ public class Scope
         }
     }
 
+    /// <summary>
+    /// Adds the symbols from the other scope to this scope without removing them from the first one.
+    /// </summary>
     public void AddFrom(Scope scope)
     {
         foreach (Symbol symbol in scope._symbols.Values)
