@@ -11,16 +11,16 @@ public class MethodDeclarationNode : ContainerNode
     public TypeReferenceNode Type { get; }
     public string Name { get; }
     public bool IsStatic { get; }
-    public VariableNode[] Args { get; }
+    public VariableNode[] Parameters { get; }
     
     public MethodDeclarationNode(GetAccessibility accessibility, TypeReferenceNode type, string name,
-        bool isStatic, VariableNode[] args)
+        bool isStatic, VariableNode[] parameters)
     {
         Accessibility = accessibility;
         Type = type;
         Name = name;
         IsStatic = isStatic;
-        Args = args;
+        Parameters = parameters;
     }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

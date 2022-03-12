@@ -5,12 +5,12 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 public class ConstructorDeclarationNode : ContainerNode
 {
     public GetAccessibility Accessibility { get; }
-    public VariableNode[] Args { get; }
+    public VariableNode[] Parameters { get; }
 
-    public ConstructorDeclarationNode(GetAccessibility accessibility, VariableNode[] args)
+    public ConstructorDeclarationNode(GetAccessibility accessibility, VariableNode[] parameters)
     {
         Accessibility = accessibility;
-        Args = args;
+        Parameters = parameters;
     }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
