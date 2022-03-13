@@ -7,15 +7,15 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class MethodCallNode : IndexableExpressionNode
 {
-    public MethodCallNode(string methodName, bool isNativeCall, ExpressionNode[] args)
+    public MethodCallNode(string methodName, bool isNativeCall, ExpressionNode[] arguments)
     {
         MethodName = methodName;
         IsNativeCall = isNativeCall;
-        Args = args;
+        Arguments = arguments;
     }
     
     public string MethodName { get; }
-    public ExpressionNode[] Args { get; }
+    public ExpressionNode[] Arguments { get; }
     
     /// <summary>
     /// True for calls to LLVM functions instead of Marlin-defined ones

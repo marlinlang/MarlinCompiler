@@ -16,6 +16,8 @@ public sealed class Lexer
     /// <param name="filePath">The file path of the text. Only used for error reporting.</param>
     public Lexer(string source, string filePath)
     {
+        MessageCollection = new MessageCollection();
+        
         _parseContent = new StringBuilder(source.Trim());
         _filePath = filePath;
         _startingContent = source;
@@ -60,6 +62,7 @@ public sealed class Lexer
     private static readonly TokenDefinition[] TokenDefinitions = new[]
     {
         new TokenDefinition(TokenType.Skip,   new Regex("^\\/\\/.*", RegexOptions.Compiled)),
+        new TokenDefinition(TokenType.Skip,   new Regex("^\\/\\*(.|\n)*\\*\\/", RegexOptions.Multiline)),
         
         new TokenDefinition(TokenType.Module,       new Regex("^module\\b", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Class,        new Regex("^class\\b", RegexOptions.Compiled)),
@@ -94,7 +97,7 @@ public sealed class Lexer
         new TokenDefinition(TokenType.Plus,         new Regex("^\\+", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Minus,        new Regex("^-", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Asterisk,     new Regex("^\\*", RegexOptions.Compiled)),
-        new TokenDefinition(TokenType.Slash,        new Regex("^\\\\", RegexOptions.Compiled)),
+        new TokenDefinition(TokenType.Slash,        new Regex("^\\/", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Colon,        new Regex("^:", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Question,     new Regex("^\\?", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Ampersand,    new Regex("^&", RegexOptions.Compiled)),
@@ -106,13 +109,13 @@ public sealed class Lexer
         new TokenDefinition(TokenType.RightParen,   new Regex("^\\)", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.LeftBrace,    new Regex("^\\{", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.RightBrace,   new Regex("^\\}", RegexOptions.Compiled)),
-        new TokenDefinition(TokenType.LeftBracket,  new Regex("^\\[", RegexOptions.Compiled)),
-        new TokenDefinition(TokenType.RightBracket, new Regex("^\\]", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.LeftAngle,    new Regex("^<", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.RightAngle,   new Regex("^>", RegexOptions.Compiled)),
         new TokenDefinition(TokenType.Identifier,   new Regex("^((\\p{L}|_)(\\p{L}|[0-9_])*)", RegexOptions.Compiled)),
     };
 
+    public MessageCollection MessageCollection { get; }
+    
     private readonly StringBuilder _parseContent;
     private readonly string _filePath;
     private readonly string _startingContent;
@@ -150,10 +153,15 @@ public sealed class Lexer
 
         for (Token? current = null; (current = Match()) != null; )
         {
-            if (current.Type != TokenType.Skip)
+            if (current.Type == TokenType.Skip) continue;
+
+            if (current.Type == TokenType.Invalid)
             {
-                tokens.Add(current);
+                MessageCollection.Error($"Invalid token: {current.Value}", current.Location);
+                continue;
             }
+            
+            tokens.Add(current);
         }
 
         return tokens.ToArray();

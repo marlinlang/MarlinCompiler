@@ -2,5 +2,6 @@
 
 internal class Program {
     public void Main() {
+        Program.Main();
     }
 }

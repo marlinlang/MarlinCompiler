@@ -13,6 +13,11 @@ public class Tokens
     public bool HasNext => PeekToken() != null;
 
     /// <summary>
+    /// Are there invalid tokens in the collection?
+    /// </summary>
+    public bool ContainsInvalid => _tokens.Any(x => x.Type == TokenType.Invalid);
+
+    /// <summary>
     /// The last token. Useful for premature-EOF errors.
     /// </summary>
     public Token LastToken => _tokens.Last();

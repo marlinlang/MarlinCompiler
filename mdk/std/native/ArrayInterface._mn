@@ -1,0 +1,6 @@
+module std::native;
+
+//@ Represents a static array.
+public extern ArrayInterface @marlin_static_array {
+    public constructor(std::Type type, int arraySize) -> @marlin_static_array_new(type, arraySize);
+}

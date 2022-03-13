@@ -77,7 +77,11 @@ public sealed class Compiler
 
         Parallel.ForEach(_filePaths, path =>
         {
-            Parser parser = new(Lex(path), path);
+            Tokens tokens = Lex(path);
+
+            if (tokens.ContainsInvalid) return;
+            
+            Parser parser = new(tokens, path);
             
             CompilationUnitNode unit = parser.Parse();
             if (unit != null)
@@ -104,8 +108,8 @@ public sealed class Compiler
     /// </summary>
     private void Analyze(ContainerNode root)
     {
-        SemanticAnalyzer analyzer = new();
-        analyzer.Analyze(root);
+        SemanticAnalyzer analyzer = new(root);
+        analyzer.Analyze();
         MessageCollection.AddRange(analyzer.MessageCollection);
     }
     
@@ -167,11 +171,9 @@ public sealed class Compiler
     /// </summary>
     private Tokens Lex(string path)
     {
-        Lexer.Token[] tokens = new Lexer(File.ReadAllText(path), path).Lex();
-        foreach (Lexer.Token tok in tokens.Where(x => x.Type == TokenType.Invalid))
-        {
-            MessageCollection.Error($"Unknown token '{tok.Value}'", tok.Location);
-        }
+        Lexer lexer = new(File.ReadAllText(path), path);
+        Lexer.Token[] tokens = lexer.Lex();
+        MessageCollection.AddRange(lexer.MessageCollection);
 
         return new Tokens(tokens);
     }

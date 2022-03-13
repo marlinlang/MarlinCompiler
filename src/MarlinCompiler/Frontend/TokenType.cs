@@ -51,8 +51,6 @@ public enum TokenType
     RightParen,         // )
     LeftBrace,          // {
     RightBrace,         // }
-    LeftBracket,        // [
-    RightBracket,       // ]
     LeftAngle,          // <
     RightAngle,         // >
     

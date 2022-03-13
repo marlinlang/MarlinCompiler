@@ -301,12 +301,20 @@ public sealed class Parser
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "static");
+
+        string? genericTypeParamName = null;
+        if (_tokens.NextIsOfType(TokenType.LeftAngle))
+        {
+            _tokens.Skip();
+            genericTypeParamName = GrabNextByExpecting(TokenType.Identifier);
+            Require(TokenType.RightAngle);
+        }
         
         TypeReferenceNode? baseClass = null;
         if (_tokens.NextIsOfType(TokenType.Colon))
         {
             _tokens.Skip(); // colon
-            baseClass = ExpectTypeName(false);
+            baseClass = ExpectTypeName();
         }
         else if (_moduleName + "::Object" != "std::Object") // don't make the base obj inherit from itself lol
         {
@@ -321,7 +329,8 @@ public sealed class Parser
             _moduleName,
             accessibility,
             isStatic,
-            baseClass
+            baseClass,
+            genericTypeParamName
         )
         {
             Location = nameToken.Location,
@@ -711,6 +720,15 @@ public sealed class Parser
 
         Parser parser;
         
+        // Empty statement
+        if (_tokens.NextIsOfType(TokenType.Semicolon))
+        {
+            return new EmptyStatementNode()
+            {
+                Location = _tokens.GrabToken()!.Location
+            };
+        }
+        
         // Statement block
         if (_tokens.NextIsOfType(TokenType.LeftBrace))
         {
@@ -899,11 +917,6 @@ public sealed class Parser
             left = new BinaryOperatorNode(op.Type, left, right) { Location = op.Location };
         }
 
-        if (left is MethodCallNode mc && mc.Target == null)
-        {
-            mc.Target = new MemberAccessNode("this") { Location = mc.Location };
-        }
-        
         return left;
     }
 
@@ -914,22 +927,9 @@ public sealed class Parser
     {
         Token newKeyword = _tokens.GrabToken()!;
 
-        // don't allow arrays: we'll do it ourselves!
-        TypeReferenceNode type = ExpectTypeName(false);
+        TypeReferenceNode type = ExpectTypeName();
 
-        if (_tokens.NextIsOfType(TokenType.LeftBracket))
-        {
-            // we have an array
-            _tokens.Skip(); // [
-
-            // get length of array
-            ExpressionNode length = ExpectExpression();
-
-            Require(TokenType.RightBracket);
-
-            return new ArrayInitializerNode(type, length) { Location = newKeyword.Location };
-        }
-        else if (_tokens.NextIsOfType(TokenType.LeftParen))
+        if (_tokens.NextIsOfType(TokenType.LeftParen))
         {
             // we have a class initializer
 
@@ -1185,7 +1185,7 @@ public sealed class Parser
     /// Utility method for reading a type name.
     /// </summary>
     /// <param name="allowArray">If false, left bracket will be ignored even if it exists.</param>
-    private TypeReferenceNode ExpectTypeName(bool allowArray = true)
+    private TypeReferenceNode ExpectTypeName()
     {
         // In all cases we need an identifier
         // If the token after it is a double colon, we get module name first
@@ -1196,7 +1196,7 @@ public sealed class Parser
         name = name switch
         {
             "void" => "std::Void",
-            "int" => "std::Integer",
+            "int" => "std::Int32",
             "char" => "std::Character",
             "double" => "std::Double",
             "bool" => "std::Boolean",
@@ -1214,13 +1214,7 @@ public sealed class Parser
             Require(TokenType.RightAngle);
         }
 
-        if (_tokens.NextIsOfType(TokenType.LeftBracket) && allowArray)
-        {
-            _tokens.Skip();
-            Require(TokenType.RightBracket);
-        }
-        
-        return new TypeReferenceNode(name) { Location = nameToken.Location };
+        return new TypeReferenceNode(name, genericName) { Location = nameToken.Location };
     }
 
     /// <summary>
@@ -1265,10 +1259,12 @@ public sealed class Parser
         }
         else
         {
-            MessageCollection.Error(
-                $"Expected {expected}, got {fail?.ToString() ?? "EOF"}",
-                fail?.Location ?? _tokens.LastToken.Location
-            );
+            if (fail == null)
+            {
+                throw new CancelParsingException("Premature EOF");
+            }
+            
+            throw new ParseException($"Expected {expected}, got {fail?.Type.ToString() ?? "EOF"}", fail!);
         }
     }
 
