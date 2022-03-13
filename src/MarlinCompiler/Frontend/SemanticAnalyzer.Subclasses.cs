@@ -18,6 +18,7 @@ public sealed partial class SemanticAnalyzer
         StructType,
         ExternType,
         Method,
+        ExternMethod,
         Constructor,
         Property,
         Variable
@@ -26,7 +27,15 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// Represents a semantic type.
     /// </summary>
-    public record SemType(string Name, string? GenericTypeParam);
+    public record SemType(string Name, string? GenericTypeParam)
+    {
+        public override string ToString()
+        {
+            return GenericTypeParam != null
+                ? $"{Name}<>"
+                : Name;
+        }
+    }
     
     /// <summary>
     /// Represents a symbol.

@@ -3,9 +3,9 @@ namespace MarlinCompiler.Frontend;
 /// <summary>
 /// Used as a no-void-in-generics workaround. 
 /// </summary>
-public sealed class Nothing
+public sealed class None
 {
-    private Nothing()
+    private None()
     {
         throw new InvalidOperationException();
     }

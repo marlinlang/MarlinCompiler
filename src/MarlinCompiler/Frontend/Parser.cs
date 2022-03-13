@@ -247,16 +247,18 @@ public sealed class Parser
     private Node ExpectExternMethod()
     {
         string[] modifiers = GrabModifiers();
-        TypeReferenceNode type = ExpectTypeName();
+        TypeReferenceNode type;
 
         string? name = null;
 
         if (_tokens.NextIsOfType(TokenType.Constructor))
         {
+            type = new TypeReferenceNode("<$constructor$>");
             _tokens.Skip(); // constructor
         }
         else
         {
+            type = ExpectTypeName();
             name = GrabNextByExpecting(TokenType.Identifier);
         }
 

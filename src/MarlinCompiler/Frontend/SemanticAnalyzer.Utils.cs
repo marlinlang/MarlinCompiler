@@ -70,7 +70,7 @@ public sealed partial class SemanticAnalyzer
             IntegerNode integerNode => new SemType("std::Int32", null),
             
             BinaryOperatorNode binaryOperatorNode => throw new NotImplementedException(),
-            MemberAccessNode memberAccessNode => throw new NotImplementedException(),
+            MemberAccessNode memberAccessNode => (memberAccessNode.Metadata as SymbolMetadata)?.Symbol.Type ?? new SemType("???", null),
             MethodCallNode methodCallNode => throw new NotImplementedException(),
             VariableAssignmentNode variableAssignmentNode => throw new NotImplementedException(),
             

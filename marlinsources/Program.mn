@@ -1,7 +1,14 @@
 ﻿module app;
 
+internal class Person {
+    public int Age -> get, set;
+}
+
 internal class Program {
     public void Main() {
-        Program.Main();
+        int x;
+        app::Person p;
+        x = p.Age;
+        p.Age = x;
     }
 }
