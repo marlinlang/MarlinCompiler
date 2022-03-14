@@ -1,14 +1,12 @@
 ﻿module app;
 
-internal class Person {
-    public int Age -> get, set;
+internal class Generic {
+    
 }
 
 internal class Program {
     public void Main() {
-        int x;
-        app::Person p;
-        x = p.Age;
-        p.Age = x;
+        app::Generic<int> test;
+        test.SomeProp = 1;
     }
 }

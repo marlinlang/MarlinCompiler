@@ -1,3 +1,4 @@
+using System.Data;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 
 namespace MarlinCompiler.Frontend;
@@ -9,6 +10,8 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     private Stack<Scope> _scopes = new();
 
+    private Scope CurrentScope => _scopes.Peek();
+    
     /// <summary>
     /// Adds a new scope on top.
     /// </summary>
@@ -28,13 +31,6 @@ public sealed partial class SemanticAnalyzer
     /// Removes the topmost scope.
     /// </summary>
     private void PopScope() => _scopes.Pop();
-
-    /// <summary>
-    /// Searches for a symbol.
-    /// </summary>
-    /// <param name="topmostScopeOnly">If true, only the topmost scope will be searched.</param>
-    private Symbol? LookupSymbol(string name, bool topmostScopeOnly)
-        => _scopes.Peek()!.LookupSymbol(name, topmostScopeOnly);
 
     /// <summary>
     /// Adds a symbol to the topmost scope. 
@@ -58,32 +54,40 @@ public sealed partial class SemanticAnalyzer
     }
 
     /// <summary>
-    /// Gets the type of an expression.
+    /// Checks whether two types are compatible. Supports generics.
     /// </summary>
-    private SemType GetExprType(ExpressionNode expr)
+    private bool AreTypesCompatible(ref SemType expected, SemType given)
     {
-        return expr switch
+        // TODO: Inheritance
+        // Make it work with both the base types but with the generic args as well
+        
+        // To get the true name of expected we need to run it through itself
+        if (expected.Scope != null)
         {
-            ArrayInitializerNode arrayInitializerNode => GetSemType(arrayInitializerNode.Type),
-            NewClassInitializerNode newClassInitializerNode => GetSemType(newClassInitializerNode.Type),
-            TypeReferenceNode typeReferenceNode => GetSemType(typeReferenceNode),
-            IntegerNode integerNode => new SemType("std::Int32", null),
-            
-            BinaryOperatorNode binaryOperatorNode => throw new NotImplementedException(),
-            MemberAccessNode memberAccessNode => (memberAccessNode.Metadata as SymbolMetadata)?.Symbol.Type ?? new SemType("???", null),
-            MethodCallNode methodCallNode => throw new NotImplementedException(),
-            VariableAssignmentNode variableAssignmentNode => throw new NotImplementedException(),
-            
-            _ => throw new ArgumentOutOfRangeException(nameof(expr))
-        };
-    }
+            Symbol? expectedSym = expected.Scope.LookupType(expected);
 
-    /// <summary>
-    /// Checks if two types are compatible. 
-    /// </summary>
-    private bool DoTypesMatch(SemType expected, SemType given)
-    {
-        return expected.Name == given.Name;
+            if (expectedSym == null)
+            {
+                // unknown type
+                return false;
+            }
+            
+            expected = expectedSym.Type;
+        }
+        
+        if (expected.Name != given.Name)
+        {
+            return false;
+        }
+
+        // A subclass of a type when the supertype isn't generic will always be compatible
+        if (expected.GenericTypeParam == null)
+        {
+            return true;
+        }
+        
+        // SemTypes only compare their name and generic param
+        return expected.GenericTypeParam == given.GenericTypeParam;
     }
     
     /// <summary>
@@ -91,6 +95,8 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     private SemType GetSemType(TypeReferenceNode node)
     {
-        return new SemType(node.FullName, node.GenericTypeName);
+        return node.GenericTypeName != null
+            ? new SemType(node.FullName, GetSemType(node.GenericTypeName))
+            : new SemType(node.FullName, null);
     }
 }

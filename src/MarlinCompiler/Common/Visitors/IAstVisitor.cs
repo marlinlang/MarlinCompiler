@@ -78,9 +78,4 @@ public interface IAstVisitor<T>
     /// Visits a new class instance initializer.
     /// </summary>
     public T NewClassInstance(NewClassInitializerNode node) => throw new NotImplementedException();
-
-    /// <summary>
-    /// Visits an array initializer.
-    /// </summary>
-    public T CreateArray(ArrayInitializerNode node) => throw new NotImplementedException();
 }

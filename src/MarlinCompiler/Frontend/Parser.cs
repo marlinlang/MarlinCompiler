@@ -1205,13 +1205,13 @@ public sealed class Parser
             _ => name
         };
 
-        string? genericName = null;
+        TypeReferenceNode? genericName = null;
 
         if (_tokens.NextIsOfType(TokenType.LeftAngle))
         {
             _tokens.Skip(); // <
 
-            genericName = GrabNextByExpecting(TokenType.Identifier);
+            genericName = ExpectTypeName();
             
             Require(TokenType.RightAngle);
         }

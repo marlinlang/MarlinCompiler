@@ -21,26 +21,46 @@ public sealed partial class SemanticAnalyzer
         ExternMethod,
         Constructor,
         Property,
-        Variable
+        Variable,
+        GenericTypeParam,
+        Instance
     }
 
     /// <summary>
     /// Represents a semantic type.
     /// </summary>
-    public record SemType(string Name, string? GenericTypeParam)
+    public record SemType(string Name, SemType? GenericTypeParam)
     {
+        /// <summary>
+        /// This might contain a value - always check!
+        /// </summary>
+        public Scope? Scope { get; set; }
+
+        public virtual bool Equals(SemType? other)
+        {
+            return Name == other?.Name && GenericTypeParam == other?.GenericTypeParam;
+        }
+
         public override string ToString()
         {
-            return GenericTypeParam != null
-                ? $"{Name}<>"
-                : Name;
+            if (GenericTypeParam != null)
+            {
+                return $"{Name}<{GenericTypeParam}>";
+            }
+            else
+            {
+                return Name;
+            }
         }
     }
-    
+
     /// <summary>
     /// Represents a symbol.
     /// </summary>
-    public record Symbol(SymbolKind Kind, SemType Type, string Name, Scope? Scope, Node Node);
+    public record Symbol(SymbolKind Kind, SemType Type, string Name, Scope Scope, Node Node)
+    {
+        public Scope Scope { get; set; } = Scope;
+    }
 
     public class Scope
     {
@@ -52,6 +72,13 @@ public sealed partial class SemanticAnalyzer
         public Scope? Parent { get; }
         public List<Symbol> Symbols { get; } = new();
 
+        /// <summary>
+        /// Dictionary of generic parameters. The key is the type alias (e.g. T). The value is, when the scope is
+        /// cloned for a variable instance, the type used in place of T.
+        /// This is a list because it needs to be looked up by index.
+        /// </summary>
+        private List<(string, SemType?)> _genericParams = new();
+        
         public Symbol? LookupSymbol(string name, bool thisScopeOnly)
         {
             Symbol? found = Symbols.Find(x => x.Name == name);
@@ -64,7 +91,79 @@ public sealed partial class SemanticAnalyzer
             return thisScopeOnly ? null : Parent?.LookupSymbol(name, false);
         }
 
+        public Symbol? LookupType(SemType type)
+        {
+            // Generics
+            (string, SemType?) genericsFound = _genericParams.Find(x => x.Item1 == type.Name);
+            if (genericsFound != default)
+            {
+                if (genericsFound.Item2 == null)
+                {
+                    return new Symbol(SymbolKind.GenericTypeParam, type, "$", this, null!);
+                }
+                else
+                {
+                    return LookupType(genericsFound.Item2);
+                }
+            }
+            
+            Symbol? found = Symbols.Find(
+                x => x.Name == type.Name
+                     && x.Kind is SymbolKind.ClassType or SymbolKind.StructType or SymbolKind.ExternType
+            );
+
+            if (found != null)
+            {
+                return found;
+            }
+            
+            return Parent?.LookupType(type);
+        }
+
+        /// <summary>
+        /// Registers a new generic param.
+        /// </summary>
+        public void AddGenericParam(string name)
+        {
+            _genericParams.Add((name, null));
+        }
+
+        /// <summary>
+        /// Assigns the alias to the given generic param.
+        /// </summary>
+        public void SetGenericArgument(string param, SemType arg)
+        {
+            int idx = _genericParams.FindIndex(x => x.Item1 == param);
+
+            if (idx == -1)
+            {
+                throw new InvalidOperationException($"Unknown param {param}");
+            }
+            
+            _genericParams[idx] = (param, arg);
+        }
+
+        /// <summary>
+        /// Assigns the alias to the generic param at the given index.
+        /// </summary>
+        public void SetGenericArgument(int idx, SemType arg)
+        {
+            string param = _genericParams[idx].Item1;
+            _genericParams[idx] = (param, arg);
+        }
+        
+        /// <summary>
+        /// Adds a symbol to this scope. Also used for adding types.
+        /// </summary>
         public void AddSymbol(Symbol symbol) => Symbols.Add(symbol);
+        
+        /// <summary>
+        /// Clones the scope.
+        /// </summary>
+        public Scope CloneScope()
+        {
+            return (Scope)MemberwiseClone();
+        }
     }
     
     private class SymbolMetadata : NodeMetadata

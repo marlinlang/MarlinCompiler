@@ -27,12 +27,21 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     SymbolKind.ClassType,
                     new SemType(
                         name,
-                        node.GenericTypeParamName
+                        node.GenericTypeParamName != null
+                            ? new SemType(node.GenericTypeParamName, null)
+                            : null
                     ),
                     name,
                     PushScope(),
                     node
                 ));
+                
+                // Register generic param
+                if (node.GenericTypeParamName != null)
+                {
+                    _scopes.Peek().AddGenericParam(node.GenericTypeParamName);
+                }
+
                 PopScope();
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
@@ -150,10 +159,21 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
             case AnalyzerPass.EnterTypeMembers:
             {
+                Visit(node.Type);
+
+                if (node.Type.Metadata != null)
+                {
+                    Symbol typeSymbol = ((SymbolMetadata) node.Type.Metadata).Symbol;
+                    if (typeSymbol.Node is not TypeDefinitionNode typeDef && typeSymbol.Kind != SymbolKind.GenericTypeParam)
+                    {
+                        MessageCollection.Error("Method return type is not an actual type", node.Type.Location);
+                    }
+                }
+
                 // Check args
                 foreach (VariableNode param in node.Parameters)
                 {
-                    Symbol? paramTypeSymbol = LookupSymbol(param.Type.FullName, false);
+                    Symbol? paramTypeSymbol = CurrentScope.LookupType(GetSemType(param.Type));
 
                     if (paramTypeSymbol == null)
                     {
@@ -207,7 +227,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 // Check args
                 foreach (VariableNode param in node.Parameters)
                 {
-                    Symbol? paramTypeSymbol = LookupSymbol(param.Type.FullName, false);
+                    Symbol? paramTypeSymbol = CurrentScope.LookupType(GetSemType(param.Type));
 
                     if (paramTypeSymbol == null)
                     {
@@ -270,22 +290,23 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     SymbolKind.Property,
                     GetSemType(node.Type),
                     node.Name,
-                    null,
+                    _scopes.Peek(),
                     node
                 ));
+                ((SymbolMetadata) node.Metadata).Symbol.Type.Scope = CurrentScope;
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
             }
 
             case AnalyzerPass.EnterTypeMembers:
             {
-                Symbol? typeSymbol = LookupSymbol(node.Type.FullName, false);
+                Symbol? typeSymbol = CurrentScope.LookupType(GetSemType(node.Type));
         
                 if (typeSymbol == null)
                 {
                     MessageCollection.Error($"Unknown type {node.Type.FullName}", node.Type.Location);
                 }
-                else if (typeSymbol.Node is not TypeDefinitionNode typeDef)
+                else if (typeSymbol.Node is not TypeDefinitionNode typeDef && typeSymbol.Kind != SymbolKind.GenericTypeParam)
                 {
                     MessageCollection.Error("Property type is not an actual type", node.Type.Location);
                 }
@@ -294,15 +315,16 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 {
                     Visit(node.Value);
 
-                    SemType varType = GetSemType(node.Type);
-                    SemType valueType = GetExprType(node.Value);
-                    if (!DoTypesMatch(varType, valueType))
+                    SymbolMetadata? metadata = node.Value.Metadata as SymbolMetadata;
+
+                    // We should have already errored
+                    if (metadata == null)
                     {
-                        MessageCollection.Error(
-                            $"Mismatched types for property {node.Name}\n\tExpected: {varType.Name}\n\tGiven:    {valueType.Name}",
-                            node.Value.Location
-                        );
+                        return null!;
                     }
+            
+                    SemType valueType = metadata.Symbol.Type;
+                    throw new NotImplementedException("value-type and var-type check");
                 }
 
                 break;
@@ -314,7 +336,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
     public None LocalVariable(LocalVariableDeclarationNode node)
     {
-        Symbol? typeSymbol = LookupSymbol(node.Type.FullName, false);
+        Symbol? typeSymbol = CurrentScope.LookupType(GetSemType(node.Type));
         
         if (typeSymbol == null)
         {
@@ -324,37 +346,67 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             MessageCollection.Error("Property type is not an actual type", node.Type.Location);
         }
+        else if (typeSymbol.Type.GenericTypeParam != null && node.Type.GenericTypeName == null)
+        {
+            // We didn't give a generic type arg
+            MessageCollection.Error($"Missing generic argument for type {typeSymbol.Name}", node.Location);
+        }
+        else if (typeSymbol.Type.GenericTypeParam == null && node.Type.GenericTypeName != null)
+        {
+            // Opposite of above: type isn't generic but we use it as such
+            MessageCollection.Error(
+                $"Type {typeSymbol.Name} cannot be used with a generic argument as it's not a generic type",
+                null//node.Location
+            );
+        }
+        else if (node.Type.GenericTypeName != null)
+        {
+            // Clone type symbol & its scope
+            typeSymbol = typeSymbol with {};
+            typeSymbol.Scope = typeSymbol.Scope.CloneScope();
+            
+            // Register the generic arg to the new clone
+            typeSymbol.Scope.SetGenericArgument(0, GetSemType(node.Type.GenericTypeName));
+            
+            // By the way: check if that type even exists!!!
+            if (CurrentScope.LookupType(GetSemType(node.Type.GenericTypeName)) == null)
+            {
+                MessageCollection.Error($"Unknown type {node.Type.GenericTypeName.FullName}");
+            }
+        }
         
         // Check for variable shadowing
-        if (LookupSymbol(node.Name, true) != null)
+        if (CurrentScope.LookupSymbol(node.Name, true) != null)
         {
             MessageCollection.Error($"Variable {node.Name} has already been defined in the same scope", node.Location);
         }
 
         SemType varType = GetSemType(node.Type);
+        
         node.Metadata = new SymbolMetadata(new Symbol(
             SymbolKind.Variable,
             varType,
             node.Name,
-            null,
+            _scopes.Peek(),
             node
         ));
+        
         AddSymbolToScope((SymbolMetadata) node.Metadata);
 
         if (node.Value != null)
         {
             Visit(node.Value);
 
-            SemType valueType = GetExprType(node.Value);
-            if (!DoTypesMatch(varType, valueType))
+            SymbolMetadata? metadata = node.Value.Metadata as SymbolMetadata;
+
+            // We should have already errored
+            if (metadata == null)
             {
-                MessageCollection.Error(
-                    $"Mismatched types for variable {node.Name}" +
-                    $"\n\tExpected: {varType.Name}" +
-                    $"\n\tGiven:    {valueType.Name}",
-                    node.Value.Location
-                );
+                return null!;
             }
+            
+            SemType valueType = metadata.Symbol.Type;
+            throw new NotImplementedException("value-type and var-type check");
         }
 
         return null!;
@@ -362,12 +414,20 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
     public None NewClassInstance(NewClassInitializerNode node)
     {
-        Symbol? typeSymbol = LookupSymbol(node.Type.FullName, false);
+        Symbol? typeSymbol = CurrentScope.LookupType(GetSemType(node.Type));
 
         if (typeSymbol == null)
         {
             MessageCollection.Error($"Unknown type {node.Type.FullName}", node.Type.Location);
         }
+        
+        node.Metadata = new SymbolMetadata(new Symbol(
+            SymbolKind.Instance,
+            GetSemType(node.Type),
+            "$",
+            _scopes.Peek(),
+            node
+        ));
         
         // TODO: Look for constructor
         
@@ -396,18 +456,18 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             }
 
             SemType type = ((SymbolMetadata) node.Target.Metadata).Symbol.Type;
-            Symbol? typeSymbol = LookupSymbol(type.Name, false);
+            Scope? typeScope = type.Scope ?? CurrentScope.LookupType(type)?.Scope;
 
-            if (typeSymbol == null)
+            if (typeScope == null)
             {
-                throw new NoNullAllowedException("Null targets should not have metadatas set in the nodes");
+                throw new NoNullAllowedException("Cannot find type");
             }
 
-            methodSymbol = typeSymbol.Scope!.LookupSymbol(node.MethodName, true);
+            methodSymbol = typeScope.LookupSymbol(node.MethodName, true);
         }
         else
         {
-            methodSymbol = LookupSymbol(node.MethodName, false);
+            methodSymbol = CurrentScope.LookupSymbol(node.MethodName, false);
         }
 
         if (methodSymbol == null)
@@ -420,33 +480,39 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         }
         else
         {
+            node.Metadata = new SymbolMetadata(methodSymbol);
+            
             // Match args to params
             MethodDeclarationNode decl = (MethodDeclarationNode) methodSymbol.Node;
 
             string[] paramTypes = new string[decl.Parameters.Length];
             for (int i = 0; i < paramTypes.Length; i++)
             {
+                Visit(decl.Parameters[i]);
                 paramTypes[i] = GetSemType(decl.Parameters[i].Type).ToString();
             }
             
             string[] argTypes = new string[node.Arguments.Length];
             for (int i = 0; i < argTypes.Length; i++)
             {
-                argTypes[i] = GetExprType(node.Arguments[i]).ToString();
+                Visit(node.Arguments[i]);
+
+                SymbolMetadata? metadata = node.Arguments[i].Metadata as SymbolMetadata;
+
+                // We should have already errored
+                if (metadata == null)
+                {
+                    return null!;
+                }
+                
+                argTypes[i] = metadata.Symbol.ToString();
             }
 
             string parameters = String.Join(", ", paramTypes);
             string arguments = String.Join(", ", argTypes);
 
-            if (parameters != arguments)
-            {
-                MessageCollection.Error(
-                    $"Passed in arguments do not match the signature for method {methodSymbol.Name}:" +
-                    $"\n\tSignature:   {methodSymbol.Name}({parameters})" +
-                    $"\n\tCalled with: {methodSymbol.Name}({arguments})",
-                    node.Location
-                );
-            }
+            // TODO: Generics proper support, using <> isn't enough!!!
+            throw new NotImplementedException();
 
             if (decl.IsStatic && !invokedStatically)
             {
@@ -478,7 +544,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         // Was the member referenced statically?
         bool referencedStatically = node.Target is TypeReferenceNode or null;
         
-        Symbol? lookSymbol = null;
+        Scope? lookScope = CurrentScope;
         
         if (node.Target != null)
         {
@@ -491,27 +557,16 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             }
             
             SemType type = ((SymbolMetadata) node.Target.Metadata).Symbol.Type;
-            lookSymbol = LookupSymbol(type.Name, false);
+            Scope? typeScope = type.Scope ?? CurrentScope.LookupType(type)?.Scope;
 
-            if (lookSymbol == null)
+            if (typeScope == null)
             {
                 MessageCollection.Error($"Cannot find type {type.Name}");
             }
         }
 
-        Symbol? found;
+        Symbol? found = CurrentScope.LookupSymbol(node.MemberName, false);
         
-        if (lookSymbol != null)
-        {
-            // we're looking inside a type
-            found = lookSymbol.Scope?.LookupSymbol(node.MemberName, true);
-        }
-        else
-        {
-            // we are looking for a type OR for a local var or property etc.
-            found = LookupSymbol(node.MemberName, false);
-        }
-
         // We can only assign a metadata if the symbol isn't null
         if (found != null)
         {
@@ -561,7 +616,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
     public None TypeReference(TypeReferenceNode node)
     {
-        Symbol? type = LookupSymbol(node.FullName, false);
+        Symbol? type = CurrentScope.LookupType(GetSemType(node));
 
         if (type != null)
         {
@@ -597,18 +652,18 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             }
 
             SemType type = ((SymbolMetadata) node.Target.Metadata).Symbol.Type;
-            Symbol? typeSymbol = LookupSymbol(type.Name, false);
+            Scope? typeScope = type.Scope ?? CurrentScope.LookupType(type)?.Scope;
 
-            if (typeSymbol == null)
+            if (typeScope == null)
             {
                 throw new NoNullAllowedException("Null targets should not have metadatas set in the nodes");
             }
 
-            varSymbol = typeSymbol.Scope!.LookupSymbol(node.Name, true);
+            varSymbol = typeScope.LookupSymbol(node.Name, true);
         }
         else
         {
-            varSymbol = LookupSymbol(node.Name, false);
+            varSymbol = CurrentScope.LookupSymbol(node.Name, false);
         }
 
         if (varSymbol == null)
@@ -629,16 +684,14 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 return null!;
             }
 
-            SemType valueType = GetExprType(node.Value);
-
-            if (!DoTypesMatch(varSymbol.Type, valueType))
+            SemType varType = varSymbol.Type with {};
+            SemType valueType = ((SymbolMetadata) node.Value.Metadata).Symbol.Type;
+            
+            if (!AreTypesCompatible(ref varType, valueType))
             {
-                MessageCollection.Error(
-                    $"Mismatched types for variable/property {node.Name}" +
-                    $"\n\tExpected: {varSymbol.Type}" +
-                    $"\n\tGiven:    {valueType}",
-                    node.Value.Location
-                );
+                MessageCollection.Error($"Type mismatch for variable/property {varSymbol.Name}" +
+                                        $"\n\tExpected: {varType}" +
+                                        $"\n\tGiven:    {valueType}", node.Location);
             }
             
             if (varSymbol.Kind == SymbolKind.Property)
@@ -676,5 +729,16 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         return null!;
     }
 
-    public None Integer(IntegerNode node) => null!;
+    public None Integer(IntegerNode node)
+    {
+        node.Metadata = new SymbolMetadata(new Symbol(
+            SymbolKind.Instance,
+            new SemType("std::Int32", null),
+            "$",
+            _scopes.Peek(),
+            node
+        ));
+        
+        return null!;
+    }
 }
