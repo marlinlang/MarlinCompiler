@@ -45,23 +45,48 @@ internal static class Program
         
         foreach (Message msg in compiler.MessageCollection)
         {
-            Console.ForegroundColor = msg.PrintColor;
-            string location = (msg.Location?.ToString() + ": ") ?? "";
+            Console.WriteLine();
+            string location = msg.Location?.ToString() ?? "";
             
             // Shorter file paths
             if (!verbose && location.StartsWith(path))
             {
                 location = location.Substring(path.Length);
             }
+
+            string fatality = msg.Fatality switch
+            {
+                MessageFatality.Severe => "ERROR",
+                MessageFatality.Warning => "WARN",
+                MessageFatality.Information => "INFO",
+                _ => throw new InvalidOperationException()
+            };
+
+            if (location != "")
+            {
+                Console.ForegroundColor = msg.PrintColor;
+                Console.Write(fatality);
+
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.Write(" at ");
+                
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write(location);
+
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine(":");
+            }
+            else
+            {
+                Console.ForegroundColor = msg.PrintColor;
+                Console.Write(fatality);
+
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine(":");
+            }
             
-            Console.WriteLine(location + msg.Fatality switch 
-                                       {
-                                           MessageFatality.Severe => "error",
-                                           MessageFatality.Warning => "warn",
-                                           MessageFatality.Information => "info",
-                                           _ => throw new InvalidOperationException()
-                                       }
-                                       + ": " + msg.Content);
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.WriteLine(msg.Content);
         }
         
         return returnCode;
