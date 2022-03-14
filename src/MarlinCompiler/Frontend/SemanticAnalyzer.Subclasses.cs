@@ -35,10 +35,12 @@ public sealed partial class SemanticAnalyzer
         /// This might contain a value - always check!
         /// </summary>
         public Scope? Scope { get; set; }
-
-        public virtual bool Equals(SemType? other)
+        
+        public virtual bool EqualsXXX(SemType? other)
         {
-            return Name == other?.Name && GenericTypeParam == other?.GenericTypeParam;
+            if (other is null) return false;
+
+            return other.Name == Name;
         }
 
         public override string ToString()
@@ -94,16 +96,20 @@ public sealed partial class SemanticAnalyzer
         public Symbol? LookupType(SemType type)
         {
             // Generics
-            (string, SemType?) genericsFound = _genericParams.Find(x => x.Item1 == type.Name);
-            if (genericsFound != default)
+
+            // C# goes out of its way to make a STACK OVERFLOW HERE
+            string typeName = type.Name;
+
+            (string, SemType?) foundGenericParam = _genericParams.Find(x => typeName == x.Item1);
+            if (foundGenericParam.Item1 != null)
             {
-                if (genericsFound.Item2 == null)
+                if (foundGenericParam.Item2 == null)
                 {
                     return new Symbol(SymbolKind.GenericTypeParam, type, "$", this, null!);
                 }
                 else
                 {
-                    return LookupType(genericsFound.Item2);
+                    return LookupType(foundGenericParam.Item2);
                 }
             }
             

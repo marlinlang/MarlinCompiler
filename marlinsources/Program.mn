@@ -1,12 +1,12 @@
 ﻿module app;
 
-internal class Generic {
-    
+internal class Generic<T> {
+    public app::Generic<T> Pluh -> get, set;
 }
 
 internal class Program {
     public void Main() {
         app::Generic<int> test;
-        test.SomeProp = 1;
+        
     }
 }

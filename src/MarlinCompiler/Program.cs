@@ -36,16 +36,23 @@ internal static class Program
     private static int CompilationHandler(string path, bool verbose)
     {
         Compiler compiler = new(path);
-        
+
         int returnCode = compiler.Compile();
         int msgCount = compiler.MessageCollection.Count();
         bool fail = compiler.MessageCollection.HasFatalErrors;
         
-        Console.WriteLine($"Build {(fail ? "failed" : "passed")} with {msgCount} message{(msgCount == 1 ? "" : 's')}");
+        // Crazy output time
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.Write("Marlin build ");
+        
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.Write(fail ? "failed" : "successful");
+        
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine($" with {msgCount} message{(msgCount == 1 ? "" : 's')}{(msgCount == 0 ? "" : ':')}");
         
         foreach (Message msg in compiler.MessageCollection)
         {
-            Console.WriteLine();
             string location = msg.Location?.ToString() ?? "";
             
             // Shorter file paths
@@ -87,6 +94,8 @@ internal static class Program
             
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.WriteLine(msg.Content);
+            
+            Console.WriteLine();
         }
         
         return returnCode;

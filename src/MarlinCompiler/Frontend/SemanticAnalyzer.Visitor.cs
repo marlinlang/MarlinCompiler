@@ -310,6 +310,35 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 {
                     MessageCollection.Error("Property type is not an actual type", node.Type.Location);
                 }
+                else if (typeSymbol.Type.GenericTypeParam != null && node.Type.GenericTypeName == null)
+                {
+                    // We didn't give a generic type arg
+                    MessageCollection.Error($"Missing generic argument for type {typeSymbol.Name}", node.Location);
+                }
+                else if (typeSymbol.Type.GenericTypeParam == null && node.Type.GenericTypeName != null)
+                {
+                    // Opposite of above: type isn't generic but we use it as such
+                    MessageCollection.Error(
+                        $"Type {typeSymbol.Name} cannot be used with a generic argument as it's not a generic type",
+                        null//node.Location
+                    );
+                }
+                else if (node.Type.GenericTypeName != null)
+                {
+                    // Clone type symbol & its scope
+                    typeSymbol = typeSymbol with {};
+                    typeSymbol.Scope = typeSymbol.Scope.CloneScope();
+            
+                    // Register the generic arg to the new clone
+                    typeSymbol.Scope.SetGenericArgument(0, GetSemType(node.Type.GenericTypeName));
+            
+                    // By the way: check if that type even exists!!!
+                    //if (CurrentScope.LookupType(GetSemType(node.Type.GenericTypeName)) == null)
+                    if (CurrentScope.LookupType(GetSemType(node.Type.GenericTypeName)) == null)
+                    {
+                        //MessageCollection.Error($"Unknown type {node.Type.GenericTypeName.FullName}");
+                    }
+                }
 
                 if (node.Value != null)
                 {
@@ -344,7 +373,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         }
         else if (typeSymbol.Node is not TypeDefinitionNode typeDef)
         {
-            MessageCollection.Error("Property type is not an actual type", node.Type.Location);
+            MessageCollection.Error("Variable type is not an actual type", node.Type.Location);
         }
         else if (typeSymbol.Type.GenericTypeParam != null && node.Type.GenericTypeName == null)
         {
