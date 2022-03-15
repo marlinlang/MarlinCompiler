@@ -107,7 +107,7 @@ public sealed partial class SemanticAnalyzer
                 {
                     return new Symbol(SymbolKind.GenericTypeParam, type, "$", this, null!);
                 }
-                else
+                else if (type != foundGenericParam.Item2)
                 {
                     return LookupType(foundGenericParam.Item2);
                 }
