@@ -77,7 +77,7 @@ internal static class Program
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.Write(" at ");
                 
-                Console.ForegroundColor = ConsoleColor.White;
+                Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.Write(location);
 
                 Console.ForegroundColor = ConsoleColor.Gray;
@@ -92,10 +92,8 @@ internal static class Program
                 Console.WriteLine(":");
             }
             
-            Console.ForegroundColor = ConsoleColor.Magenta;
-            Console.WriteLine(msg.Content);
-            
-            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("   | " + msg.Content.Replace("\n", "\n   : "));
         }
         
         return returnCode;
