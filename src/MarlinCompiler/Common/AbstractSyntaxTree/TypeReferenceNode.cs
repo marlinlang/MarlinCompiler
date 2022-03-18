@@ -19,7 +19,7 @@ public sealed class TypeReferenceNode : IndexableExpressionNode
     public string FullName { get; }
     
     /// <summary>
-    /// Generic type name (e.g. Array<string> - the string part)
+    /// Generic type name (e.g. Array&lt;string&gt; - the string part)
     /// </summary>
     public TypeReferenceNode? GenericTypeName { get; }
 

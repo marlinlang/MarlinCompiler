@@ -60,34 +60,13 @@ public sealed partial class SemanticAnalyzer
     {
         // TODO: Inheritance
         // Make it work with both the base types but with the generic args as well
-        
-        // To get the true name of expected we need to run it through itself
-        if (expected.Scope != null)
-        {
-            Symbol? expectedSym = expected.Scope.LookupType(expected);
 
-            if (expectedSym == null)
-            {
-                // unknown type
-                return false;
-            }
-            
-            expected = expectedSym.Type;
-        }
-        
         if (expected.Name != given.Name)
         {
             return false;
         }
 
-        // A subclass of a type when the supertype isn't generic will always be compatible
-        if (expected.GenericTypeParam == null)
-        {
-            return true;
-        }
-        
-        // SemTypes only compare their name and generic param
-        return expected.GenericTypeParam == given.GenericTypeParam;
+        return true;
     }
     
     /// <summary>
@@ -95,8 +74,6 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     private SemType GetSemType(TypeReferenceNode node)
     {
-        return node.GenericTypeName != null
-            ? new SemType(node.FullName, GetSemType(node.GenericTypeName))
-            : new SemType(node.FullName, null);
+        return new SemType(node.FullName, node.GenericTypeName != null ? GetSemType(node.GenericTypeName) : null);
     }
 }
