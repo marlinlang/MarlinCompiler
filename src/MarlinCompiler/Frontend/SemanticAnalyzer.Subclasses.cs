@@ -36,13 +36,6 @@ public sealed partial class SemanticAnalyzer
         /// </summary>
         public Scope? Scope { get; set; }
 
-        public virtual bool Equals(SemType? other)
-        {
-            if (other is null) return false;
-
-            return other.Name == Name;
-        }
-
         public override string ToString()
         {
             return Name;
