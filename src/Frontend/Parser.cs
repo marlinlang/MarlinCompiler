@@ -17,6 +17,7 @@ public sealed class Parser
     /// <summary>
     /// Constructor.
     /// </summary>
+    /// <param name="tokens">The tokens to work with.</param>
     /// <param name="filePath">Path to the source file. Used solely for error reporting.</param>
     public Parser(Tokens tokens, string filePath)
     {
@@ -156,10 +157,7 @@ public sealed class Parser
             try
             {
                 Node child = ExpectTypeMember();
-                if (child != null)
-                {
-                    bodyNode.Children.Add(child);
-                }
+                bodyNode.Children.Add(child);
             }
             catch (ParseException ex)
             {
@@ -185,11 +183,8 @@ public sealed class Parser
             try
             {
                 Node child = ExpectExternMethod();
-                
-                if (child != null)
-                {
-                    bodyNode.Children.Add(child);
-                }
+
+                bodyNode.Children.Add(child);
             }
             catch (ParseException ex)
             {
@@ -269,7 +264,7 @@ public sealed class Parser
         GrabNextByExpecting(TokenType.Arrow);
         GrabNextByExpecting(TokenType.At);
 
-        string mappedMethodName = GrabNextByExpecting(TokenType.Identifier);
+        GrabNextByExpecting(TokenType.Identifier);
         ExpressionNode[] passedArgs = GrabTupleValues();
 
         Require(TokenType.Semicolon);
@@ -323,8 +318,6 @@ public sealed class Parser
             baseClass = new TypeReferenceNode("std::Object") { Location = nameToken.Location };
         }
 
-        string fullName = $"{_moduleName}::{name}";
-
         bool isStatic = modifiers.Contains("static");
         ClassTypeDefinitionNode classNode = new(
             name,
@@ -360,8 +353,6 @@ public sealed class Parser
         
         ApplyModifierFilters(modifiers, nameToken, "public", "internal");
 
-        string fullName = $"{_moduleName}::{name}";
-        
         StructTypeDefinitionNode structNode = new(
             name,
             _moduleName,
@@ -409,8 +400,6 @@ public sealed class Parser
             }
         }
 
-        string fullName = $"{_moduleName}::{name}";
-        
         ExternedTypeDefinitionNode node = new(name, _moduleName, accessibility, isStatic, llvmTypeName)
         {
             Location = nameToken.Location
@@ -501,10 +490,7 @@ public sealed class Parser
             {
                 Node child = ExpectStatement(insideLoop);
 
-                if (child != null)
-                {
-                    node.Children.Add(child);
-                }
+                node.Children.Add(child);
             }
             catch (ParseException ex)
             {
@@ -570,7 +556,7 @@ public sealed class Parser
                     }
                     assignedGet = true;
 
-                    if (currentAccessibility.ToString().ToLower() != get.ToString().ToLower())
+                    if (currentAccessibility.ToLower() != get.ToString().ToLower())
                     {
                         MessageCollection.Error(
                             "Get accessibility must be the same as the accessibility of the property itself.",
@@ -578,7 +564,7 @@ public sealed class Parser
                         );
                     }
                     
-                    GetAccessibility.TryParse(currentAccessibility, true, out get);
+                    Enum.TryParse(currentAccessibility, true, out get);
                     
                     _tokens.Skip(); // get
 
@@ -586,7 +572,6 @@ public sealed class Parser
                     {
                         _tokens.Skip(); // ,
                         peek = _tokens.PeekToken();
-                        continue;
                     }
                     else
                     {
@@ -600,7 +585,7 @@ public sealed class Parser
                         MessageCollection.Error("Repeated set specifier", peek.Location);
                     }
                     assignedSet = true;
-                    SetAccessibility.TryParse(currentAccessibility, true, out set);
+                    Enum.TryParse(currentAccessibility, true, out set);
 
                     if ((short)set > (short)get)
                     {
@@ -616,7 +601,6 @@ public sealed class Parser
                     {
                         _tokens.Skip(); // ,
                         peek = _tokens.PeekToken();
-                        continue;
                     }
                     else
                     {
@@ -720,8 +704,6 @@ public sealed class Parser
         //   method call                        (accessPath dot)? identifier tuple semicolon
         //   todo more
 
-        Parser parser;
-        
         // Empty statement
         if (_tokens.NextIsOfType(TokenType.Semicolon))
         {
@@ -740,7 +722,7 @@ public sealed class Parser
         // Variable declaration
         try
         {
-            parser = CreateSubParser();
+            Parser parser = CreateSubParser();
 
             if (parser._tokens.NextIsOfType(TokenType.Mutable))
             {
@@ -748,7 +730,7 @@ public sealed class Parser
             }
             
             parser.ExpectTypeName(); // var type
-            string name = parser.GrabNextByExpecting(TokenType.Identifier);
+            parser.GrabNextByExpecting(TokenType.Identifier);
             if (parser.MessageCollection.HasFatalErrors) throw new FormatException();
 
             Token? next = parser._tokens.GrabToken();
@@ -763,7 +745,7 @@ public sealed class Parser
         // Try getting an expression chain (method call/assignment)
         try
         {
-            parser = CreateSubParser();
+            CreateSubParser();
 
             ExpressionNode expr = ExpectExpression(); // should work if the subparser didn't error
 
@@ -887,13 +869,13 @@ public sealed class Parser
                 peek = _tokens.GrabToken()!; // .
                 ExpressionNode right = ExpectExpression(true);
 
-                if (right is not IndexableExpressionNode)
+                if (right is not IndexableExpressionNode node)
                 {
                     throw new ParseException($"Cannot index {right} expression", peek);
                 }
 
-                ((IndexableExpressionNode) right).Target = left;
-                left = right;
+                node.Target = left;
+                left = node;
             }
 
             peek = _tokens.PeekToken();
@@ -972,10 +954,10 @@ public sealed class Parser
             {
                 break;
             }
-            else if (next.Type == TokenType.Comma)
+            
+            if (next.Type == TokenType.Comma)
             {
                 _tokens.Skip();
-                continue;
             }
             else
             {
@@ -1018,7 +1000,6 @@ public sealed class Parser
             if (peek.Type == TokenType.Comma)
             {
                 _tokens.Skip(); // ,
-                continue;
             }
             else if (peek.Type != TokenType.RightParen)
             {
@@ -1054,21 +1035,6 @@ public sealed class Parser
         }
 
         return dependencies.ToArray();
-    }
-
-    /// <summary>
-    /// Utility method for building a method signature.
-    /// </summary>
-    private string[] GetSignature(VariableNode[] expectedArgs)
-    {
-        string[] arr = new string[expectedArgs.Length];
-
-        for (int i = 0; i < expectedArgs.Length; i++)
-        {
-            arr[i] = expectedArgs[i].Type.FullName;
-        }
-        
-        return arr;
     }
 
     /// <summary>
@@ -1136,8 +1102,8 @@ public sealed class Parser
         {
             name = "<no_name_given>";
             MessageCollection.Error(
-                $"Expected module name statement, got {next?.Type.ToString() ?? "EOF"}",
-                next?.Location ?? new FileLocation(_path)
+                $"Expected module name statement, got {next.Type.ToString()}",
+                next.Location
             );
         }
 
@@ -1153,7 +1119,7 @@ public sealed class Parser
     {
         if (!_tokens.TryExpect(TokenType.Identifier, out Token? fail))
         {
-            MessageCollection.Error("Expected module name", fail?.Location ?? new FileLocation(_path));
+            MessageCollection.Error("Expected module name", fail.Location);
         }
 
         StringBuilder name = new();
@@ -1186,7 +1152,6 @@ public sealed class Parser
     /// <summary>
     /// Utility method for reading a type name.
     /// </summary>
-    /// <param name="allowArray">If false, left bracket will be ignored even if it exists.</param>
     private TypeReferenceNode ExpectTypeName()
     {
         // In all cases we need an identifier
@@ -1266,7 +1231,7 @@ public sealed class Parser
                 throw new CancelParsingException("Premature EOF");
             }
             
-            throw new ParseException($"Expected {expected}, got {fail?.Type.ToString() ?? "EOF"}", fail!);
+            throw new ParseException($"Expected {expected}, got {fail.Type.ToString()}", fail);
         }
     }
 
@@ -1314,10 +1279,8 @@ public sealed class Parser
         }
         
         // Recover
-        while (!_tokens.NextIsOfType(TokenType.RightBrace) && !_tokens.TryExpect(TokenType.Semicolon, out Token tok))
+        while (!_tokens.NextIsOfType(TokenType.RightBrace) && !_tokens.TryExpect(TokenType.Semicolon, out Token _))
         {
-            if (tok == null) return;
-
             _tokens.Skip();
         }
 
