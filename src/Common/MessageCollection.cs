@@ -18,7 +18,7 @@ public class MessageCollection : IEnumerable<Message>
 
     public bool HasFatalErrors => _messages.Any(x => x.Fatality == MessageFatality.Severe);
 
-    public void Error(string message, FileLocation? location = null)
+    public void Error(string message, FileLocation? location)
     {
         _messages.Add(new Message(message)
         {
@@ -27,7 +27,7 @@ public class MessageCollection : IEnumerable<Message>
         });
     }
 
-    public void Warn(string message, FileLocation? location = null)
+    public void Warn(string message, FileLocation? location)
     {
         _messages.Add(new Message(message)
         {
@@ -36,7 +36,7 @@ public class MessageCollection : IEnumerable<Message>
         });
     }
 
-    public void Info(string message, FileLocation? location = null)
+    public void Info(string message, FileLocation? location)
     {
         _messages.Add(new Message(message)
         {
