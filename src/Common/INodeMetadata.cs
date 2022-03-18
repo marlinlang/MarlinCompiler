@@ -1,8 +1,8 @@
 namespace MarlinCompiler.Common;
 
 /// <summary>
-/// Node metadata class.
+/// Node metadata interface.
 /// </summary>
-public class NodeMetadata
+public interface INodeMetadata
 {
 }
