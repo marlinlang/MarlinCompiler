@@ -1,4 +1,0 @@
-﻿module std;
-
-//@ Represents an integer.
-public extern Int32 @marlin_int32 {}
