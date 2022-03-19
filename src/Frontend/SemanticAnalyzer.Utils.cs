@@ -117,7 +117,7 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// Helper method.
     /// </summary>
-    private SemType GetSemType(TypeReferenceNode node)
+    private static SemType GetSemType(TypeReferenceNode node)
     {
         return new SemType(
             node.FullName,
