@@ -56,17 +56,28 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// Checks whether two types are compatible. Supports generics.
     /// </summary>
-    private bool AreTypesCompatible(ref SemType expected, SemType given)
+    private (bool compatible, string expectedFullName, string givenFullName) AreTypesCompatible(SemType expected, SemType given)
     {
         // TODO: Inheritance
         // Make it work with both the base types but with the generic args as well
 
+        expected = expected.AttemptResolveGeneric();
+        given = given.AttemptResolveGeneric();
+        
         if (expected.Name != given.Name)
         {
-            return false;
+            return (false, expected.ToString(), given.ToString());
         }
 
-        return true;
+        if (expected.GenericTypeParameter is null != given.GenericTypeParameter is null)
+        {
+            return (false, expected.ToString(), given.ToString());
+        }
+        
+        (bool compatible, string expectedFullName, string givenFullName)
+            = AreTypesCompatible(expected.GenericTypeParameter!, given.GenericTypeParameter!);
+
+        return (compatible, expected.ToString(), given.ToString());
     }
     
     /// <summary>
@@ -74,6 +85,11 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     private SemType GetSemType(TypeReferenceNode node)
     {
-        return new SemType(node.FullName, node.GenericTypeName != null ? GetSemType(node.GenericTypeName) : null);
+        return new SemType(
+            node.FullName,
+            node.GenericTypeName != null
+                ? GetSemType(node.GenericTypeName)
+                : null
+            );
     }
 }

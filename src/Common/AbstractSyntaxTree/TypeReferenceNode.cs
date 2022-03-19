@@ -26,7 +26,7 @@ public sealed class TypeReferenceNode : IndexableExpressionNode
     public override string ToString()
     {
         return GenericTypeName != null
-            ? $"{FullName}<{GenericTypeName.ToString()}>"
+            ? $"{FullName}<{GenericTypeName}>"
             : FullName;
     }
 
