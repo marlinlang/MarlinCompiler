@@ -168,7 +168,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 {
                     Visit(param.Type);
 
-                    if (node.Parameters.Count(x => x.Name == param.Name) > 1)
+                    if (param.Name != "_" && node.Parameters.Count(x => x.Name == param.Name) > 1)
                     {
                         MessageCollection.Error($"Repeated parameter name {param.Name}", param.Location);
                     }
@@ -213,7 +213,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 {
                     Visit(param.Type);
 
-                    if (node.Parameters.Count(x => x.Name == param.Name) > 1)
+                    if (param.Name != "_" && node.Parameters.Count(x => x.Name == param.Name) > 1)
                     {
                         MessageCollection.Error($"Repeated parameter name {param.Name}", param.Location);
                     }
@@ -302,8 +302,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         Visit(node.Type);
         
-        // Check for variable shadowing
-        if (CurrentScope.LookupSymbol(node.Name, true) != null)
+        // Check for variable shadowing, unless variable name is _
+        if (node.Name != "_" && CurrentScope.LookupSymbol(node.Name, true) != null)
         {
             MessageCollection.Error($"Variable {node.Name} has already been defined in the same scope", node.Location);
         }

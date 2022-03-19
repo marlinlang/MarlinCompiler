@@ -8,7 +8,7 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// The internal stack of scopes.
     /// </summary>
-    private Stack<Scope> _scopes = new();
+    private readonly Stack<Scope> _scopes = new();
 
     private Scope CurrentScope => _scopes.Peek();
     
@@ -74,7 +74,7 @@ public sealed partial class SemanticAnalyzer
             return (false, expected.ToString(), given.ToString());
         }
         
-        (bool compatible, string expectedFullName, string givenFullName)
+        (bool compatible, string _, string _)
             = AreTypesCompatible(expected.GenericTypeParameter!, given.GenericTypeParameter!);
 
         return (compatible, expected.ToString(), given.ToString());
