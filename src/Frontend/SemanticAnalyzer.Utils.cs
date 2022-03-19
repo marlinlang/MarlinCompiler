@@ -97,6 +97,8 @@ public sealed partial class SemanticAnalyzer
             throw new InvalidOperationException(
                 $"Cannot use {nameof(VisitTypeReferenceGeneric)} for non-generic types");
         }
+
+        
         
         throw new NotImplementedException();
         
