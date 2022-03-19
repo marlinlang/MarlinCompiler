@@ -537,46 +537,36 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
     public None TypeReference(TypeReferenceNode node)
     {
-        Symbol? type = CurrentScope.LookupType(GetSemType(node));
-        
-        if (type != null)
+        if (node.GenericTypeName != null)
         {
-            // Clone it!
-            type = type with { Scope = type.Scope.CloneScope() };
-            type.Type = type.Type with { Scope = type.Scope };
+            // Use the generic version of this method for generic types
             
-            UseScope(type.Scope);
-
-            if (type.Kind == SymbolKind.GenericTypeParam)
-            {
-                //
-            }
-            
-            // Evaluate generic arg too!
-            if (node.GenericTypeName != null)
-            {
-                Visit(node.GenericTypeName);
-
-                Symbol? symbol = (node.GenericTypeName.Metadata as SymbolMetadata)?.Symbol;
-                if (symbol != null && symbol != Symbol.UnknownType && symbol.Kind != SymbolKind.GenericTypeParam)
-                {
-                    type.Scope.SetGenericArg(0, symbol.Type);
-                }
-            }
-            
-            PopScope();
-            
-            // Finally, set the type
-            node.Metadata = new SymbolMetadata(type);
+            VisitTypeReferenceGeneric(node);
         }
         else
         {
-            // We don't need nulls!
-            node.Metadata = new SymbolMetadata(Symbol.UnknownType);
+            // No generic arg
             
-            MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
-        }
+            Symbol? type = CurrentScope.LookupType(GetSemType(node));
 
+            if (type != null)
+            {
+                if (type.Type.GenericTypeParameter != null && node.GenericTypeName == null)
+                {
+                    // We *require* a generic param/arg but one isn't given!
+                    MessageCollection.Error($"Cannot use generic type {type.Name}<{type.Type.GenericTypeParameter}> without generic argument", node.Location);
+                }
+                node.Metadata = new SymbolMetadata(type);
+            }
+            else
+            {
+                // We don't want nulls!
+                node.Metadata = new SymbolMetadata(Symbol.UnknownType);
+            
+                MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
+            }
+        }
+        
         return null!;
     }
 
@@ -625,7 +615,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             MessageCollection.Error($"Cannot reference non-variable {varSymbol.Name}", node.Location);
         }
-        else
+        else if (varSymbol.Type != Symbol.UnknownType.Type)
         {
             Visit(node.Value);
 

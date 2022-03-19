@@ -1,4 +1,3 @@
-using System.Data;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 
 namespace MarlinCompiler.Frontend;
@@ -58,26 +57,61 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     private (bool compatible, string expectedFullName, string givenFullName) AreTypesCompatible(SemType expected, SemType given)
     {
-        // TODO: Inheritance
-        // Make it work with both the base types but with the generic args as well
-
         expected = expected.AttemptResolveGeneric();
         given = given.AttemptResolveGeneric();
         
         if (expected.Name != given.Name)
         {
+            // Obvious: name mismatch!
+            // TODO: Inheritance
             return (false, expected.ToString(), given.ToString());
         }
 
         if (expected.GenericTypeParameter is null != given.GenericTypeParameter is null)
         {
+            // One type has generic param, but the other doesn't
             return (false, expected.ToString(), given.ToString());
         }
         
-        (bool compatible, string _, string _)
-            = AreTypesCompatible(expected.GenericTypeParameter!, given.GenericTypeParameter!);
-
+        if (expected.GenericTypeParameter == null)
+        {
+            // No generic param/arg in either
+            return (true, expected.ToString(), given.ToString());
+        }
+        
+        // Both have generic args, make sure they're compatible
+        (bool compatible, string _, string _) = AreTypesCompatible(
+            expected.GenericTypeParameter!,
+            given.GenericTypeParameter!
+        );
         return (compatible, expected.ToString(), given.ToString());
+    }
+
+    /// <summary>
+    /// Used for visiting a type reference with a generic parameter accurately.
+    /// </summary>
+    private void VisitTypeReferenceGeneric(TypeReferenceNode node)
+    {
+        if (node.GenericTypeName is null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot use {nameof(VisitTypeReferenceGeneric)} for non-generic types");
+        }
+        
+        throw new NotImplementedException();
+        
+        /*
+         * if (node.GenericTypeName != null)
+            {
+                Visit(node.GenericTypeName);
+
+                Symbol? symbol = (node.GenericTypeName.Metadata as SymbolMetadata)?.Symbol;
+                if (symbol != null && symbol != Symbol.UnknownType && symbol.Kind != SymbolKind.GenericTypeParam)
+                {
+                    type.Scope.SetGenericArg(0, symbol.Type);
+                }
+            }
+         */
     }
     
     /// <summary>
