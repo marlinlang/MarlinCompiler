@@ -37,29 +37,13 @@ public sealed partial class SemanticAnalyzer
         /// </summary>
         public Scope? Scope { get; set; }
 
-        public SemType? GenericTypeParameter { get; private set; } = GenericTypeParameter;
+        public SemType? GenericTypeParameter { get; set; } = GenericTypeParameter;
 
         public override string ToString()
         {
             return GenericTypeParameter != null 
-                ? $"{AttemptResolveGeneric().Name}<{GenericTypeParameter}>" 
-                : AttemptResolveGeneric().Name;
-        }
-
-        public SemType AttemptResolveGeneric()
-        {
-            if (GenericTypeParameter != null)
-            {
-                if (GenericTypeParameter.Scope == null)
-                {
-                    GenericTypeParameter.Scope = Scope;
-                }
-
-                GenericTypeParameter = GenericTypeParameter.AttemptResolveGeneric();
-            }
-
-            SemType found = Scope?.LookupType(this)?.Type ?? this;
-            return found.Name != Name ? found : this;
+                ? $"{Name}<{GenericTypeParameter}>" 
+                : Name;
         }
     }
 
@@ -87,7 +71,7 @@ public sealed partial class SemanticAnalyzer
         public Scope? Parent { get; set; }
         public List<Symbol> Symbols { get; } = new();
 
-        private List<(string, SemType?)> _generics = new();
+        public List<(string, string?)> Generics { get; } = new();
 
         /// <summary>
         /// Searches for a symbol.
@@ -107,14 +91,17 @@ public sealed partial class SemanticAnalyzer
         /// <summary>
         /// Searches for a type.
         /// </summary>
-        public Symbol? LookupType(SemType type)
+        public Symbol LookupType(SemType type)
         {
-            (string, SemType?) generic = _generics.Find(x => x.Item1 == type.Name);
+            (string, string?) generic = Generics.Find(x => x.Item1 == type.Name);
             if (generic != default)
             {
-                return generic.Item2 != null
-                    ? LookupType(generic.Item2)
-                    : new Symbol(SymbolKind.GenericTypeParam, type, "T", this, null!);
+                if (generic.Item2 != null)
+                {
+                    return LookupType(new SemType(generic.Item2, null));
+                }
+                
+                return new Symbol(SymbolKind.GenericTypeParam, type, generic.Item1, this, null!);
             }
 
             Symbol? found = Symbols.Find(
@@ -127,7 +114,7 @@ public sealed partial class SemanticAnalyzer
                 return found;
             }
 
-            return Parent?.LookupType(type);
+            return Parent?.LookupType(type) ?? Symbol.UnknownType;
         }
 
         /// <summary>
@@ -138,43 +125,15 @@ public sealed partial class SemanticAnalyzer
         /// <summary>
         /// Adds a new generic param.
         /// </summary>
-        public void AddGenericParam(string name) => _generics.Add((name, null));
-
-        /// <summary>
-        /// Sets the argument of the given generic param.
-        /// </summary>
-        public void SetGenericArg(string name, SemType value)
-        {
-            for (int i = 0; i < _generics.Count; i++)
-            {
-                if (_generics[i].Item1 != name) continue;
-                
-                _generics[i] = (name, value);
-                return;
-            }
-
-            throw new InvalidOperationException("Generic param does not exist");
-        }
-
-        /// <summary>
-        /// Sets the argument of the given generic param.
-        /// </summary>
-        public void SetGenericArg(int idx, SemType value)
-        {
-            if (idx >= _generics.Count)
-            {
-                throw new InvalidOperationException("Generic param does not exist");
-            }
-
-            SetGenericArg(_generics[idx].Item1, value);
-        }
+        public void AddGenericParam(string name) => Generics.Add((name, null));
 
         public Scope CloneScope()
         {
-            Scope other = new(Parent);
-
-            // Name
-            other.DebugName = $"Clone of {DebugName}";
+            Scope other = new(Parent)
+            {
+                // Name
+                DebugName = $"Clone of {DebugName}"
+            };
 
             // Symbols
             foreach (Symbol sym in Symbols)
@@ -190,14 +149,10 @@ public sealed partial class SemanticAnalyzer
             }
             
             // Generics
-            foreach ((string, SemType?) generic in _generics)
+            foreach ((string, string?) generic in Generics)
             {
                 other.AddGenericParam(generic.Item1);
-
-                if (generic.Item2 != null)
-                {
-                    other.SetGenericArg(generic.Item1, generic.Item2 with {});
-                }
+                other.Generics[^1] = (generic.Item1, generic.Item2);
             }
 
             return other;

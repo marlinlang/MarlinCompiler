@@ -57,9 +57,6 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     private (bool compatible, string expectedFullName, string givenFullName) AreTypesCompatible(SemType expected, SemType given)
     {
-        expected = expected.AttemptResolveGeneric();
-        given = given.AttemptResolveGeneric();
-        
         if (expected.Name != given.Name)
         {
             // Obvious: name mismatch!
@@ -85,35 +82,6 @@ public sealed partial class SemanticAnalyzer
             given.GenericTypeParameter!
         );
         return (compatible, expected.ToString(), given.ToString());
-    }
-
-    /// <summary>
-    /// Used for visiting a type reference with a generic parameter accurately.
-    /// </summary>
-    private void VisitTypeReferenceGeneric(TypeReferenceNode node)
-    {
-        if (node.GenericTypeName is null)
-        {
-            throw new InvalidOperationException(
-                $"Cannot use {nameof(VisitTypeReferenceGeneric)} for non-generic types");
-        }
-
-        
-        
-        throw new NotImplementedException();
-        
-        /*
-         * if (node.GenericTypeName != null)
-            {
-                Visit(node.GenericTypeName);
-
-                Symbol? symbol = (node.GenericTypeName.Metadata as SymbolMetadata)?.Symbol;
-                if (symbol != null && symbol != Symbol.UnknownType && symbol.Kind != SymbolKind.GenericTypeParam)
-                {
-                    type.Scope.SetGenericArg(0, symbol.Type);
-                }
-            }
-         */
     }
     
     /// <summary>
