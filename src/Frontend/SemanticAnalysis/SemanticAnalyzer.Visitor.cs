@@ -166,6 +166,14 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             {
                 Visit(node.Type);
 
+                if (node.IsStatic && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
+                {
+                    MessageCollection.Error(
+                        $"Cannot use generic type on static method {node.Name}",
+                        node.Location
+                    );
+                }
+                
                 // Check args
                 foreach (VariableNode param in node.Parameters)
                 {
@@ -267,6 +275,14 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             case AnalyzerPass.DefineTypeMembers:
             {
                 Visit(node.Type);
+
+                if (node.IsStatic && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
+                {
+                    MessageCollection.Error(
+                        $"Cannot use generic type on static property {node.Name}",
+                        node.Location
+                    );
+                }
                 
                 node.Metadata = new SymbolMetadata(new Symbol(
                     SymbolKind.Property,
@@ -628,7 +644,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             };
         }
 
-        type.Type.IsGenericParam = _pass == AnalyzerPass.DefineTypeMembers;
+        type.Type.IsGenericParam = type.Kind == SymbolKind.GenericTypeParam;
         
         type.Type.Scope = type.Scope; // we need to manually override this!
 
