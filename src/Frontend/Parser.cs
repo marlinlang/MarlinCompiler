@@ -26,6 +26,7 @@ public sealed class Parser
         _tokens = tokens;
         _path = filePath;
         _moduleName = "<global>";
+        _compilationUnitDependencies = new List<string>();
     }
     
     /// <summary>
@@ -48,6 +49,11 @@ public sealed class Parser
     /// </summary>
     private string _moduleName;
 
+    /// <summary>
+    /// The dependencies for this compilation unit.
+    /// </summary>
+    private readonly List<string> _compilationUnitDependencies;
+    
     /// <summary>
     /// An exception for parse errors.
     /// </summary>
@@ -90,12 +96,12 @@ public sealed class Parser
     /// </summary>
     private CompilationUnitNode ExpectCompilationUnit()
     {
-        string[] dependencies = GrabUsingDirectives();
+        _compilationUnitDependencies.AddRange(GrabUsingDirectives());
         string name = GrabModuleDirective();
         _moduleName = name;
 
-        CompilationUnitNode node = new(name, dependencies);
-
+        List<Node> children = new();
+        
         try
         {
             while (_tokens.HasNext)
@@ -106,7 +112,7 @@ public sealed class Parser
 
                     if (child != null)
                     {
-                        node.Children.Add(child);
+                        children.Add(child);
                     }
                 }
                 catch (ParseException ex)
@@ -120,6 +126,8 @@ public sealed class Parser
             MessageCollection.Info($"Parsing cancelled: {ex.Message}", new FileLocation(_path));
         }
 
+        CompilationUnitNode node = new(name, _compilationUnitDependencies.ToArray());
+        node.Children.AddRange(children);
         return node;
     }
 
@@ -1161,6 +1169,7 @@ public sealed class Parser
         string name = GrabModuleName();
 
         Token nameToken = _tokens.CurrentToken;
+        string oldName = name;
         name = name switch
         {
             "void" => "std::Void",
@@ -1170,6 +1179,12 @@ public sealed class Parser
             "bool" => "std::Boolean",
             _ => name
         };
+
+        if (oldName != name)
+        {
+            // We are using one of the types above
+            _compilationUnitDependencies.Add("std");
+        }
 
         TypeReferenceNode? genericName = null;
 
@@ -1242,7 +1257,7 @@ public sealed class Parser
     /// <param name="modifiers">Modifiers to check.</param>
     /// <param name="errorToken">The token to use for error reporting.</param>
     /// <param name="allowed">Allowed modifiers.</param>
-    private void ApplyModifierFilters(string[] modifiers, Token errorToken, params string[] allowed)
+    private void ApplyModifierFilters(IEnumerable<string> modifiers, Token errorToken, params string[] allowed)
     {
         foreach (string mod in modifiers)
         {
