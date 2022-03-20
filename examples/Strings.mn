@@ -1,7 +1,4 @@
-﻿using std;
-using std::text;
-
-module examples;
+﻿module examples;
 
 public static class Strings
 {

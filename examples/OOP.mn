@@ -1,14 +1,11 @@
-﻿using std;
-
-module examples;
+﻿module examples;
 
 public class Animal
 {
     public string Name;
     public int AgeYears;
     
-    // Specifiers - restrict usage for the variable
-    //                    VVVVVVVVVVVVVVVV
+    // Specifiers (get, private set) - restrict usage for the variable
     public bool Hungry -> get, private set = false;
     
     public constructor(string name, int ageYears)

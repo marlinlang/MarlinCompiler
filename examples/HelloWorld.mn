@@ -1,6 +1,4 @@
-﻿using std;
-
-module examples;
+﻿module examples;
 
 public static class HelloWorld
 {

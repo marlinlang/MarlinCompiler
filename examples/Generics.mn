@@ -1,0 +1,12 @@
+module examples;
+
+internal class Generic<T> {
+    public T Property -> get, set;
+}
+
+internal class Program {
+    public void Main() {
+        examples::Generic<int> var = new examples::Generic<int>();
+        var.Property = 12;
+    }
+}
