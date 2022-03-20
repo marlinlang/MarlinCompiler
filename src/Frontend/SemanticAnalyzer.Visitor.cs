@@ -1,3 +1,4 @@
+using System.Data;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Visitors;
@@ -27,9 +28,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         : null
                 )
                 {
-                    Scope = PushScope(),
+                    Scope = PushScope(name),
                 };
-                semType.Scope.DebugName = $"type {name}";
                 node.Metadata = new SymbolMetadata(new Symbol(
                     SymbolKind.ClassType,
                     semType,
@@ -80,7 +80,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         null
                     ),
                     name,
-                    PushScope(),
+                    PushScope(name),
                     node
                 ));
                 PopScope();
@@ -119,7 +119,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         null
                     ),
                     name,
-                    PushScope(),
+                    PushScope(name),
                     node
                 ));
                 PopScope();
@@ -154,7 +154,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     SymbolKind.Method,
                     GetSemType(node.Type),
                     node.Name,
-                    PushScope(),
+                    PushScope(node.Name),
                     node
                 ));
                 PopScope();
@@ -202,7 +202,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     SymbolKind.Constructor,
                     null!,
                     "constructor",
-                    PushScope(),
+                    PushScope("constructor"),
                     node
                 ));
                 PopScope();
@@ -224,7 +224,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 }
 
                 // Check body
-                PushScope();
+                UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
                 foreach (Node child in node)
                 {
                     Visit(child);
@@ -248,7 +248,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     SymbolKind.ExternMethod,
                     GetSemType(node.Type),
                     node.Name ?? "constructor",
-                    PushScope(),
+                    PushScope(node.Name ?? "constructor"),
                     node
                 ));
                 PopScope();
@@ -266,9 +266,11 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             case AnalyzerPass.DefineTypeMembers:
             {
+                Visit(node.Type);
+                
                 node.Metadata = new SymbolMetadata(new Symbol(
                     SymbolKind.Property,
-                    GetSemType(node.Type),
+                    ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
                     node.Name,
                     _scopes.Peek(),
                     node
@@ -279,8 +281,6 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
             case AnalyzerPass.EnterTypeMembers:
             {
-                Visit(node.Type);
-
                 if (node.Value != null)
                 {
                     Visit(node.Value);
@@ -378,13 +378,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             }
 
             SemType type = ((SymbolMetadata) node.Target.Metadata).Symbol.Type;
-            Scope? typeScope = type.Scope ?? CurrentScope.LookupType(type)?.Scope;
-
-            if (typeScope == null)
-            {
-                // something went horribly wrong
-                return null!;
-            }
+            Scope typeScope = type.Scope ?? CurrentScope.LookupType(type).Scope;
 
             methodSymbol = typeScope.LookupSymbol(node.MethodName, true);
         }
@@ -472,6 +466,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         // Was the member referenced statically?
         bool referencedStatically = node.Target is TypeReferenceNode or null;
 
+        Scope useScope = CurrentScope;
+        
         if (node.Target != null)
         {
             Visit(node.Target);
@@ -483,15 +479,16 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             }
 
             SemType type = ((SymbolMetadata) node.Target.Metadata).Symbol.Type;
-            Scope? typeScope = type.Scope ?? CurrentScope.LookupType(type)?.Scope;
 
-            if (typeScope == null)
+            if (type == Symbol.UnknownType.Type)
             {
                 MessageCollection.Error($"Cannot find type {type.Name}", node.Location);
             }
+
+            useScope = type.Scope ?? throw new NoNullAllowedException("type scope");
         }
 
-        Symbol? found = CurrentScope.LookupSymbol(node.MemberName, false);
+        Symbol? found = useScope.LookupSymbol(node.MemberName, false);
 
         // We can only assign a metadata if the symbol isn't null
         if (found != null)
@@ -534,7 +531,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         }
         else
         {
-            MessageCollection.Error($"Name {node.MemberName} does not exist", node.Location);
+            MessageCollection.Error($"Name {node.MemberName} does not exist in {useScope.Name}", node.Location);
         }
 
         return null!;
@@ -557,6 +554,15 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
         // We have the type!
         // Let's evaluate the generic type as well.
+        
+        // Wait! Before that - if this is a generic param itself, it can't have a generic param!!!
+        if (type.Kind == SymbolKind.GenericTypeParam && node.GenericTypeName != null)
+        {
+            MessageCollection.Error(
+                $"Cannot use a generic argument with parameter {type.Name}",
+                node.Location
+            );
+        }
         
         if (type.Type.GenericTypeParameter != null && node.GenericTypeName == null)
         {
@@ -581,19 +587,30 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             Visit(node.GenericTypeName);
         }
 
-        type = type with { Type = type.Type with {}, Scope = type.Scope.CloneScope() };
-        type.Type.Scope = type.Scope; // we need to manually override this!
+        if (_pass != AnalyzerPass.DefineTypeMembers)
+        {
+            // ONLY clone for instance variables - this can only happen during the EnterTypeMembers pass
+            // when property values are evaluated and method entered
+            Scope newScope = type.Scope.CloneScope();
+            type = type with
+            {
+                Type = type.Type with
+                {
+                    Scope = newScope
+                },
+                Scope = newScope
+            };
+        }
         
+        type.Type.Scope = type.Scope; // we need to manually override this!
+
         if (node.GenericTypeName != null)
         {
-            // Parent the (cloned) generic argument scope to this one
-            // This way we can use T overrides :P
-            // edit: actually no lol that's a terrible idea
-            
             // Set generic arg
             Symbol genericType = (node.GenericTypeName.Metadata as SymbolMetadata)!.Symbol;
-            
+
             type.Type.GenericTypeParameter = genericType.Type;
+            ReplaceAllOccurrencesOfType(type.Scope, type.Scope.Generics[0], genericType.Type);
         }
         
         node.Metadata = new SymbolMetadata(type);

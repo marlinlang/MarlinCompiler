@@ -1,6 +1,4 @@
-﻿using MarlinCompiler.Common.Visitors;
-
-namespace MarlinCompiler.Common.AbstractSyntaxTree;
+﻿namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
 /// <summary>
 /// A node that represents a compilation unit.

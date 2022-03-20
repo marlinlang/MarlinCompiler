@@ -1,4 +1,4 @@
-namespace MarlinCompiler.Frontend;
+namespace MarlinCompiler.Common;
 
 /// <summary>
 /// Used as a no-void-in-generics workaround. 

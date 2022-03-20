@@ -1,4 +1,4 @@
-using System.Data;
+using JetBrains.Annotations;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -32,12 +32,13 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     public record SemType(string Name, SemType? GenericTypeParameter)
     {
+        public string Name { get; } = Name;
+        public SemType? GenericTypeParameter { get; set; } = GenericTypeParameter;
+
         /// <summary>
         /// This is the scope of the type.
         /// </summary>
         public Scope? Scope { get; set; }
-
-        public SemType? GenericTypeParameter { get; set; } = GenericTypeParameter;
 
         public override string ToString()
         {
@@ -53,7 +54,7 @@ public sealed partial class SemanticAnalyzer
     public record Symbol(SymbolKind Kind, SemType Type, string Name, Scope Scope, Node Node)
     {
         public static Symbol UnknownType { get; } =
-            new(SymbolKind.ClassType, new SemType("???", null), "???", new Scope(null), null!);
+            new(SymbolKind.ClassType, new SemType("???", null), "???", new Scope("???", null), null!);
 
         public SemType Type { get; set; } = Type;
         public Scope Scope { get; set; } = Scope;
@@ -61,17 +62,18 @@ public sealed partial class SemanticAnalyzer
 
     public class Scope
     {
-        public Scope(Scope? parent)
+        public Scope(string name, Scope? parent)
         {
+            Name = name;
             Parent = parent;
         }
 
-        public string DebugName { get; set; } = "Unnamed";
+        public string Name { get; } = "Unnamed";
 
         public Scope? Parent { get; set; }
         public List<Symbol> Symbols { get; } = new();
 
-        public List<(string, string?)> Generics { get; } = new();
+        public List<string> Generics { get; } = new();
 
         /// <summary>
         /// Searches for a symbol.
@@ -93,15 +95,10 @@ public sealed partial class SemanticAnalyzer
         /// </summary>
         public Symbol LookupType(SemType type)
         {
-            (string, string?) generic = Generics.Find(x => x.Item1 == type.Name);
+            string? generic = Generics.Find(x => x == type.Name);
             if (generic != default)
             {
-                if (generic.Item2 != null)
-                {
-                    return LookupType(new SemType(generic.Item2, null));
-                }
-                
-                return new Symbol(SymbolKind.GenericTypeParam, type, generic.Item1, this, null!);
+                return new Symbol(SymbolKind.GenericTypeParam, type, generic, this, null!);
             }
 
             Symbol? found = Symbols.Find(
@@ -125,15 +122,11 @@ public sealed partial class SemanticAnalyzer
         /// <summary>
         /// Adds a new generic param.
         /// </summary>
-        public void AddGenericParam(string name) => Generics.Add((name, null));
+        public void AddGenericParam(string name) => Generics.Add(name);
 
         public Scope CloneScope()
         {
-            Scope other = new(Parent)
-            {
-                // Name
-                DebugName = $"Clone of {DebugName}"
-            };
+            Scope other = new(Name, Parent);
 
             // Symbols
             foreach (Symbol sym in Symbols)
@@ -144,20 +137,26 @@ public sealed partial class SemanticAnalyzer
                 {
                     newSym.Scope = other;
                 }
+
+                // Constructors have null types!!!!
+                // ReSharper disable once ConstantConditionalAccessQualifier
+                if (newSym.Type?.Scope == this)
+                {
+                    newSym.Type.Scope = other;
+                }
                 
                 other.AddSymbol(newSym);
             }
             
             // Generics
-            foreach ((string, string?) generic in Generics)
+            foreach (string param in Generics)
             {
-                other.AddGenericParam(generic.Item1);
-                other.Generics[^1] = (generic.Item1, generic.Item2);
+                other.AddGenericParam(param);
             }
 
             return other;
         }
     }
 
-    private record SymbolMetadata(Symbol Symbol) : INodeMetadata;
+    private record SymbolMetadata([UsedImplicitly] Symbol Symbol) : INodeMetadata;
 }

@@ -31,7 +31,7 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     public void Analyze()
     {
-        PushScope();
+        PushScope("<MARLIN_PROGRAM>");
         foreach (AnalyzerPass pass in Enum.GetValues<AnalyzerPass>())
         {
             _pass = pass;

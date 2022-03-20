@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
-using System.Linq;
 
 namespace MarlinCompiler.Common;
 

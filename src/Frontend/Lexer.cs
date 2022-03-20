@@ -151,17 +151,19 @@ public sealed class Lexer
     {
         List<Token> tokens = new();
 
-        for (Token? current = null; (current = Match()) != null; )
+        for (Token? current; (current = Match()) != null; )
         {
-            if (current.Type == TokenType.Skip) continue;
-
-            if (current.Type == TokenType.Invalid)
+            switch (current.Type)
             {
-                MessageCollection.Error($"Invalid token: {current.Value}", current.Location);
-                continue;
+                case TokenType.Skip:
+                    continue;
+                case TokenType.Invalid:
+                    MessageCollection.Error($"Invalid token: {current.Value}", current.Location);
+                    continue;
+                default:
+                    tokens.Add(current);
+                    break;
             }
-            
-            tokens.Add(current);
         }
 
         return tokens.ToArray();

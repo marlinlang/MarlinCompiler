@@ -14,9 +14,9 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// Adds a new scope on top.
     /// </summary>
-    private Scope PushScope()
+    private Scope PushScope(string name)
     {
-        Scope scope = new(_scopes.Count == 0 ? null : _scopes.Peek());
+        Scope scope = new(name, _scopes.Count == 0 ? null : _scopes.Peek());
         _scopes.Push(scope);
         return scope;
     }
@@ -30,14 +30,6 @@ public sealed partial class SemanticAnalyzer
     /// Removes the topmost scope.
     /// </summary>
     private void PopScope() => _scopes.Pop();
-
-    /// <summary>
-    /// Adds a symbol to the topmost scope. 
-    /// </summary>
-    private void AddSymbolToScope(Symbol symbol)
-    {
-        _scopes.Peek().AddSymbol(symbol);
-    }
     
     /// <summary>
     /// Adds the symbol in the metadata to the topmost scope. 
@@ -82,6 +74,35 @@ public sealed partial class SemanticAnalyzer
             given.GenericTypeParameter!
         );
         return (compatible, expected.ToString(), given.ToString());
+    }
+
+    /// <summary>
+    /// Recursive method that replaces all instances of typeName with the provided type.
+    /// </summary>
+    /// <param name="root">The scope to replace in.</param>
+    /// <param name="typeName">The type name to replace.</param>
+    /// <param name="with">The type to replace it with.</param>
+    private static void ReplaceAllOccurrencesOfType(Scope root, string typeName, SemType with)
+    {
+        foreach (Symbol sym in root.Symbols)
+        {
+            if (sym.Type.Name == typeName)
+            {
+                sym.Type = with;
+            }
+
+            if (sym.Type.GenericTypeParameter?.Name == typeName)
+            {
+                sym.Type.GenericTypeParameter = with;
+            }
+
+            // Some symbols carry the same scope as their parent
+            // E.g. properties carry the symbol of the type they're in
+            if (sym.Scope != root)
+            {
+                ReplaceAllOccurrencesOfType(sym.Scope, typeName, with);
+            }
+        }
     }
     
     /// <summary>

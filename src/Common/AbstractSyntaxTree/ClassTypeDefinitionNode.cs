@@ -12,6 +12,7 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
         : base(name, module, accessibility)
     {
         BaseType = baseType;
+        IsStatic = isStatic;
         GenericTypeParamName = genericTypeParamName;
     }
     

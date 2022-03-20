@@ -1,8 +1,5 @@
 ﻿using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.CommandLine.NamingConventionBinder;
-using System.Diagnostics;
-using System.Reflection;
 using MarlinCompiler.Common;
 
 namespace MarlinCompiler;
@@ -58,7 +55,7 @@ internal static class Program
             // Shorter file paths
             if (!verbose && location.StartsWith(path))
             {
-                location = location.Substring(path.Length);
+                location = location[path.Length..];
             }
 
             string fatality = msg.Fatality switch

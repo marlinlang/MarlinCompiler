@@ -1,9 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using System.Diagnostics;
 using MarlinCompiler.Backend;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
-using TokenType = MarlinCompiler.Frontend.TokenType;
 
 namespace MarlinCompiler.Common;
 
@@ -84,20 +82,14 @@ public sealed class Compiler
             Parser parser = new(tokens, path);
             
             CompilationUnitNode unit = parser.Parse();
-            if (unit != null)
-            {
-                compilationUnits.Add(unit);
-            }
+            compilationUnits.Add(unit);
             
             MessageCollection.AddRange(parser.MessageCollection);
         });
 
         foreach (CompilationUnitNode unit in compilationUnits)
         {
-            foreach (ContainerNode child in unit)
-            {
-                root.Children.Add(child);
-            }
+            root.Children.AddRange(unit);
         }
 
         return root;
