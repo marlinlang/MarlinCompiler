@@ -2,6 +2,8 @@
 using MarlinCompiler.Backend;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
+using MarlinCompiler.Frontend.Lexing;
+using SemanticAnalyzer = MarlinCompiler.Frontend.SemanticAnalysis.SemanticAnalyzer;
 
 namespace MarlinCompiler.Common;
 

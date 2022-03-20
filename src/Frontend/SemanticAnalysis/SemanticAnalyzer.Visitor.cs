@@ -3,7 +3,7 @@ using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Visitors;
 
-namespace MarlinCompiler.Frontend;
+namespace MarlinCompiler.Frontend.SemanticAnalysis;
 
 public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 {
@@ -285,15 +285,31 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 {
                     Visit(node.Value);
 
-                    SymbolMetadata? metadata = node.Value.Metadata as SymbolMetadata;
-
                     // We should have already errored
-                    if (metadata == null)
+                    if (node.Value.Metadata is not SymbolMetadata metadata)
                     {
                         return null!;
                     }
 
-                    throw new NotImplementedException("value-type and var-type check");
+                    Symbol varSymbol = ((SymbolMetadata) node.Metadata!).Symbol;
+                    SemType varType = varSymbol.Type;
+
+                    if (varType.IsGenericParam)
+                    {
+                        MessageCollection.Error($"Cannot provide an initialization value for generic type {varType} (on property {varSymbol.Name})", node.Location);
+                    }
+                    else
+                    {
+                        SemType valueType = metadata.Symbol.Type;
+
+                        (bool compatible, string expectedFullName, string givenFullName) = AreTypesCompatible(varType, valueType);
+                        if (!compatible)
+                        {
+                            MessageCollection.Error($"Type mismatch for variable {varSymbol.Name}" +
+                                                    $"\n\tExpected: {expectedFullName}" +
+                                                    $"\n\tGiven:    {givenFullName}", node.Location);
+                        }
+                    }
                 }
 
                 break;
@@ -328,12 +344,22 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             Visit(node.Value);
 
             // We should have already errored
-            if (node.Value.Metadata is not SymbolMetadata)
+            if (node.Value.Metadata is not SymbolMetadata metadata)
             {
                 return null!;
             }
 
-            throw new NotImplementedException("value-type and var-type check");
+            Symbol varSymbol = ((SymbolMetadata) node.Metadata!).Symbol;
+            SemType varType = varSymbol.Type;
+            SemType valueType = metadata.Symbol.Type;
+
+            (bool compatible, string expectedFullName, string givenFullName) = AreTypesCompatible(varType, valueType);
+            if (!compatible)
+            {
+                MessageCollection.Error($"Type mismatch for variable {varSymbol.Name}" +
+                                        $"\n\tExpected: {expectedFullName}" +
+                                        $"\n\tGiven:    {givenFullName}", node.Location);
+            }
         }
 
         return null!;
@@ -345,7 +371,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
         node.Metadata = new SymbolMetadata(new Symbol(
             SymbolKind.Instance,
-            GetSemType(node.Type),
+            ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
             "$",
             _scopes.Peek(),
             node
@@ -601,6 +627,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 Scope = newScope
             };
         }
+
+        type.Type.IsGenericParam = _pass == AnalyzerPass.DefineTypeMembers;
         
         type.Type.Scope = type.Scope; // we need to manually override this!
 
@@ -680,8 +708,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             if (!compatible)
             {
                 MessageCollection.Error($"Type mismatch for {varSymbol.Kind.ToString().ToLower()} {varSymbol.Name}" +
-                                        $"\n\tExpected: {expectedFullName}" +
-                                        $"\n\tGiven:    {givenFullName}", node.Location);
+                                               $"\n\tExpected: {expectedFullName}" +
+                                               $"\n\tGiven:    {givenFullName}", node.Location);
             }
 
             if (varSymbol.Kind == SymbolKind.Property)

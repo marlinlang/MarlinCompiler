@@ -1,6 +1,6 @@
-﻿using static MarlinCompiler.Frontend.Lexer;
+﻿using static MarlinCompiler.Frontend.Lexing.Lexer;
 
-namespace MarlinCompiler.Frontend;
+namespace MarlinCompiler.Frontend.Lexing;
 
 /// <summary>
 /// A list of tokens that you can traverse forwards.

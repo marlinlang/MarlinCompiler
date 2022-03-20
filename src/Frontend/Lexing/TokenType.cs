@@ -1,4 +1,4 @@
-﻿namespace MarlinCompiler.Frontend;
+﻿namespace MarlinCompiler.Frontend.Lexing;
 
 /// <summary>
 /// This enum represents the type of a lexer token.

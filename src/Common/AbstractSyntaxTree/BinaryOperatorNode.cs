@@ -1,5 +1,5 @@
 ﻿using MarlinCompiler.Common.Visitors;
-using MarlinCompiler.Frontend;
+using MarlinCompiler.Frontend.Lexing;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 

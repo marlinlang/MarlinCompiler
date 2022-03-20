@@ -1,7 +1,8 @@
 ﻿using System.Text;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
-using static MarlinCompiler.Frontend.Lexer;
+using MarlinCompiler.Frontend.Lexing;
+using static MarlinCompiler.Frontend.Lexing.Lexer;
 
 namespace MarlinCompiler.Frontend;
 

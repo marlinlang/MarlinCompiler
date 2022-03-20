@@ -2,7 +2,7 @@ using JetBrains.Annotations;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 
-namespace MarlinCompiler.Frontend;
+namespace MarlinCompiler.Frontend.SemanticAnalysis;
 
 public sealed partial class SemanticAnalyzer
 {
@@ -36,6 +36,11 @@ public sealed partial class SemanticAnalyzer
         public SemType? GenericTypeParameter { get; set; } = GenericTypeParameter;
 
         /// <summary>
+        /// True if this is a generic param type (e.g. T)
+        /// </summary>
+        public bool IsGenericParam { get; set; } = false;
+        
+        /// <summary>
         /// This is the scope of the type.
         /// </summary>
         public Scope? Scope { get; set; }
@@ -68,7 +73,7 @@ public sealed partial class SemanticAnalyzer
             Parent = parent;
         }
 
-        public string Name { get; } = "Unnamed";
+        public string Name { get; }
 
         public Scope? Parent { get; set; }
         public List<Symbol> Symbols { get; } = new();

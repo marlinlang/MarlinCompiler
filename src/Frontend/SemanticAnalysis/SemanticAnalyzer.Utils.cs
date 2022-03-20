@@ -1,6 +1,6 @@
 using MarlinCompiler.Common.AbstractSyntaxTree;
 
-namespace MarlinCompiler.Frontend;
+namespace MarlinCompiler.Frontend.SemanticAnalysis;
 
 public sealed partial class SemanticAnalyzer
 {

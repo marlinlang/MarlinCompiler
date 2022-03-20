@@ -2,7 +2,7 @@
 using System.Text.RegularExpressions;
 using MarlinCompiler.Common;
 
-namespace MarlinCompiler.Frontend;
+namespace MarlinCompiler.Frontend.Lexing;
 
 /// <summary>
 /// Basic lexer implementation.
