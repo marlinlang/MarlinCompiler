@@ -11,6 +11,8 @@ public sealed partial class SemanticAnalyzer
     private readonly Stack<Scope> _scopes = new();
 
     private Scope CurrentScope => _scopes.Peek();
+
+    private CompilationUnitNode _currentCompilationUnit = null!;
     
     /// <summary>
     /// Adds a new scope on top.
@@ -68,15 +70,34 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// This method checks if the given type's module is in the dependency list.
     /// </summary>
-    private void CheckCanUseType(string name)
+    private void CheckCanUseType(string name, FileLocation errorLocation)
     {
-        foreach ((string dependency, FileLocation _) in ((CompilationUnitNode) _root).Dependencies)
+        // this works, LastIndexOf returns -1 if it isn't found
+        // so it'll start from 0 if it can't find it :)
+        int lioColon = name.LastIndexOf(':') + 1;
+        string originalName = name;
+        name = name[lioColon..];
+
+        if (originalName == $"{_currentCompilationUnit.FullName}::{name}")
         {
-            if (name == $"{dependency}::{name}")
-            {
-                
-            }
+            return;
         }
+        
+        if (_currentCompilationUnit.Dependencies.Any(dependency => originalName == $"{dependency.Item1}::{name}"))
+        {
+            return;
+        }
+
+        if (lioColon == -1)
+        {
+            MessageCollection.Error($"Unknown type {originalName} - did you forget to import a module?", errorLocation);
+        }
+        else
+        {
+            string moduleName = originalName[..(lioColon - 2)];
+            MessageCollection.Error($"Unknown type {originalName} - did you forget to import a module ({moduleName})?", errorLocation);
+        }
+        
     }
     
     /// <summary>

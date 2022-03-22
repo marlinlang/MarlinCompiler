@@ -9,10 +9,13 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 {
     public None Visit(Node node)
     {
-        if (node is CompilationUnitNode unit && _pass == AnalyzerPass.DefineTypes)
+        if (node is CompilationUnitNode unit)
         {
-            // This is where we'll
-            CheckDependencies(unit);
+            _currentCompilationUnit = unit;
+            if (_pass == AnalyzerPass.DefineTypes)
+            {
+                CheckDependencies(unit);
+            }
         }
         
         node.AcceptVisitor(this);
@@ -665,6 +668,14 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             // Let's evaluate the generic param we pass
 
             Visit(node.GenericTypeName);
+
+            if (((SymbolMetadata) node.GenericTypeName.Metadata!).Symbol == SpecialTypes.Void)
+            {
+                MessageCollection.Error(
+                    $"Cannot use void a generic argument",
+                    node.Location
+                );
+            }
         }
 
         if (_pass != AnalyzerPass.DefineTypeMembers)
@@ -694,6 +705,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             type.Type.GenericTypeParameter = genericType.Type;
             ReplaceAllOccurrencesOfType(type.Scope, type.Scope.Generics[0], genericType.Type);
         }
+        
+        CheckCanUseType(node.FullName, (FileLocation) node.Location!);
         
         node.Metadata = new SymbolMetadata(type);
 

@@ -1,3 +1,5 @@
+using std;
+
 module examples;
 
 internal class Generic<T> {

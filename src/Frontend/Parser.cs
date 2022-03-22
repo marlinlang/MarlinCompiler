@@ -1040,7 +1040,6 @@ public sealed class Parser
                     throw new CancelParsingException("Premature EOF");
                 }
 
-                // (FileLocation)location! is mega unepic but it's necessary for some reason
                 dependencies.Add((GrabModuleName(), (FileLocation) location!));
             }
             catch (ParseException ex)
