@@ -15,6 +15,7 @@ public enum TokenType
     Operator,           // operator
     Get, Set,           // get and set
     Mutable,            // mut
+    Void,               // void
     Extern,             // extern
     Modifier,           // public, private, protected, internal, static, readonly 
     

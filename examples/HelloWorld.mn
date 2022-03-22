@@ -2,7 +2,7 @@
 
 public static class HelloWorld
 {
-    public static int Main()
+    public static std::Int32 Main()
     {
         std::Console.PrintLine("Hello, world!");
         return 0;

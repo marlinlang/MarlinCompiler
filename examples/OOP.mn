@@ -2,13 +2,13 @@
 
 public class Animal
 {
-    public string Name;
-    public int AgeYears;
+    public std::String Name;
+    public std::Int32 AgeYears;
     
     // Specifiers (get, private set) - restrict usage for the variable
     public bool Hungry -> get, private set = false;
     
-    public constructor(string name, int ageYears)
+    public constructor(std::String name, std::Int32 ageYears)
     {
         Name = name;
         AgeYears = ageYears;
@@ -27,9 +27,9 @@ public class Animal
 
 public class Dog : Animal
 {
-    public string CollarColor;
+    public std::String CollarColor;
 
-    public constructor(string name, int ageYears, string collarColor) : super(name, ageYears)
+    public constructor(std::String name, std::Int32 ageYears, std::String collarColor) : super(name, ageYears)
     {
         CollarColor = collarColor;
     }

@@ -2,13 +2,13 @@
 
 internal class Vector3
 {
-    public double X;
-    public double Y;
-    public double Z;
+    public std::Double X;
+    public std::Double Y;
+    public std::Double Z;
     
     public static examples::Vector3 Zero = new examples::Vector3(0, 0, 0); 
     
-    public constructor(double x, double y, double z)
+    public constructor(std::Double x, std::Double y, std::Double z)
     {
         X = x;
         Y = y;

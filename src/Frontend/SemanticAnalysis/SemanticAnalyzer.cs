@@ -5,7 +5,7 @@ namespace MarlinCompiler.Frontend.SemanticAnalysis;
 
 public sealed partial class SemanticAnalyzer
 {
-    public SemanticAnalyzer(Node root)
+    public SemanticAnalyzer(ContainerNode root)
     {
         _root = root;
         MessageCollection = new MessageCollection();
@@ -19,7 +19,7 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// The file root.
     /// </summary>
-    private readonly Node _root;
+    private readonly ContainerNode _root;
 
     /// <summary>
     /// The current analyzer pass.

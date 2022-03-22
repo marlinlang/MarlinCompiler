@@ -1,3 +1,4 @@
+using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 
 namespace MarlinCompiler.Frontend.SemanticAnalysis;
@@ -45,9 +46,43 @@ public sealed partial class SemanticAnalyzer
     }
 
     /// <summary>
+    /// Checks if the dependencies in the given compilation unit exist.
+    /// </summary>
+    private void CheckDependencies(CompilationUnitNode compilationUnit)
+    {
+        string[] allCompilationUnits = new string[_root.Children.Count];
+        for (int i = 0; i < allCompilationUnits.Length; i++)
+        {
+            allCompilationUnits[i] = ((CompilationUnitNode) _root.Children[i]).FullName;
+        }
+        
+        foreach ((string dependencyName, FileLocation location) in compilationUnit.Dependencies)
+        {
+            if (!allCompilationUnits.Contains(dependencyName))
+            {
+                MessageCollection.Error($"Unknown module {dependencyName}", location);
+            }
+        }
+    }
+
+    /// <summary>
+    /// This method checks if the given type's module is in the dependency list.
+    /// </summary>
+    private void CheckCanUseType(string name)
+    {
+        foreach ((string dependency, FileLocation _) in ((CompilationUnitNode) _root).Dependencies)
+        {
+            if (name == $"{dependency}::{name}")
+            {
+                
+            }
+        }
+    }
+    
+    /// <summary>
     /// Checks whether two types are compatible. Supports generics.
     /// </summary>
-    private (bool compatible, string expectedFullName, string givenFullName) AreTypesCompatible(SemType expected, SemType given)
+    private static (bool compatible, string expectedFullName, string givenFullName) AreTypesCompatible(SemType expected, SemType given)
     {
         if (expected.Name != given.Name)
         {
@@ -110,6 +145,11 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     private static SemType GetSemType(TypeReferenceNode node)
     {
+        if (node is VoidTypeReferenceNode)
+        {
+            return SpecialTypes.Void.Type;
+        }
+        
         return new SemType(
             node.FullName,
             node.GenericTypeName != null

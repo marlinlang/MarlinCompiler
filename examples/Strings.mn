@@ -4,27 +4,27 @@ public static class Strings
 {
     public static void Concatenation()
     {
-        string greeting = "Hello, ";
-        string name = "Jake";
+        std::String greeting = "Hello, ";
+        std::String name = "Jake";
         
-        string x = greeting + name;
-        string y = std::text::StringUtils.Concatenate(greeting, name);
+        std::String x = greeting + name;
+        std::String y = std::text::StringUtils.Concatenate(greeting, name);
         
         bool areEqual = x == y; // true
     }
     
     public static void Replacing()
     {
-        string original = "You should try eating more pizzas.";
-        string modified = original.Replace("more", "less");
+        std::String original = "You should try eating more pizzas.";
+        std::String modified = original.Replace("more", "less");
     }
     
     public static void Removing()
     {
-        string original = "Try not doing that.";
+        std::String original = "Try not doing that.";
         
-        string remWords = original.Remove("not ");
-        string remIndex = original.Remove(4, 4);
+        std::String remWords = original.Remove("not ");
+        std::String remIndex = original.Remove(4, 4);
         
         bool areEqual = remWords == remIndex; // true
     }

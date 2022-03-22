@@ -5,7 +5,7 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// <summary>
 /// A reference to a type.
 /// </summary>
-public sealed class TypeReferenceNode : IndexableExpressionNode
+public class TypeReferenceNode : IndexableExpressionNode
 {
     public TypeReferenceNode(string fullName, TypeReferenceNode? genericTypeName = null)
     {

@@ -26,7 +26,7 @@ public sealed class Parser
         _tokens = tokens;
         _path = filePath;
         _moduleName = "<global>";
-        _compilationUnitDependencies = new List<string>();
+        _compilationUnitDependencies = new List<(string, FileLocation)>();
     }
     
     /// <summary>
@@ -52,7 +52,7 @@ public sealed class Parser
     /// <summary>
     /// The dependencies for this compilation unit.
     /// </summary>
-    private readonly List<string> _compilationUnitDependencies;
+    private readonly List<(string, FileLocation)> _compilationUnitDependencies;
     
     /// <summary>
     /// An exception for parse errors.
@@ -1023,9 +1023,9 @@ public sealed class Parser
     /// <summary>
     /// Utility method for parsing using directives.
     /// </summary>
-    private string[] GrabUsingDirectives()
+    private IEnumerable<(string, FileLocation)> GrabUsingDirectives()
     {
-        List<string> dependencies = new();
+        List<(string, FileLocation)> dependencies = new();
         
         while (_tokens.NextIsOfType(TokenType.Using))
         {
@@ -1033,7 +1033,15 @@ public sealed class Parser
 
             try
             {
-                dependencies.Add(GrabModuleName());
+                FileLocation? location = _tokens.PeekToken()?.Location;
+
+                if (location == default)
+                {
+                    throw new CancelParsingException("Premature EOF");
+                }
+
+                // (FileLocation)location! is mega unepic but it's necessary for some reason
+                dependencies.Add((GrabModuleName(), (FileLocation) location!));
             }
             catch (ParseException ex)
             {
@@ -1166,36 +1174,29 @@ public sealed class Parser
         // In all cases we need an identifier
         // If the token after it is a double colon, we get module name first
 
-        string name = GrabModuleName();
-
-        Token nameToken = _tokens.CurrentToken;
-        string oldName = name;
-        name = name switch
+        // UNLESS!
+        // It's void :sunglasses:
+        if (_tokens.PeekToken()?.Type == TokenType.Void)
         {
-            "void" => "std::Void",
-            "int" => "std::Int32",
-            "char" => "std::Character",
-            "double" => "std::Double",
-            "bool" => "std::Boolean",
-            _ => name
-        };
-
-        if (oldName != name)
-        {
-            // We are using one of the types above
-            _compilationUnitDependencies.Add("std");
+            return new VoidTypeReferenceNode()
+            {
+                Location = _tokens.GrabToken()!.Location
+            };
         }
-
+        
+        string name = GrabModuleName();
+        Token nameToken = _tokens.CurrentToken;
+        
         TypeReferenceNode? genericName = null;
 
-        if (_tokens.NextIsOfType(TokenType.LeftAngle))
-        {
-            _tokens.Skip(); // <
+        if (!_tokens.NextIsOfType(TokenType.LeftAngle))
+            return new TypeReferenceNode(name, genericName) {Location = nameToken.Location};
+        
+        _tokens.Skip(); // <
 
-            genericName = ExpectTypeName();
+        genericName = ExpectTypeName();
             
-            Require(TokenType.RightAngle);
-        }
+        Require(TokenType.RightAngle);
 
         return new TypeReferenceNode(name, genericName) { Location = nameToken.Location };
     }
@@ -1206,29 +1207,21 @@ public sealed class Parser
     private GetAccessibility VisibilityFromModifiers(string[] modifiers)
     {
         if (modifiers.Contains("public"))
-        {
             return GetAccessibility.Public;
-        }
-        else if (modifiers.Contains("protected"))
-        {
+        if (modifiers.Contains("protected"))
             return GetAccessibility.Protected;
-        }
-        else if (modifiers.Contains("private"))
-        {
+        if (modifiers.Contains("private"))
             return GetAccessibility.Private;
-        }
-        else
-        {
-            if (!modifiers.Contains("internal"))
-            {
-                MessageCollection.Warn(
-                    "Always specify visibility. Using internal.",
-                    _tokens.CurrentToken.Location
-                );
-            }
 
-            return GetAccessibility.Internal;
+        if (!modifiers.Contains("internal"))
+        {
+            MessageCollection.Warn(
+                "Always specify visibility. Using internal.",
+                _tokens.CurrentToken.Location
+            );
         }
+
+        return GetAccessibility.Internal;
     }
     
     /// <summary>

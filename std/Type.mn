@@ -2,5 +2,5 @@ module std;
 
 //@ Represents a type.
 public extern Type @marlin_type {
-    public constructor(string name) -> @marlin_type_new(name);
+    public constructor(std::String name) -> @marlin_type_new(name);
 }

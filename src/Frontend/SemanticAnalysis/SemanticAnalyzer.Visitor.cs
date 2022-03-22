@@ -9,6 +9,12 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 {
     public None Visit(Node node)
     {
+        if (node is CompilationUnitNode unit && _pass == AnalyzerPass.DefineTypes)
+        {
+            // This is where we'll
+            CheckDependencies(unit);
+        }
+        
         node.AcceptVisitor(this);
 
         return null!;
@@ -179,6 +185,11 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 {
                     Visit(param.Type);
 
+                    if (((SymbolMetadata) param.Type.Metadata!).Symbol == SpecialTypes.Void)
+                    {
+                        MessageCollection.Error($"Cannot have void as parameter for {param.Name}", param.Type.Location);
+                    }
+
                     if (param.Name != "_" && node.Parameters.Count(x => x.Name == param.Name) > 1)
                     {
                         MessageCollection.Error($"Repeated parameter name {param.Name}", param.Location);
@@ -224,6 +235,11 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 foreach (VariableNode param in node.Parameters)
                 {
                     Visit(param.Type);
+
+                    if (((SymbolMetadata) param.Type.Metadata!).Symbol == SpecialTypes.Void)
+                    {
+                        MessageCollection.Error($"Cannot have void as parameter for {param.Name}", param.Type.Location);
+                    }
 
                     if (param.Name != "_" && node.Parameters.Count(x => x.Name == param.Name) > 1)
                     {
@@ -301,6 +317,11 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 {
                     Visit(node.Value);
 
+                    if (((SymbolMetadata) node.Type.Metadata!).Symbol == SpecialTypes.Void)
+                    {
+                        MessageCollection.Error($"Cannot have void as type for property {node.Name}", node.Type.Location);
+                    }
+
                     // We should have already errored
                     if (node.Value.Metadata is not SymbolMetadata metadata)
                     {
@@ -338,6 +359,11 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     public None LocalVariable(LocalVariableDeclarationNode node)
     {
         Visit(node.Type);
+
+        if (((SymbolMetadata) node.Type.Metadata!).Symbol == SpecialTypes.Void)
+        {
+            MessageCollection.Error($"Cannot have void as type for variable {node.Name}", node.Type.Location);
+        }
 
         // Check for variable shadowing, unless variable name is _
         if (node.Name != "_" && CurrentScope.LookupSymbol(node.Name, true) != null)
@@ -384,6 +410,11 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     public None NewClassInstance(NewClassInitializerNode node)
     {
         Visit(node.Type);
+
+        if (((SymbolMetadata) node.Type.Metadata!).Symbol == SpecialTypes.Void)
+        {
+            MessageCollection.Error($"Cannot instantiate void", node.Type.Location);
+        }
 
         node.Metadata = new SymbolMetadata(new Symbol(
             SymbolKind.Instance,
@@ -522,7 +553,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
             SemType type = ((SymbolMetadata) node.Target.Metadata).Symbol.Type;
 
-            if (type == Symbol.UnknownType.Type)
+            if (type == SpecialTypes.UnknownType.Type)
             {
                 MessageCollection.Error($"Cannot find type {type.Name}", node.Location);
             }
@@ -585,12 +616,19 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         Symbol type = CurrentScope.LookupType(GetSemType(node));
 
         // We cannot find the type, error
-        if (type == Symbol.UnknownType)
+        if (type == SpecialTypes.UnknownType)
         {
             // We don't want nulls!
-            node.Metadata = new SymbolMetadata(Symbol.UnknownType);
+            node.Metadata = new SymbolMetadata(SpecialTypes.UnknownType);
 
             MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
+            return null!;
+        }
+        
+        // Void
+        if (type == SpecialTypes.Void)
+        {
+            node.Metadata = new SymbolMetadata(SpecialTypes.Void);
             return null!;
         }
 
@@ -707,7 +745,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             MessageCollection.Error($"Cannot reference non-variable {varSymbol.Name}", node.Location);
         }
-        else if (varSymbol.Type != Symbol.UnknownType.Type)
+        else if (varSymbol.Type != SpecialTypes.UnknownType.Type)
         {
             Visit(node.Value);
 

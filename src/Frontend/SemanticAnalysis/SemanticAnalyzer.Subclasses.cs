@@ -39,7 +39,7 @@ public sealed partial class SemanticAnalyzer
         /// True if this is a generic param type (e.g. T)
         /// </summary>
         public bool IsGenericParam { get; set; } = false;
-        
+
         /// <summary>
         /// This is the scope of the type.
         /// </summary>
@@ -47,8 +47,8 @@ public sealed partial class SemanticAnalyzer
 
         public override string ToString()
         {
-            return GenericTypeParameter != null 
-                ? $"{Name}<{GenericTypeParameter}>" 
+            return GenericTypeParameter != null
+                ? $"{Name}<{GenericTypeParameter}>"
                 : Name;
         }
     }
@@ -58,11 +58,36 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     public record Symbol(SymbolKind Kind, SemType Type, string Name, Scope Scope, Node Node)
     {
-        public static Symbol UnknownType { get; } =
-            new(SymbolKind.ClassType, new SemType("???", null), "???", new Scope("???", null), null!);
-
         public SemType Type { get; set; } = Type;
         public Scope Scope { get; set; } = Scope;
+    }
+
+    /// <summary>
+    /// Special types in Marlin.
+    /// </summary>
+    public static class SpecialTypes
+    {
+        /// <summary>
+        /// An unknown type.
+        /// </summary>
+        public static Symbol UnknownType { get; } = new(
+            SymbolKind.ClassType,
+            new SemType("???", null),
+            "???",
+            new Scope("???", null),
+            null!
+        );
+
+        /// <summary>
+        /// Void.
+        /// </summary>
+        public static Symbol Void { get; } = new(
+            SymbolKind.ClassType,
+            new SemType("void", null),
+            "void",
+            new Scope("<invalid>", null),
+            null!
+        );
     }
 
     public class Scope
@@ -75,7 +100,7 @@ public sealed partial class SemanticAnalyzer
 
         public string Name { get; }
 
-        public Scope? Parent { get; set; }
+        private Scope? Parent { get; }
         public List<Symbol> Symbols { get; } = new();
 
         public List<string> Generics { get; } = new();
@@ -100,6 +125,11 @@ public sealed partial class SemanticAnalyzer
         /// </summary>
         public Symbol LookupType(SemType type)
         {
+            if (type == SpecialTypes.Void.Type)
+            {
+                return SpecialTypes.Void;
+            }
+            
             string? generic = Generics.Find(x => x == type.Name);
             if (generic != default)
             {
@@ -116,7 +146,7 @@ public sealed partial class SemanticAnalyzer
                 return found;
             }
 
-            return Parent?.LookupType(type) ?? Symbol.UnknownType;
+            return Parent?.LookupType(type) ?? SpecialTypes.UnknownType;
         }
 
         /// <summary>
@@ -136,7 +166,7 @@ public sealed partial class SemanticAnalyzer
             // Symbols
             foreach (Symbol sym in Symbols)
             {
-                Symbol newSym = sym with {};
+                Symbol newSym = sym with { };
 
                 if (newSym.Scope == this)
                 {
@@ -149,10 +179,10 @@ public sealed partial class SemanticAnalyzer
                 {
                     newSym.Type.Scope = other;
                 }
-                
+
                 other.AddSymbol(newSym);
             }
-            
+
             // Generics
             foreach (string param in Generics)
             {

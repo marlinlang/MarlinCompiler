@@ -91,7 +91,7 @@ public sealed class Compiler
 
         foreach (CompilationUnitNode unit in compilationUnits)
         {
-            root.Children.AddRange(unit);
+            root.Children.Add(unit);
         }
 
         return root;
@@ -111,7 +111,7 @@ public sealed class Compiler
     /// Invokes LLVM tools to build the program.
     /// </summary>
     /// <param name="program"></param>
-    private void Build(ContainerNode program)
+    private void Build(Node program)
     {
         OutputBuilder builder = new(program, _rootPath);
         builder.BuildLlvm();

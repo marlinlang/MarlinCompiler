@@ -6,7 +6,7 @@ internal class Generic<T> {
 
 internal class Program {
     public void Main() {
-        examples::Generic<int> var = new examples::Generic<int>();
+        examples::Generic<std::Int32> var = new examples::Generic<std::Int32>();
         var.Property = 12;
     }
 }
