@@ -24,6 +24,12 @@ public sealed partial class SemanticAnalyzer
     /// A list of the necessary modules.
     /// </summary>
     private List<(string, FileLocation)> _usedDependencies = new();
+
+    /// <summary>
+    /// This is a hack: to make sure we don't report unused warnings about dependencies that don't exist, we'll
+    /// plop them in this list.
+    /// </summary>
+    private List<string> _dependenciesThatWereNotFound = new();
     
     /// <summary>
     /// Adds a new scope on top.
@@ -71,10 +77,10 @@ public sealed partial class SemanticAnalyzer
         
         foreach ((string dependencyName, FileLocation location) in compilationUnit.Dependencies)
         {
-            if (!allCompilationUnits.Contains(dependencyName))
-            {
-                MessageCollection.Error($"Unknown module {dependencyName}", location);
-            }
+            if (allCompilationUnits.Contains(dependencyName)) continue;
+            
+            _dependenciesThatWereNotFound.Add(dependencyName);
+            MessageCollection.Error($"Unknown module {dependencyName}", location);
         }
     }
 
@@ -112,14 +118,17 @@ public sealed partial class SemanticAnalyzer
         }
     }
 
-    private void CheckUnusedDependencies(CompilationUnitNode node)
+    /// <summary>
+    /// Reports warnings about unused dependencies.
+    /// </summary>
+    private void CheckUnusedDependencies(CompilationUnitNode unit)
     {
-        foreach (var (name, importLocation) in node.Dependencies)
+        foreach ((string name, FileLocation importLocation) in unit.Dependencies)
         {
-            var found = _usedDependencies.Find(x => x.Item1 == name);
-            if (found == default)
+            (string, FileLocation) found = _usedDependencies.Find(x => x.Item1 == name);
+            if (found == default && !_dependenciesThatWereNotFound.Contains(name))
             {
-                MessageCollection.Error($"Unused dependency {name}", importLocation);
+                MessageCollection.Warn($"Unused dependency {name}", importLocation);
             }
         }
     }

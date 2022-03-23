@@ -165,20 +165,9 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             case AnalyzerPass.DefineTypeMembers:
             {
                 Visit(node.Type);
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.Method,
-                    ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
-                    node.Name,
-                    PushScope(node.Name),
-                    node
-                ));
-                PopScope();
-                AddSymbolToScope((SymbolMetadata) node.Metadata);
-                break;
-            }
 
-            case AnalyzerPass.EnterTypeMembers:
-            {
+                PushScope(node.Name);
+                
                 if (node.IsStatic && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
                 {
                     MessageCollection.Error(
@@ -186,8 +175,6 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         node.Location
                     );
                 }
-
-                UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
                 
                 // Check args
                 foreach (VariableNode param in node.Parameters)
@@ -216,7 +203,24 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         MessageCollection.Error($"Repeated parameter name {param.Name}", param.Location);
                     }
                 }
+                
+                node.Metadata = new SymbolMetadata(new Symbol(
+                    SymbolKind.Method,
+                    ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
+                    node.Name,
+                    CurrentScope,
+                    node
+                ));
+                PopScope();
+                AddSymbolToScope((SymbolMetadata) node.Metadata);
+                break;
+            }
 
+            case AnalyzerPass.EnterTypeMembers:
+            {
+
+                UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
+                
                 // Check body
                 foreach (Node child in node)
                 {
@@ -673,6 +677,13 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             node.Metadata = new SymbolMetadata(SpecialTypes.UnknownType);
 
             MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
+            
+            // Check generic arg just to be sure we've dealt with that too
+            if (node.GenericTypeName != null)
+            {
+                Visit(node.GenericTypeName);
+            }
+            
             return null!;
         }
 
