@@ -5,6 +5,7 @@ namespace MarlinCompiler.Backend;
 
 /// <summary>
 /// This class manages the LLVM IR generation for Marlin programs.
+/// Note - called OutputBuilder to not be confused with LLVM's Builder classes
 /// </summary>
 public sealed partial class OutputBuilder
 {
