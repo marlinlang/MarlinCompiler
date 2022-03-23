@@ -1,5 +1,4 @@
 using System.Data;
-using System.Diagnostics;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Visitors;

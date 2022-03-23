@@ -1,6 +1,5 @@
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
-using System.Linq;
 
 namespace MarlinCompiler.Frontend.SemanticAnalysis;
 

@@ -1040,6 +1040,8 @@ public sealed class Parser
                     throw new CancelParsingException("Premature EOF");
                 }
 
+                // This ! is required!!! The program will sometimes not compile without it.
+                // ReSharper disable once RedundantSuppressNullableWarningExpression
                 dependencies.Add((GrabModuleName(), (FileLocation) location!));
             }
             catch (ParseException ex)
