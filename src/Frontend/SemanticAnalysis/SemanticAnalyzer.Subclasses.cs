@@ -172,6 +172,10 @@ public sealed partial class SemanticAnalyzer
                 {
                     newSym.Scope = other;
                 }
+                else
+                {
+                    newSym.Scope = newSym.Scope.CloneScope();
+                }
 
                 // Constructors have null types!!!!
                 // ReSharper disable once ConstantConditionalAccessQualifier

@@ -17,7 +17,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 CheckDependencies(unit);
             }
         }
-        
+
         node.AcceptVisitor(this);
         
         if (node is CompilationUnitNode depUnit && _pass == AnalyzerPass.EnterTypeMembers)
@@ -187,13 +187,27 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         node.Location
                     );
                 }
+
+                UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
                 
                 // Check args
                 foreach (VariableNode param in node.Parameters)
                 {
                     Visit(param.Type);
 
-                    if (((SymbolMetadata) param.Type.Metadata!).Symbol == SpecialTypes.Void)
+                    Symbol typeSymbol = ((SymbolMetadata) param.Type.Metadata!).Symbol;
+                    
+                    param.Metadata = new SymbolMetadata(new Symbol(
+                        SymbolKind.Variable,
+                        typeSymbol.Type,
+                        param.Name,
+                        CurrentScope,
+                        param
+                    ));
+                    
+                    AddSymbolToScope((SymbolMetadata) param.Metadata);
+
+                    if (typeSymbol == SpecialTypes.Void)
                     {
                         MessageCollection.Error($"Cannot have void as parameter for {param.Name}", param.Type.Location);
                     }
@@ -205,7 +219,6 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 }
 
                 // Check body
-                UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
                 foreach (Node child in node)
                 {
                     Visit(child);
@@ -307,7 +320,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         node.Location
                     );
                 }
-                
+
                 node.Metadata = new SymbolMetadata(new Symbol(
                     SymbolKind.Property,
                     ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
@@ -327,7 +340,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
                     if (((SymbolMetadata) node.Type.Metadata!).Symbol == SpecialTypes.Void)
                     {
-                        MessageCollection.Error($"Cannot have void as type for property {node.Name}", node.Type.Location);
+                        MessageCollection.Error($"Cannot have void as type for property {node.Name}",
+                            node.Type.Location);
                     }
 
                     // We should have already errored
@@ -341,13 +355,16 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
                     if (varType.IsGenericParam)
                     {
-                        MessageCollection.Error($"Cannot provide an initialization value for generic type {varType} (on property {varSymbol.Name})", node.Location);
+                        MessageCollection.Error(
+                            $"Cannot provide an initialization value for generic type {varType} (on property {varSymbol.Name})",
+                            node.Location);
                     }
                     else
                     {
                         SemType valueType = metadata.Symbol.Type;
 
-                        (bool compatible, string expectedFullName, string givenFullName) = AreTypesCompatible(varType, valueType);
+                        (bool compatible, string expectedFullName, string givenFullName) =
+                            AreTypesCompatible(varType, valueType);
                         if (!compatible)
                         {
                             MessageCollection.Error($"Type mismatch for variable {varSymbol.Name}" +
@@ -483,36 +500,54 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             // Match args to params
             MethodDeclarationNode decl = (MethodDeclarationNode) methodSymbol.Node;
 
-            string[] paramTypes = new string[decl.Parameters.Length];
-            for (int i = 0; i < paramTypes.Length; i++)
+            // The max index we can iterate to
+            int maxSafeIndex;
+            bool argcMatch;
+
+            if (decl.Parameters.Length > node.Arguments.Length)
             {
-                Visit(decl.Parameters[i].Type);
-                paramTypes[i] = GetSemType(decl.Parameters[i].Type).ToString();
+                argcMatch = false;
+                maxSafeIndex = node.Arguments.Length;
+            }
+            else
+            {
+                argcMatch = node.Arguments.Length == decl.Parameters.Length;
+                maxSafeIndex = decl.Parameters.Length;
             }
 
-            string[] argTypes = new string[node.Arguments.Length];
-            for (int i = 0; i < argTypes.Length; i++)
+            List<string> expectedParamsList = new();
+            List<string> givenArgsList = new();
+
+            bool compatible = true;
+            for (int i = 0; i < maxSafeIndex; i++)
             {
                 Visit(node.Arguments[i]);
+                (bool compat, string expectedFullName, string givenFullName) = AreTypesCompatible(
+                    ((SymbolMetadata) decl.Parameters[i].Type.Metadata!).Symbol.Type,
+                    ((SymbolMetadata) node.Arguments[i].Metadata!).Symbol.Type
+                );
 
-                // We should have already errored
-                if (node.Arguments[i].Metadata is not SymbolMetadata metadata)
-                {
-                    return null!;
-                }
-
-                argTypes[i] = metadata.Symbol.Type.ToString();
+                compatible = compatible && compat;
+                expectedParamsList.Add(expectedFullName);
+                givenArgsList.Add(givenFullName);
             }
 
-            string expected = String.Join(", ", paramTypes);
-            string given = String.Join(", ", argTypes);
+            string expected = String.Join(", ", expectedParamsList);
+            string given = String.Join(", ", givenArgsList);
 
-            if (expected != given)
+            if (!compatible)
             {
                 MessageCollection.Error(
                     $"Mismatched arguments for method {decl.Name}" +
-                    $"\n\tExpected: {decl.Name}({expected})" +
-                    $"\n\tGiven:    {decl.Name}({given})",
+                    $"\n\tExpected: {decl.Name}({expected}{(argcMatch ? ")" : "...")}" +
+                    $"\n\tGiven:    {decl.Name}({given}{(argcMatch ? ")" : "...")}",
+                    node.Location
+                );
+            }
+            else if (!argcMatch)
+            {
+                MessageCollection.Error(
+                    $"Method {decl.Name} expects {decl.Parameters.Length} parameter(s), but {node.Arguments.Length} arg(s) are passed",
                     node.Location
                 );
             }
@@ -548,7 +583,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         bool referencedStatically = node.Target is TypeReferenceNode or null;
 
         Scope useScope = CurrentScope;
-        
+
         if (node.Target != null)
         {
             Visit(node.Target);
@@ -632,7 +667,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
             return null!;
         }
-        
+
         // Void
         if (type == SpecialTypes.Void)
         {
@@ -642,7 +677,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
         // We have the type!
         // Let's evaluate the generic type as well.
-        
+
         // Wait! Before that - if this is a generic param itself, it can't have a generic param!!!
         if (type.Kind == SymbolKind.GenericTypeParam && node.GenericTypeName != null)
         {
@@ -651,7 +686,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 node.Location
             );
         }
-        
+
         if (type.Type.GenericTypeParameter != null && node.GenericTypeName == null)
         {
             // We *require* a generic param/arg but one isn't given!
@@ -699,7 +734,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         }
 
         type.Type.IsGenericParam = type.Kind == SymbolKind.GenericTypeParam;
-        
+
         type.Type.Scope = type.Scope; // we need to manually override this!
 
         if (node.GenericTypeName != null)
@@ -710,9 +745,12 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             type.Type.GenericTypeParameter = genericType.Type;
             ReplaceAllOccurrencesOfType(type.Scope, type.Scope.Generics[0], genericType.Type);
         }
-        
-        CheckCanUseType(node.FullName, (FileLocation) node.Location!);
-        
+
+        if (type.Kind != SymbolKind.GenericTypeParam)
+        {
+            CheckCanUseType(node.FullName, (FileLocation) node.Location!);
+        }
+
         node.Metadata = new SymbolMetadata(type);
 
         return null!;
@@ -780,8 +818,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             if (!compatible)
             {
                 MessageCollection.Error($"Type mismatch for {varSymbol.Kind.ToString().ToLower()} {varSymbol.Name}" +
-                                               $"\n\tExpected: {expectedFullName}" +
-                                               $"\n\tGiven:    {givenFullName}", node.Location);
+                                        $"\n\tExpected: {expectedFullName}" +
+                                        $"\n\tGiven:    {givenFullName}", node.Location);
             }
 
             if (varSymbol.Kind == SymbolKind.Property)
