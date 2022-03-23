@@ -1,4 +1,5 @@
 using System.Data;
+using System.Diagnostics;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Visitors;
@@ -164,9 +165,10 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             case AnalyzerPass.DefineTypeMembers:
             {
+                Visit(node.Type);
                 node.Metadata = new SymbolMetadata(new Symbol(
                     SymbolKind.Method,
-                    GetSemType(node.Type),
+                    ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
                     node.Name,
                     PushScope(node.Name),
                     node
@@ -178,8 +180,6 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
             case AnalyzerPass.EnterTypeMembers:
             {
-                Visit(node.Type);
-
                 if (node.IsStatic && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
                 {
                     MessageCollection.Error(
@@ -521,10 +521,19 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             bool compatible = true;
             for (int i = 0; i < maxSafeIndex; i++)
             {
+                // We can't use the type linked to the node directly, since that *could* be a generic param
+                // We have to fetch it to make sure we get the accurate one (by looking for the param symbol)
+                //SemType nodeExpType = ((SymbolMetadata) decl.Parameters[i].Type.Metadata!).Symbol.Type;
+                //SemType actualExpType = methodSymbol.Scope.LookupType(nodeExpType).Type;
+                SemType actualExpType = methodSymbol.Scope.LookupSymbol(decl.Parameters[i].Name, true)?.Type ?? throw new InvalidOperationException();
+                
+                // Argument type
                 Visit(node.Arguments[i]);
+                SemType givenType = ((SymbolMetadata) node.Arguments[i].Metadata!).Symbol.Type;
+                
                 (bool compat, string expectedFullName, string givenFullName) = AreTypesCompatible(
-                    ((SymbolMetadata) decl.Parameters[i].Type.Metadata!).Symbol.Type,
-                    ((SymbolMetadata) node.Arguments[i].Metadata!).Symbol.Type
+                    actualExpType,
+                    givenType
                 );
 
                 compatible = compatible && compat;
