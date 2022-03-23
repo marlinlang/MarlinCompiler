@@ -23,13 +23,13 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// A list of the necessary modules.
     /// </summary>
-    private List<(string, FileLocation)> _usedDependencies = new();
+    private readonly List<(string, FileLocation)> _usedDependencies = new();
 
     /// <summary>
     /// This is a hack: to make sure we don't report unused warnings about dependencies that don't exist, we'll
     /// plop them in this list.
     /// </summary>
-    private List<string> _dependenciesThatWereNotFound = new();
+    private readonly List<string> _dependenciesThatWereNotFound = new();
     
     /// <summary>
     /// Adds a new scope on top.

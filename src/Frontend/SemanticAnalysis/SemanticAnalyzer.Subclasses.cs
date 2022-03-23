@@ -6,13 +6,30 @@ namespace MarlinCompiler.Frontend.SemanticAnalysis;
 
 public sealed partial class SemanticAnalyzer
 {
-    private enum AnalyzerPass
+    /// <summary>
+    /// The pass of the analyzer.
+    /// </summary>
+    private enum Pass
     {
+        /// <summary>
+        /// Define types.
+        /// </summary>
         DefineTypes,
+        
+        /// <summary>
+        /// Define type members without evaluating anything more than their types.
+        /// </summary>
         DefineTypeMembers,
+        
+        /// <summary>
+        /// Visit the bodies/values of type members.
+        /// </summary>
         EnterTypeMembers
     }
 
+    /// <summary>
+    /// The kind of a symbol.
+    /// </summary>
     public enum SymbolKind
     {
         ClassType,
@@ -60,6 +77,11 @@ public sealed partial class SemanticAnalyzer
     {
         public SemType Type { get; set; } = Type;
         public Scope Scope { get; set; } = Scope;
+
+        /// <summary>
+        /// For local variables - is the variable initialized with 100% certainty?
+        /// </summary>
+        public bool LocalVariableInitialized { get; set; }
     }
 
     /// <summary>

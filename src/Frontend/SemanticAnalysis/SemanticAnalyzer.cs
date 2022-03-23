@@ -24,7 +24,7 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// The current analyzer pass.
     /// </summary>
-    private AnalyzerPass _pass;
+    private Pass _pass;
 
     /// <summary>
     /// Starts analyzing the program.
@@ -32,7 +32,7 @@ public sealed partial class SemanticAnalyzer
     public void Analyze()
     {
         PushScope("<MARLIN_PROGRAM>");
-        foreach (AnalyzerPass pass in Enum.GetValues<AnalyzerPass>())
+        foreach (Pass pass in Enum.GetValues<Pass>())
         {
             _pass = pass;
             Visit(_root);

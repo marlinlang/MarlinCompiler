@@ -12,7 +12,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         if (node is CompilationUnitNode unit)
         {
             _currentCompilationUnit = unit;
-            if (_pass == AnalyzerPass.DefineTypes)
+            if (_pass == Pass.DefineTypes)
             {
                 CheckDependencies(unit);
             }
@@ -20,7 +20,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
         node.AcceptVisitor(this);
         
-        if (node is CompilationUnitNode depUnit && _pass == AnalyzerPass.EnterTypeMembers)
+        if (node is CompilationUnitNode depUnit && _pass == Pass.EnterTypeMembers)
         {
             CheckUnusedDependencies(depUnit);
         }
@@ -32,7 +32,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         switch (_pass)
         {
-            case AnalyzerPass.DefineTypes:
+            case Pass.DefineTypes:
             {
                 string name = $"{node.ModuleName}::{node.LocalName}";
                 SemType semType = new(
@@ -63,8 +63,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 break;
             }
 
-            case AnalyzerPass.DefineTypeMembers:
-            case AnalyzerPass.EnterTypeMembers:
+            case Pass.DefineTypeMembers:
+            case Pass.EnterTypeMembers:
             {
                 UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
                 foreach (Node child in node)
@@ -84,7 +84,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         switch (_pass)
         {
-            case AnalyzerPass.DefineTypes:
+            case Pass.DefineTypes:
             {
                 string name = $"{node.ModuleName}::{node.LocalName}";
                 node.Metadata = new SymbolMetadata(new Symbol(
@@ -102,8 +102,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 break;
             }
 
-            case AnalyzerPass.DefineTypeMembers:
-            case AnalyzerPass.EnterTypeMembers:
+            case Pass.DefineTypeMembers:
+            case Pass.EnterTypeMembers:
             {
                 UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
                 foreach (Node child in node)
@@ -123,7 +123,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         switch (_pass)
         {
-            case AnalyzerPass.DefineTypes:
+            case Pass.DefineTypes:
             {
                 string name = $"{node.ModuleName}::{node.LocalName}";
                 node.Metadata = new SymbolMetadata(new Symbol(
@@ -141,8 +141,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 break;
             }
 
-            case AnalyzerPass.DefineTypeMembers:
-            case AnalyzerPass.EnterTypeMembers:
+            case Pass.DefineTypeMembers:
+            case Pass.EnterTypeMembers:
             {
                 UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
                 foreach (Node child in node)
@@ -162,11 +162,17 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         switch (_pass)
         {
-            case AnalyzerPass.DefineTypeMembers:
+            case Pass.DefineTypeMembers:
             {
                 Visit(node.Type);
 
-                PushScope(node.Name);
+                node.Metadata = new SymbolMetadata(new Symbol(
+                    SymbolKind.Method,
+                    ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
+                    node.Name,
+                    PushScope(node.Name),
+                    node
+                ));
                 
                 if (node.IsStatic && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
                 {
@@ -189,7 +195,10 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         param.Name,
                         CurrentScope,
                         param
-                    ));
+                    )
+                    {
+                        LocalVariableInitialized = true
+                    });
                     
                     AddSymbolToScope((SymbolMetadata) param.Metadata);
 
@@ -204,19 +213,12 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     }
                 }
                 
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.Method,
-                    ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
-                    node.Name,
-                    CurrentScope,
-                    node
-                ));
                 PopScope();
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
             }
 
-            case AnalyzerPass.EnterTypeMembers:
+            case Pass.EnterTypeMembers:
             {
 
                 UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
@@ -239,7 +241,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         switch (_pass)
         {
-            case AnalyzerPass.DefineTypeMembers:
+            case Pass.DefineTypeMembers:
             {
                 node.Metadata = new SymbolMetadata(new Symbol(
                     SymbolKind.Constructor,
@@ -247,20 +249,32 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     "constructor",
                     PushScope("constructor"),
                     node
-                ));
-                PopScope();
-                AddSymbolToScope((SymbolMetadata) node.Metadata);
-                break;
-            }
-
-            case AnalyzerPass.EnterTypeMembers:
-            {
+                )
+                {
+                    LocalVariableInitialized = true
+                });
+                
                 // Check args
                 foreach (VariableNode param in node.Parameters)
                 {
                     Visit(param.Type);
 
-                    if (((SymbolMetadata) param.Type.Metadata!).Symbol == SpecialTypes.Void)
+                    Symbol typeSymbol = ((SymbolMetadata) param.Type.Metadata!).Symbol;
+                    
+                    param.Metadata = new SymbolMetadata(new Symbol(
+                        SymbolKind.Variable,
+                        typeSymbol.Type,
+                        param.Name,
+                        CurrentScope,
+                        param
+                    )
+                    {
+                        LocalVariableInitialized = true
+                    });
+                    
+                    AddSymbolToScope((SymbolMetadata) param.Metadata);
+
+                    if (typeSymbol == SpecialTypes.Void)
                     {
                         MessageCollection.Error($"Cannot have void as parameter for {param.Name}", param.Type.Location);
                     }
@@ -270,9 +284,18 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         MessageCollection.Error($"Repeated parameter name {param.Name}", param.Location);
                     }
                 }
+                
+                PopScope();
+                AddSymbolToScope((SymbolMetadata) node.Metadata);
+                
+                break;
+            }
 
-                // Check body
+            case Pass.EnterTypeMembers:
+            {
                 UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
+                
+                // Check body
                 foreach (Node child in node)
                 {
                     Visit(child);
@@ -290,7 +313,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         switch (_pass)
         {
-            case AnalyzerPass.DefineTypeMembers:
+            case Pass.DefineTypeMembers:
             {
                 node.Metadata = new SymbolMetadata(new Symbol(
                     SymbolKind.ExternMethod,
@@ -312,7 +335,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         switch (_pass)
         {
-            case AnalyzerPass.DefineTypeMembers:
+            case Pass.DefineTypeMembers:
             {
                 Visit(node.Type);
 
@@ -335,7 +358,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 break;
             }
 
-            case AnalyzerPass.EnterTypeMembers:
+            case Pass.EnterTypeMembers:
             {
                 if (node.Value != null)
                 {
@@ -412,7 +435,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         if (node.Value != null)
         {
             Visit(node.Value);
-
+            
             // We should have already errored
             if (node.Value.Metadata is not SymbolMetadata metadata)
             {
@@ -422,6 +445,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             Symbol varSymbol = ((SymbolMetadata) node.Metadata!).Symbol;
             SemType varType = varSymbol.Type;
             SemType valueType = metadata.Symbol.Type;
+
+            varSymbol.LocalVariableInitialized = true;
 
             (bool compatible, string expectedFullName, string givenFullName) = AreTypesCompatible(varType, valueType);
             if (!compatible)
@@ -623,6 +648,11 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             node.Metadata = new SymbolMetadata(found);
 
+            if (node.Target == null && found.Kind == SymbolKind.Variable && !found.LocalVariableInitialized)
+            {
+                MessageCollection.Error($"Variable {found.Name} may not be initialized when used. Make sure to initialize it in every code path leading up to this statement.", node.Location);
+            }
+
             if (found.Kind is SymbolKind.Property or SymbolKind.Method or SymbolKind.ExternMethod)
             {
                 bool isDeclStatic = found.Kind switch
@@ -737,7 +767,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             }
         }
 
-        if (_pass != AnalyzerPass.DefineTypeMembers)
+        if (_pass != Pass.DefineTypeMembers)
         {
             // ONLY clone for instance variables - this can only happen during the EnterTypeMembers pass
             // when property values are evaluated and method entered
@@ -840,6 +870,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                                         $"\n\tExpected: {expectedFullName}" +
                                         $"\n\tGiven:    {givenFullName}", node.Location);
             }
+
+            varSymbol.LocalVariableInitialized = true;
 
             if (varSymbol.Kind == SymbolKind.Property)
             {
