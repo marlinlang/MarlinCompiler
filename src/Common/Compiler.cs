@@ -110,8 +110,7 @@ public sealed class Compiler
     /// <summary>
     /// Invokes LLVM tools to build the program.
     /// </summary>
-    /// <param name="program"></param>
-    private void Build(Node program)
+    private void Build(ContainerNode program)
     {
         OutputBuilder builder = new(program, _rootPath);
         builder.BuildLlvm();
@@ -155,7 +154,7 @@ public sealed class Compiler
     {
         return MessageCollection.HasFatalErrors
             ? 2
-            : MessageCollection.Count() > 0
+            : MessageCollection.Any()
                 ? 1
                 : 0;
     }
