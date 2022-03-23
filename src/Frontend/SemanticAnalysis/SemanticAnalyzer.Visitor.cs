@@ -19,6 +19,11 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         }
         
         node.AcceptVisitor(this);
+        
+        if (node is CompilationUnitNode depUnit && _pass == AnalyzerPass.EnterTypeMembers)
+        {
+            CheckUnusedDependencies(depUnit);
+        }
 
         return null!;
     }

@@ -1,5 +1,6 @@
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using System.Linq;
 
 namespace MarlinCompiler.Frontend.SemanticAnalysis;
 
@@ -10,9 +11,20 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     private readonly Stack<Scope> _scopes = new();
 
+    /// <summary>
+    /// The current scope.
+    /// </summary>
     private Scope CurrentScope => _scopes.Peek();
 
+    /// <summary>
+    /// The current compilation unit.
+    /// </summary>
     private CompilationUnitNode _currentCompilationUnit = null!;
+
+    /// <summary>
+    /// A list of the necessary modules.
+    /// </summary>
+    private List<(string, FileLocation)> _usedDependencies = new();
     
     /// <summary>
     /// Adds a new scope on top.
@@ -82,9 +94,11 @@ public sealed partial class SemanticAnalyzer
         {
             return;
         }
-        
-        if (_currentCompilationUnit.Dependencies.Any(dependency => originalName == $"{dependency.Item1}::{name}"))
+
+        var dep = Array.Find(_currentCompilationUnit.Dependencies, x => originalName == $"{x.Item1}::{name}");
+        if (dep != default)
         {
+            _usedDependencies.Add(dep);
             return;
         }
 
@@ -97,7 +111,18 @@ public sealed partial class SemanticAnalyzer
             string moduleName = originalName[..(lioColon - 2)];
             MessageCollection.Error($"Unknown type {originalName} - did you forget to import a module ({moduleName})?", errorLocation);
         }
-        
+    }
+
+    private void CheckUnusedDependencies(CompilationUnitNode node)
+    {
+        foreach (var (name, importLocation) in node.Dependencies)
+        {
+            var found = _usedDependencies.Find(x => x.Item1 == name);
+            if (found == default)
+            {
+                MessageCollection.Error($"Unused dependency {name}", importLocation);
+            }
+        }
     }
     
     /// <summary>
