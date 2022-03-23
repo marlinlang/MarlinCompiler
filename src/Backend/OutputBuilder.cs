@@ -1,5 +1,9 @@
+using System.Linq.Expressions;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using Ubiquity.NET.Llvm;
+using Ubiquity.NET.Llvm.Instructions;
+using static Ubiquity.NET.Llvm.Interop.Library;
 
 namespace MarlinCompiler.Backend;
 
@@ -9,17 +13,20 @@ namespace MarlinCompiler.Backend;
 /// </summary>
 public sealed partial class OutputBuilder
 {
-    public OutputBuilder(Node root, string path)
+    public OutputBuilder(ContainerNode root, string path)
     {
         _root = root;
         _path = path;
         MessageCollection = new MessageCollection();
+
+        _context = new Context();
+        _instructionBuilder = new InstructionBuilder(_context);
     }
 
     /// <summary>
     /// The root node of the program.
     /// </summary>
-    private readonly Node _root;
+    private readonly ContainerNode _root;
 
     /// <summary>
     /// The project path.
@@ -31,8 +38,27 @@ public sealed partial class OutputBuilder
     /// </summary>
     public MessageCollection MessageCollection { get; }
 
+    /// <summary>
+    /// The current pass.
+    /// </summary>
+    private Pass _currentPass;
+    
+    #region LLVM-related fields
+
+    private readonly Context _context;
+    private readonly InstructionBuilder _instructionBuilder;
+
+    #endregion
+
     public void BuildLlvm()
     {
-        
+        /*using (InitializeLLVM())
+        {
+            foreach (Pass pass in Enum.GetValues<Pass>())
+            {
+                _currentPass = pass;
+                Visit(_root);
+            }
+        }*/
     }
 }

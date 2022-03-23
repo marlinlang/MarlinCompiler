@@ -114,6 +114,7 @@ public sealed class Compiler
     {
         OutputBuilder builder = new(program, _rootPath);
         builder.BuildLlvm();
+        MessageCollection.AddRange(builder.MessageCollection);
     }
 
     #endregion
