@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using Ubiquity.NET.Llvm;
@@ -13,25 +12,22 @@ namespace MarlinCompiler.Backend;
 /// </summary>
 public sealed partial class OutputBuilder
 {
-    public OutputBuilder(ContainerNode root, string path)
+    public OutputBuilder(ContainerNode root, string outPath)
     {
         _root = root;
-        _path = path;
+        _outPath = outPath;
         MessageCollection = new MessageCollection();
 
         _context = new Context();
         _instructionBuilder = new InstructionBuilder(_context);
+        _currentModule = null!; // assigned before visiting at all
     }
 
     /// <summary>
     /// The root node of the program.
     /// </summary>
     private readonly ContainerNode _root;
-
-    /// <summary>
-    /// The project path.
-    /// </summary>
-    private readonly string _path;
+    private readonly string _outPath;
 
     /// <summary>
     /// LLVM compilation messages.
@@ -48,17 +44,57 @@ public sealed partial class OutputBuilder
     private readonly Context _context;
     private readonly InstructionBuilder _instructionBuilder;
 
+    private BitcodeModule _currentModule;
+
     #endregion
 
     public void BuildLlvm()
     {
-        /*using (InitializeLLVM())
+        using (InitializeLLVM())
         {
+            Dictionary<string, BitcodeModule> modules = new();
+            foreach (Node node in _root)
+            {
+                CompilationUnitNode unit = (CompilationUnitNode) node;
+                modules.Add(unit.FullName, _context.CreateBitcodeModule(unit.FullName));
+            }
+            
             foreach (Pass pass in Enum.GetValues<Pass>())
             {
                 _currentPass = pass;
-                Visit(_root);
+                foreach (Node node in _root)
+                {
+                    _currentModule = modules[((CompilationUnitNode) node).FullName];
+                    Visit(_root);
+                }
             }
-        }*/
+
+            string useOutPath = _outPath;
+            if (Directory.Exists(useOutPath))
+            {
+                new DirectoryInfo(useOutPath).Delete(true);
+            }
+            else if (File.Exists(useOutPath))
+            {
+                useOutPath = Path.GetDirectoryName(useOutPath) ?? useOutPath;
+            }
+            Directory.CreateDirectory(useOutPath);
+
+            foreach ((string name, BitcodeModule mod) in modules)
+            {
+                if (!mod.Verify(out string verifyErr))
+                {
+                    MessageCollection.Error($"LLVM module failed verify check: {verifyErr}", null);
+                    continue;
+                }
+                
+                string path = Path.Combine(useOutPath, name.Replace("::", "_"));
+                mod.WriteToFile(path + ".bc");
+                if (!mod.WriteToTextFile(path + ".ll", out string writeErr))
+                {
+                    Console.WriteLine($"Could not save LL file for module {mod.Name}: {writeErr}");
+                }
+            }
+        }
     }
 }

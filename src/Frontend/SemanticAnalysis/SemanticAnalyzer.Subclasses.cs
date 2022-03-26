@@ -82,6 +82,11 @@ public sealed partial class SemanticAnalyzer
         /// For local variables - is the variable initialized with 100% certainty?
         /// </summary>
         public bool LocalVariableInitialized { get; set; }
+        
+        /// <summary>
+        /// For methods and properties.
+        /// </summary>
+        public bool IsStatic { get; init; }
     }
 
     /// <summary>
@@ -140,6 +145,23 @@ public sealed partial class SemanticAnalyzer
             }
 
             return thisScopeOnly ? null : Parent?.LookupSymbol(name, false);
+        }
+
+        /// <summary>
+        /// Searches for multiple symbols with the same name.
+        /// </summary>
+        public IEnumerable<Symbol> LookupMultipleSymbols(string name, bool thisScopeOnly)
+        {
+            List<Symbol> symbols = new();
+
+            // Add local
+            symbols.AddRange(Symbols.Where(x => x.Name == name));
+            
+            // Add from parent
+            if (!thisScopeOnly && Parent != null)
+                symbols.AddRange(Parent.LookupMultipleSymbols(name, false));
+
+            return symbols;
         }
 
         /// <summary>

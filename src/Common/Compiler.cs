@@ -12,11 +12,17 @@ namespace MarlinCompiler.Common;
 /// </summary>
 public sealed class Compiler
 {
-    public Compiler(string root)
+    public Compiler(string rootPath, string? outPath = null)
     {
-        _rootPath = Path.GetFullPath(root);
         MessageCollection = new MessageCollection();
         _filePaths = new List<string>();
+
+        if (!File.Exists(rootPath) && !Directory.Exists(rootPath))
+        {
+            throw new IOException($"Cannot find path for project {rootPath}");
+        }
+        
+        _outPath = outPath ?? Path.Combine(Path.GetDirectoryName(rootPath)!, "out/"); 
 
         string? mdkPath = Environment.GetEnvironmentVariable("MDK");
         if (mdkPath != null)
@@ -24,7 +30,7 @@ public sealed class Compiler
             LoadFilePaths(mdkPath);
         }
         
-        LoadFilePaths(root);
+        LoadFilePaths(rootPath);
     }
     
     /// <summary>
@@ -36,30 +42,34 @@ public sealed class Compiler
     /// Internal list of file paths for compilation.
     /// </summary>
     private readonly List<string> _filePaths;
-
+    
     /// <summary>
-    /// The root path of the project.
+    /// The out path for the project.
     /// </summary>
-    private readonly string _rootPath;
+    private readonly string _outPath;
 
     /// <summary>
     /// Method for starting the compilation process.
     /// </summary>
     /// <returns>Program exit code.</returns>
-    public int Compile()
+    public int Compile(bool doNotInvokeLlvm)
     {
-        ContainerNode program = Parse();
-        Analyze(program);
+        ContainerNode program = Parse(); /* Lex & parse       */
+        Analyze(program);                /* Semantic analysis */
 
-        if (!MessageCollection.HasFatalErrors)
+        if (!MessageCollection.HasFatalErrors && !doNotInvokeLlvm)
         {
-            Build(program);
+            Build(program);              /* LLVM compilation  */
         }
 
-        // return code:
-        //   no messages:               0
-        //   warnings/info messages:    1
-        //   fatal errors:              2
+        
+        /*
+         * Status             Return code
+         *    NO MESSAGES     0
+         *    WARNINGS/INFOS  1
+         *    FATAL ERRORS    2
+         */
+        
         return GetReturnCode();
     }
 
@@ -91,7 +101,21 @@ public sealed class Compiler
 
         foreach (CompilationUnitNode unit in compilationUnits)
         {
-            root.Children.Add(unit);
+            bool found = false;
+            foreach (Node node in root)
+            {
+                CompilationUnitNode existingUnit = (CompilationUnitNode) node;
+                if (existingUnit.FullName != unit.FullName) continue;
+                
+                existingUnit.Children.AddRange(unit);
+                found = true;
+                break;
+            }
+
+            if (!found)
+            {
+                root.Children.Add(unit);
+            }
         }
 
         return root;
@@ -112,7 +136,7 @@ public sealed class Compiler
     /// </summary>
     private void Build(ContainerNode program)
     {
-        OutputBuilder builder = new(program, _rootPath);
+        OutputBuilder builder = new(program, _outPath);
         builder.BuildLlvm();
         MessageCollection.AddRange(builder.MessageCollection);
     }

@@ -134,6 +134,71 @@ public sealed partial class SemanticAnalyzer
     }
     
     /// <summary>
+    /// Tries to find an overload of the given method name.
+    /// </summary>
+    /// <param name="name">The name to search for.</param>
+    /// <param name="arguments">The arguments that the overload should support.</param>
+    /// <param name="scope">The scope to look in.</param>
+    /// <param name="useThisScopeOnly">Should the parent scopes be looked in to as well, or just this one?</param>
+    /// <param name="reportMissingAsNoOverload">If true, no overloads being found at all would report an 'overload not
+    /// found' error, as opposed to an 'name does not exist' error</param>
+    /// <param name="errLocation">The location to report errors at</param>
+    /// <returns>The symbol of the found method or null.</returns>
+    private Symbol? FindOverload(string name, IReadOnlyList<ExpressionNode> arguments, Scope scope, bool useThisScopeOnly, bool reportMissingAsNoOverload, FileLocation? errLocation)
+    {
+        IEnumerable<Symbol> symbols = scope.LookupMultipleSymbols(name, useThisScopeOnly);
+
+        bool foundAny = false;
+        
+        foreach (Symbol sym in symbols)
+        {
+            VariableNode[]? thisOverloadParams = GetParams(sym);
+            if (thisOverloadParams == null) continue;
+            if (thisOverloadParams.Length != arguments.Count) continue;
+            
+            bool compatible = true;
+            
+            for (int i = 0; i < arguments.Count && compatible; i++)
+            {
+                foundAny = true;
+                Visit(thisOverloadParams[i].Type);
+                
+                // We can't use the type linked to the node directly, since that *could* be a generic param
+                // We have to fetch it to make sure we get the accurate one (by looking for the param symbol)
+                //SemType nodeExpType = ((SymbolMetadata) decl.Parameters[i].Type.Metadata!).Symbol.Type;
+                //SemType actualExpType = methodSymbol.Scope.LookupType(nodeExpType).Type;
+                SemType actualExpType = sym.Scope.LookupSymbol(thisOverloadParams[i].Name, false)?.Type ?? throw new InvalidOperationException();
+                
+                // Argument type
+                Visit(arguments[i]);
+                SemType givenType = ((SymbolMetadata) arguments[i].Metadata!).Symbol.Type;
+                
+                (bool compat, string _, string _) = AreTypesCompatible(
+                    actualExpType,
+                    givenType
+                );
+                compatible = compatible && compat;
+            }
+
+            if (compatible)
+            {
+                return sym;
+            }
+        }
+
+        if (reportMissingAsNoOverload || foundAny)
+        {
+            MessageCollection.Error($"Cannot find suitable {name} overload in {scope.Name}", errLocation);
+        }
+        else
+        {
+            MessageCollection.Error($"Cannot find symbol {name} in {scope.Name}", errLocation);
+        }
+
+        return null;
+    }
+    
+    /// <summary>
     /// Checks whether two types are compatible. Supports generics.
     /// </summary>
     private static (bool compatible, string expectedFullName, string givenFullName) AreTypesCompatible(SemType expected, SemType given)
@@ -175,6 +240,12 @@ public sealed partial class SemanticAnalyzer
     {
         foreach (Symbol sym in root.Symbols)
         {
+            if (sym.Type == null!)
+            {
+                // Constructors
+                continue;
+            }
+            
             if (sym.Type.Name == typeName)
             {
                 sym.Type = with;
@@ -192,6 +263,20 @@ public sealed partial class SemanticAnalyzer
                 ReplaceAllOccurrencesOfType(sym.Scope, typeName, with);
             }
         }
+    }
+    
+    /// <summary>
+    /// Utility method to get the params from a method/constructor.
+    /// </summary>
+    private static VariableNode[]? GetParams(Symbol sym)
+    {
+        return sym.Kind switch
+        {
+            SymbolKind.Method => ((MethodDeclarationNode) sym.Node).Parameters,
+            SymbolKind.ExternMethod => ((ExternedMethodNode) sym.Node).Parameters,
+            SymbolKind.Constructor => ((ConstructorDeclarationNode) sym.Node).Parameters,
+            _ => null
+        };
     }
     
     /// <summary>

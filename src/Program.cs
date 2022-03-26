@@ -22,6 +22,10 @@ internal static class Program
             new Option(
                 "--verbose",
                 "Paths for errors will be absolute instead of relative"
+            ),
+            new Option(
+                "--analyze-only",
+                "The compiler will only analyze the files and not build a program."
             )
         };
 
@@ -30,11 +34,11 @@ internal static class Program
         return command.Invoke(args);
     }
 
-    private static int CompilationHandler(string path, bool verbose)
+    private static int CompilationHandler(string path, bool verbose, bool analyzeOnly)
     {
         Compiler compiler = new(path);
 
-        int returnCode = compiler.Compile();
+        int returnCode = compiler.Compile(analyzeOnly);
         int msgCount = compiler.MessageCollection.Count();
         bool fail = compiler.MessageCollection.HasFatalErrors;
         

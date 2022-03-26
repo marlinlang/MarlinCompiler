@@ -172,7 +172,10 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     node.Name,
                     PushScope(node.Name),
                     node
-                ));
+                )
+                {
+                    IsStatic = node.IsStatic
+                });
                 
                 if (node.IsStatic && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
                 {
@@ -293,7 +296,31 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
             case Pass.EnterTypeMembers:
             {
-                UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
+                // First check if we have duplicated constructors
+                IEnumerable<string> paramTypes = node.Parameters
+                    .Select(param => ((SymbolMetadata) param.Type.Metadata!).Symbol.Type.ToString());
+                string paramString = String.Join(", ", paramTypes);
+
+                Symbol constructorSymbol = ((SymbolMetadata) node.Metadata!).Symbol;
+
+                UseScope(constructorSymbol.Scope);
+                
+                foreach (Symbol sym in constructorSymbol.Scope.LookupMultipleSymbols("constructor", false))
+                {
+                    if (sym == constructorSymbol) continue;
+
+                    VariableNode[]? symParams = GetParams(sym);
+                    if (symParams == null) continue;
+
+                    IEnumerable<string> foreignParamTypes = symParams
+                        .Select(param => ((SymbolMetadata) param.Type.Metadata!).Symbol.Type.ToString());
+                    string foreignParamString = String.Join(", ", foreignParamTypes);
+
+                    if (paramString == foreignParamString)
+                    {
+                        MessageCollection.Error("There are multiple constructors with the same parameters", node.Location);
+                    }
+                }
                 
                 // Check body
                 foreach (Node child in node)
@@ -321,7 +348,10 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     node.Name ?? "constructor",
                     PushScope(node.Name ?? "constructor"),
                     node
-                ));
+                )
+                {
+                    IsStatic = node.IsStatic
+                });
                 PopScope();
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
@@ -353,7 +383,10 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     node.Name,
                     _scopes.Peek(),
                     node
-                ));
+                )
+                {
+                    IsStatic = node.IsStatic
+                });
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
             }
@@ -464,20 +497,21 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
     {
         Visit(node.Type);
 
-        if (((SymbolMetadata) node.Type.Metadata!).Symbol == SpecialTypes.Void)
+        Symbol typeSymbol = ((SymbolMetadata) node.Type.Metadata!).Symbol;
+        if (typeSymbol == SpecialTypes.Void)
         {
             MessageCollection.Error($"Cannot instantiate void", node.Type.Location);
         }
 
         node.Metadata = new SymbolMetadata(new Symbol(
             SymbolKind.Instance,
-            ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
+            typeSymbol.Type,
             "$",
             _scopes.Peek(),
             node
         ));
-
-        // TODO: Look for constructor
+        
+        FindOverload("constructor", node.ConstructorArgs, typeSymbol.Scope, true, true, node.Location);
 
         return null!;
     }
@@ -491,7 +525,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         // Was the method called statically?
         bool invokedStatically = node.Target is TypeReferenceNode or null;
 
-        Symbol? methodSymbol;
+        Scope? lookScope;
 
         if (node.Target != null)
         {
@@ -504,110 +538,38 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             }
 
             SemType type = ((SymbolMetadata) node.Target.Metadata).Symbol.Type;
-            Scope typeScope = type.Scope ?? CurrentScope.LookupType(type).Scope;
-
-            methodSymbol = typeScope.LookupSymbol(node.MethodName, true);
+            lookScope = type.Scope ?? CurrentScope.LookupType(type).Scope;
         }
         else
         {
-            methodSymbol = CurrentScope.LookupSymbol(node.MethodName, false);
+            lookScope = CurrentScope;
         }
 
-        if (methodSymbol == null)
+
+        Symbol? methodSymbol = FindOverload(node.MethodName, node.Arguments, lookScope, false, false, node.Location);
+
+        if (methodSymbol == null) return null!;
+        
+        node.Metadata = new SymbolMetadata(methodSymbol);
+
+        if (methodSymbol.IsStatic && !invokedStatically)
         {
-            MessageCollection.Error($"Cannot find method {node.MethodName}", node.Location);
+            // Tried to call by instance
+            MessageCollection.Error(
+                $"Cannot call static method {methodSymbol.Name} with instance. Use type name instead.",
+                node.Location
+            );
         }
-        else if (methodSymbol.Kind != SymbolKind.Method)
+        else if (invokedStatically && !methodSymbol.IsStatic)
         {
-            MessageCollection.Error($"Cannot invoke non-method {methodSymbol.Name}", node.Location);
-        }
-        else
-        {
-            node.Metadata = new SymbolMetadata(methodSymbol);
-
-            // Match args to params
-            MethodDeclarationNode decl = (MethodDeclarationNode) methodSymbol.Node;
-
-            // The max index we can iterate to
-            int maxSafeIndex;
-            bool argcMatch;
-
-            if (decl.Parameters.Length > node.Arguments.Length)
-            {
-                argcMatch = false;
-                maxSafeIndex = node.Arguments.Length;
-            }
-            else
-            {
-                argcMatch = node.Arguments.Length == decl.Parameters.Length;
-                maxSafeIndex = decl.Parameters.Length;
-            }
-
-            List<string> expectedParamsList = new();
-            List<string> givenArgsList = new();
-
-            bool compatible = true;
-            for (int i = 0; i < maxSafeIndex; i++)
-            {
-                // We can't use the type linked to the node directly, since that *could* be a generic param
-                // We have to fetch it to make sure we get the accurate one (by looking for the param symbol)
-                //SemType nodeExpType = ((SymbolMetadata) decl.Parameters[i].Type.Metadata!).Symbol.Type;
-                //SemType actualExpType = methodSymbol.Scope.LookupType(nodeExpType).Type;
-                SemType actualExpType = methodSymbol.Scope.LookupSymbol(decl.Parameters[i].Name, true)?.Type ?? throw new InvalidOperationException();
-                
-                // Argument type
-                Visit(node.Arguments[i]);
-                SemType givenType = ((SymbolMetadata) node.Arguments[i].Metadata!).Symbol.Type;
-                
-                (bool compat, string expectedFullName, string givenFullName) = AreTypesCompatible(
-                    actualExpType,
-                    givenType
-                );
-
-                compatible = compatible && compat;
-                expectedParamsList.Add(expectedFullName);
-                givenArgsList.Add(givenFullName);
-            }
-
-            string expected = String.Join(", ", expectedParamsList);
-            string given = String.Join(", ", givenArgsList);
-
-            if (!compatible)
+            // Tried to call a static method without reference
+            // We must double-check that we used a type reference
+            if (node.Target != null)
             {
                 MessageCollection.Error(
-                    $"Mismatched arguments for method {decl.Name}" +
-                    $"\n\tExpected: {decl.Name}({expected}{(argcMatch ? ")" : "...")}" +
-                    $"\n\tGiven:    {decl.Name}({given}{(argcMatch ? ")" : "...")}",
+                    $"Cannot call instance method {methodSymbol.Name} statically. Use an instance instead.",
                     node.Location
                 );
-            }
-            else if (!argcMatch)
-            {
-                MessageCollection.Error(
-                    $"Method {decl.Name} expects {decl.Parameters.Length} parameter(s), but {node.Arguments.Length} arg(s) are passed",
-                    node.Location
-                );
-            }
-
-            if (decl.IsStatic && !invokedStatically)
-            {
-                // Tried to call by instance
-                MessageCollection.Error(
-                    $"Cannot call static method {methodSymbol.Name} with instance. Use type name instead.",
-                    node.Location
-                );
-            }
-            else if (invokedStatically && !decl.IsStatic)
-            {
-                // Tried to call a static method without reference
-                // We must double-check that we used a type reference
-                if (node.Target != null)
-                {
-                    MessageCollection.Error(
-                        $"Cannot call instance method {methodSymbol.Name} statically. Use an instance instead.",
-                        node.Location
-                    );
-                }
             }
         }
 
@@ -653,37 +615,26 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 MessageCollection.Error($"Variable {found.Name} may not be initialized when used. Make sure to initialize it in every code path leading up to this statement.", node.Location);
             }
 
-            if (found.Kind is SymbolKind.Property or SymbolKind.Method or SymbolKind.ExternMethod)
+            if (found.Kind is not (SymbolKind.Property or SymbolKind.Method or SymbolKind.ExternMethod)) return null!;
+            
+            if (found.IsStatic && !referencedStatically)
             {
-                bool isDeclStatic = found.Kind switch
+                // Tried to call by instance
+                MessageCollection.Error(
+                    $"Cannot reference static member {found.Name} with instance. Use type name instead.",
+                    node.Location
+                );
+            }
+            else if (referencedStatically && !found.IsStatic)
+            {
+                // Tried to reference a static property without reference
+                // We must double-check that we used a type reference
+                if (node.Target != null)
                 {
-                    SymbolKind.Property => ((PropertyNode) found.Node).IsStatic,
-                    SymbolKind.Method => ((MethodDeclarationNode) found.Node).IsStatic,
-                    SymbolKind.ExternMethod => ((ExternedMethodNode) found.Node).IsStatic,
-
-                    // C# thinks this is possible, not me ¯\_(ツ)_/¯
-                    _ => throw new InvalidOperationException()
-                };
-
-                if (isDeclStatic && !referencedStatically)
-                {
-                    // Tried to call by instance
                     MessageCollection.Error(
-                        $"Cannot reference static member {found.Name} with instance. Use type name instead.",
+                        $"Cannot reference instance property {found.Name} statically. Use an instance instead.",
                         node.Location
                     );
-                }
-                else if (referencedStatically && !isDeclStatic)
-                {
-                    // Tried to reference a static property without reference
-                    // We must double-check that we used a type reference
-                    if (node.Target != null)
-                    {
-                        MessageCollection.Error(
-                            $"Cannot reference instance property {found.Name} statically. Use an instance instead.",
-                            node.Location
-                        );
-                    }
                 }
             }
         }
@@ -882,7 +833,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     MessageCollection.Error($"Cannot modify get-only property {decl.Name}", node.Location);
                 }
 
-                if (decl.IsStatic && !referencedStatically)
+                if (varSymbol.IsStatic && !referencedStatically)
                 {
                     // Tried to call by instance
                     MessageCollection.Error(
@@ -890,7 +841,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         node.Location
                     );
                 }
-                else if (referencedStatically && !decl.IsStatic)
+                else if (referencedStatically && !varSymbol.IsStatic)
                 {
                     // Tried to reference a static property without reference
                     // We must double-check that we used a type reference
