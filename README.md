@@ -1,7 +1,5 @@
 # The Marlin Compiler
 
----
-
 Marlin is a compiled, statically/strongly typed & no-undefined-behaviours programming language designed for general purpose use. The language focuses itself on being as explicit as possible.
 
 This is the repository of the official compiler for the language.
