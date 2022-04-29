@@ -52,12 +52,12 @@ public sealed class Compiler
     /// Method for starting the compilation process.
     /// </summary>
     /// <returns>Program exit code.</returns>
-    public int Compile(bool doNotInvokeLlvm)
+    public int Compile(bool analyzeOnly)
     {
         ContainerNode program = Parse(); /* Lex & parse       */
         Analyze(program);                /* Semantic analysis */
 
-        if (!MessageCollection.HasFatalErrors && !doNotInvokeLlvm)
+        if (!MessageCollection.HasFatalErrors && !analyzeOnly)
         {
             Build(program);              /* LLVM compilation  */
         }
@@ -137,7 +137,7 @@ public sealed class Compiler
     private void Build(ContainerNode program)
     {
         OutputBuilder builder = new(program, _outPath);
-        builder.BuildLlvm();
+        builder.Build();
         MessageCollection.AddRange(builder.MessageCollection);
     }
 

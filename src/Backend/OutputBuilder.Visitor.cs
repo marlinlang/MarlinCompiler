@@ -1,95 +1,52 @@
+using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Visitors;
-using Ubiquity.NET.Llvm.DebugInfo;
-using Ubiquity.NET.Llvm.Types;
 using Ubiquity.NET.Llvm.Values;
 
 namespace MarlinCompiler.Backend;
 
-public sealed partial class OutputBuilder : IAstVisitor<Value>
+public sealed partial class OutputBuilder : IAstVisitor<None>
 {
-    public Value Visit(Node node)
+    public None Visit(Node node)
     {
         return node.AcceptVisitor(this);
     }
 
-    public Value ClassDefinition(ClassTypeDefinitionNode node)
+    public None ClassDefinition(ClassTypeDefinitionNode node)
     {
-        switch (_currentPass)
+        Emit($"{node.Accessibility.ToString().ToLower()} {(node.IsStatic ? "static " : "")}class {node.LocalName}", false);
+        Emit(node.GenericTypeParamName != null ? $"<{node.GenericTypeParamName}>" : "", true);
+        OpenScope();
+        foreach (Node n in node)
         {
-            case Pass.DefineTypes:
-                DebugStructType structType = new(
-                    _currentModule,
-                    $"{node.ModuleName}::{node.LocalName}",
-                    _currentModule.DICompileUnit,
-                    node.LocalName
-                );
-                node.Metadata = new TypeNodeMetadata(structType);
-                break;
-            
-            case Pass.DefineTypeMembers:
-                
-                break;
-            
-            case Pass.MakeVtables:
-                DebugStructType vtableType = new(
-                    _currentModule,
-                    $"vtable.{node.ModuleName}::{node.LocalName}",
-                    _currentModule.DICompileUnit,
-                    $"vtable.{node.LocalName}"
-                );
-                ((TypeNodeMetadata) node.Metadata!).Vtable = vtableType;
-                break;
-            
-            case Pass.DefineTypeBodies:
-                ((DebugStructType) ((TypeNodeMetadata) node.Metadata!).Type).SetBody(false);
-                foreach (Node child in node)
-                {
-                    //Visit(child);
-                }
-                break;
-            
-            case Pass.VisitTypeMembers:
-                foreach (Node child in node)
-                {
-                    //Visit(child);
-                }
-                break;
-            
-            default:
-                throw new InvalidOperationException();
+            Visit(n);
         }
-
+        CloseScope();
         return null!;
     }
 
-    public Value ExternedTypeDefinition(ExternedTypeDefinitionNode node)
+    public None StructDefinition(StructTypeDefinitionNode node)
     {
-        switch (_currentPass)
+        Emit($"{node.Accessibility.ToString().ToLower()} class {node.LocalName}", true);
+        OpenScope();
+        foreach (Node n in node)
         {
-            case Pass.DefineTypes:
-                if (!node.IsStatic)
-                {
-                    ITypeRef type = new DebugStructType(_currentModule, node.LlvmTypeName!, null,
-                        $"{node.ModuleName}::{node.LocalName}");
-                    node.Metadata = new TypeNodeMetadata(type);
-                }
-
-                break;
-            
-            case Pass.DefineTypeMembers:
-                break;
-            case Pass.DefineTypeBodies:
-                break;
-            case Pass.VisitTypeMembers:
-                break;
+            Visit(n);
         }
-        
+        CloseScope();
         return null!;
     }
 
-    public Value StructDefinition(StructTypeDefinitionNode node)
+    public None ExternedTypeDefinition(ExternedTypeDefinitionNode node)
     {
+        return null!;
+    }
+
+    public None MethodDeclaration(MethodDeclarationNode node)
+    {
+        Emit($"{node.Accessibility.ToString().ToLower()} {(node.IsStatic ? "static " : "")}{node.Type} {node.Name}()", true);
+        OpenScope();
+        CloseScope();
         return null!;
     }
 }
