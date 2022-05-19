@@ -11,7 +11,7 @@ public class MemberAccessNode : IndexableExpressionNode
     {
         MemberName = memberName;
     }
-    
+
     public string MemberName { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

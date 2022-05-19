@@ -12,16 +12,16 @@ public sealed partial class OutputBuilder
 {
     public OutputBuilder(ContainerNode root, string outPath)
     {
-        _root = root;
-        _outPath = outPath;
+        _root                 = root;
+        _outPath              = outPath;
         _currentStringBuilder = null!;
-        MessageCollection = new MessageCollection();
+        MessageCollection     = new MessageCollection();
     }
 
     private readonly ContainerNode _root;
-    private readonly string _outPath;
-    private StringBuilder _currentStringBuilder;
-    private int _currentTabLevel;
+    private readonly string        _outPath;
+    private          StringBuilder _currentStringBuilder;
+    private          int           _currentTabLevel;
 
     /// <summary>
     /// LLVM compilation messages.
@@ -39,7 +39,7 @@ public sealed partial class OutputBuilder
             _currentStringBuilder = moduleBuilder;
             Visit(unit);
         }
-        
+
         string useOutPath = _outPath;
         if (Directory.Exists(useOutPath))
         {
@@ -50,7 +50,7 @@ public sealed partial class OutputBuilder
             useOutPath = Path.GetDirectoryName(useOutPath) ?? useOutPath;
         }
         Directory.CreateDirectory(useOutPath);
-        
+
         foreach ((string name, StringBuilder file) in modules)
         {
             string path = Path.Combine(useOutPath, name.Replace("::", "_"));
@@ -83,7 +83,10 @@ public sealed partial class OutputBuilder
         Emit("", true);
     }
 
-    private string GetSpacing() => new(' ', _currentTabLevel * 4);
+    private string GetSpacing()
+    {
+        return new(' ', _currentTabLevel * 4);
+    }
 
     private StringBuilder CreateModuleBuilder(string modName)
     {

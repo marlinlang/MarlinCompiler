@@ -16,7 +16,7 @@ public abstract class Node
     /// The metadata attached to this node.
     /// </summary>
     public INodeMetadata? Metadata { get; set; }
-    
+
     /// <summary>
     /// Routes a visitor to the correct method on itself for this node type.
     /// </summary>

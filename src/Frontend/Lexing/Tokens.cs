@@ -25,13 +25,13 @@ public class Tokens
     /// <summary>
     /// The current token;
     /// </summary>
-    public Token CurrentToken => _tokens[Math.Clamp(_position, 0, _tokens.Length-1)];
+    public Token CurrentToken => _tokens[Math.Clamp(_position, 0, _tokens.Length - 1)];
 
     /// <summary>
     /// The internal list of tokens.
     /// </summary>
     private readonly Token[] _tokens;
-    
+
     /// <summary>
     /// The current token position.
     /// </summary>
@@ -39,36 +39,43 @@ public class Tokens
 
     public Tokens(Token[] tokens)
     {
-        _tokens = tokens;
+        _tokens   = tokens;
         _position = -1;
     }
 
     public Tokens(Tokens template)
     {
-        _tokens = template._tokens;
+        _tokens   = template._tokens;
         _position = template._position;
     }
 
     /// <summary>
     /// Returns the next token and advances the position. Null for EOF
     /// </summary>
-    public Token? GrabToken() =>
-        ++_position >= _tokens.Length
-            ? null
-            : _tokens[_position];
+    public Token? GrabToken()
+    {
+        return ++_position >= _tokens.Length
+                   ? null
+                   : _tokens[_position];
+    }
 
     /// <summary>
     /// Returns the next token without advancing the position. Null for EOF
     /// </summary>
-    public Token? PeekToken(int with = 1) =>
-        _position + with >= _tokens.Length
-            ? null
-            : _tokens[_position + with];
-    
+    public Token? PeekToken(int with = 1)
+    {
+        return _position + with >= _tokens.Length
+                   ? null
+                   : _tokens[_position + with];
+    }
+
     /// <summary>
     /// Skips a token.
     /// </summary>
-    public void Skip() => _position++;
+    public void Skip()
+    {
+        _position++;
+    }
 
     /// <summary>
     /// Tries to peek and returns the next token if it matches the type of the expected.
@@ -124,5 +131,8 @@ public class Tokens
     /// Returns whether or not the next token is of the expected type.
     /// Does not advance position.
     /// </summary>
-    public bool NextIsOfType(TokenType type) => PeekToken()?.Type == type;
+    public bool NextIsOfType(TokenType type)
+    {
+        return PeekToken()?.Type == type;
+    }
 }

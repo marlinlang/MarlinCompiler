@@ -12,36 +12,42 @@ public class MessageCollection : IEnumerable<Message>
     {
         _messages = new ConcurrentBag<Message>();
     }
-    
+
     private ConcurrentBag<Message> _messages;
 
     public bool HasFatalErrors => _messages.Any(x => x.Fatality == MessageFatality.Severe);
 
     public void Error(string message, FileLocation? location)
     {
-        _messages.Add(new Message(message)
-        {
-            Location =  location,
-            Fatality = MessageFatality.Severe
-        });
+        _messages.Add(
+            new Message(message)
+            {
+                Location = location,
+                Fatality = MessageFatality.Severe
+            }
+        );
     }
 
     public void Warn(string message, FileLocation? location)
     {
-        _messages.Add(new Message(message)
-        {
-            Location =  location,
-            Fatality = MessageFatality.Warning
-        });
+        _messages.Add(
+            new Message(message)
+            {
+                Location = location,
+                Fatality = MessageFatality.Warning
+            }
+        );
     }
 
     public void Info(string message, FileLocation? location)
     {
-        _messages.Add(new Message(message)
-        {
-            Location =  location,
-            Fatality = MessageFatality.Information
-        });
+        _messages.Add(
+            new Message(message)
+            {
+                Location = location,
+                Fatality = MessageFatality.Information
+            }
+        );
     }
 
     public void AddRange(MessageCollection other)
@@ -52,6 +58,13 @@ public class MessageCollection : IEnumerable<Message>
         }
     }
 
-    public IEnumerator<Message> GetEnumerator() => _messages.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => _messages.GetEnumerator();
+    public IEnumerator<Message> GetEnumerator()
+    {
+        return _messages.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return _messages.GetEnumerator();
+    }
 }

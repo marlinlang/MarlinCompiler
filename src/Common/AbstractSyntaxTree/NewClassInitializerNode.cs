@@ -11,7 +11,7 @@ public sealed class NewClassInitializerNode : InitializerNode
     {
         ConstructorArgs = ctorArgs;
     }
-    
+
     public ExpressionNode[] ConstructorArgs { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

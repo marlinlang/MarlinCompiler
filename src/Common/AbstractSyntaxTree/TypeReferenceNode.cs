@@ -9,15 +9,15 @@ public class TypeReferenceNode : IndexableExpressionNode
 {
     public TypeReferenceNode(string fullName, TypeReferenceNode? genericTypeName = null)
     {
-        FullName = fullName;
+        FullName        = fullName;
         GenericTypeName = genericTypeName;
     }
-    
+
     /// <summary>
     /// The name of the type.
     /// </summary>
     public string FullName { get; }
-    
+
     /// <summary>
     /// Generic type name (e.g. Array&lt;string&gt; - the string part)
     /// </summary>
@@ -26,8 +26,8 @@ public class TypeReferenceNode : IndexableExpressionNode
     public override string ToString()
     {
         return GenericTypeName != null
-            ? $"{FullName}<{GenericTypeName}>"
-            : FullName;
+                   ? $"{FullName}<{GenericTypeName}>"
+                   : FullName;
     }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

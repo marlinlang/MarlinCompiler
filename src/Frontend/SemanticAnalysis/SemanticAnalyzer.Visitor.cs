@@ -19,8 +19,9 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         }
 
         node.AcceptVisitor(this);
-        
-        if (node is CompilationUnitNode depUnit && _pass == Pass.EnterTypeMembers)
+
+        if (node is CompilationUnitNode depUnit
+            && _pass == Pass.EnterTypeMembers)
         {
             CheckUnusedDependencies(depUnit);
         }
@@ -42,15 +43,17 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         : null
                 )
                 {
-                    Scope = PushScope(name),
+                    Scope = PushScope(name)
                 };
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.ClassType,
-                    semType,
-                    name,
-                    semType.Scope,
-                    node
-                ));
+                node.Metadata = new SymbolMetadata(
+                    new Symbol(
+                        SymbolKind.ClassType,
+                        semType,
+                        name,
+                        semType.Scope,
+                        node
+                    )
+                );
 
                 // Register generic param
                 if (node.GenericTypeParamName != null)
@@ -87,16 +90,18 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             case Pass.DefineTypes:
             {
                 string name = $"{node.ModuleName}::{node.LocalName}";
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.ExternType,
-                    new SemType(
+                node.Metadata = new SymbolMetadata(
+                    new Symbol(
+                        SymbolKind.ExternType,
+                        new SemType(
+                            name,
+                            null
+                        ),
                         name,
-                        null
-                    ),
-                    name,
-                    PushScope(name),
-                    node
-                ));
+                        PushScope(name),
+                        node
+                    )
+                );
                 PopScope();
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
@@ -126,16 +131,18 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             case Pass.DefineTypes:
             {
                 string name = $"{node.ModuleName}::{node.LocalName}";
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.StructType,
-                    new SemType(
+                node.Metadata = new SymbolMetadata(
+                    new Symbol(
+                        SymbolKind.StructType,
+                        new SemType(
+                            name,
+                            null
+                        ),
                         name,
-                        null
-                    ),
-                    name,
-                    PushScope(name),
-                    node
-                ));
+                        PushScope(name),
+                        node
+                    )
+                );
                 PopScope();
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
@@ -166,43 +173,48 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             {
                 Visit(node.Type);
 
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.Method,
-                    ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
-                    node.Name,
-                    PushScope(node.Name),
-                    node
-                )
-                {
-                    IsStatic = node.IsStatic
-                });
-                
-                if (node.IsStatic && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
+                node.Metadata = new SymbolMetadata(
+                    new Symbol(
+                        SymbolKind.Method,
+                        ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
+                        node.Name,
+                        PushScope(node.Name),
+                        node
+                    )
+                    {
+                        IsStatic = node.IsStatic
+                    }
+                );
+
+                if (node.IsStatic
+                    && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
                 {
                     MessageCollection.Error(
                         $"Cannot use generic type on static method {node.Name}",
                         node.Location
                     );
                 }
-                
+
                 // Check args
                 foreach (VariableNode param in node.Parameters)
                 {
                     Visit(param.Type);
 
                     Symbol typeSymbol = ((SymbolMetadata) param.Type.Metadata!).Symbol;
-                    
-                    param.Metadata = new SymbolMetadata(new Symbol(
-                        SymbolKind.Variable,
-                        typeSymbol.Type,
-                        param.Name,
-                        CurrentScope,
-                        param
-                    )
-                    {
-                        LocalVariableInitialized = true
-                    });
-                    
+
+                    param.Metadata = new SymbolMetadata(
+                        new Symbol(
+                            SymbolKind.Variable,
+                            typeSymbol.Type,
+                            param.Name,
+                            CurrentScope,
+                            param
+                        )
+                        {
+                            LocalVariableInitialized = true
+                        }
+                    );
+
                     AddSymbolToScope((SymbolMetadata) param.Metadata);
 
                     if (typeSymbol == SpecialTypes.Void)
@@ -210,12 +222,13 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         MessageCollection.Error($"Cannot have void as parameter for {param.Name}", param.Type.Location);
                     }
 
-                    if (param.Name != "_" && node.Parameters.Count(x => x.Name == param.Name) > 1)
+                    if (param.Name                                          != "_"
+                        && node.Parameters.Count(x => x.Name == param.Name) > 1)
                     {
                         MessageCollection.Error($"Repeated parameter name {param.Name}", param.Location);
                     }
                 }
-                
+
                 PopScope();
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
@@ -223,9 +236,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
             case Pass.EnterTypeMembers:
             {
-
                 UseScope(((SymbolMetadata) node.Metadata!).Symbol.Scope);
-                
+
                 // Check body
                 foreach (Node child in node)
                 {
@@ -246,35 +258,39 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             case Pass.DefineTypeMembers:
             {
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.Constructor,
-                    null!,
-                    "constructor",
-                    PushScope("constructor"),
-                    node
-                )
-                {
-                    LocalVariableInitialized = true
-                });
-                
+                node.Metadata = new SymbolMetadata(
+                    new Symbol(
+                        SymbolKind.Constructor,
+                        null!,
+                        "constructor",
+                        PushScope("constructor"),
+                        node
+                    )
+                    {
+                        LocalVariableInitialized = true
+                    }
+                );
+
                 // Check args
                 foreach (VariableNode param in node.Parameters)
                 {
                     Visit(param.Type);
 
                     Symbol typeSymbol = ((SymbolMetadata) param.Type.Metadata!).Symbol;
-                    
-                    param.Metadata = new SymbolMetadata(new Symbol(
-                        SymbolKind.Variable,
-                        typeSymbol.Type,
-                        param.Name,
-                        CurrentScope,
-                        param
-                    )
-                    {
-                        LocalVariableInitialized = true
-                    });
-                    
+
+                    param.Metadata = new SymbolMetadata(
+                        new Symbol(
+                            SymbolKind.Variable,
+                            typeSymbol.Type,
+                            param.Name,
+                            CurrentScope,
+                            param
+                        )
+                        {
+                            LocalVariableInitialized = true
+                        }
+                    );
+
                     AddSymbolToScope((SymbolMetadata) param.Metadata);
 
                     if (typeSymbol == SpecialTypes.Void)
@@ -282,15 +298,16 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         MessageCollection.Error($"Cannot have void as parameter for {param.Name}", param.Type.Location);
                     }
 
-                    if (param.Name != "_" && node.Parameters.Count(x => x.Name == param.Name) > 1)
+                    if (param.Name                                          != "_"
+                        && node.Parameters.Count(x => x.Name == param.Name) > 1)
                     {
                         MessageCollection.Error($"Repeated parameter name {param.Name}", param.Location);
                     }
                 }
-                
+
                 PopScope();
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
-                
+
                 break;
             }
 
@@ -298,22 +315,30 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             {
                 // First check if we have duplicated constructors
                 IEnumerable<string> paramTypes = node.Parameters
-                    .Select(param => ((SymbolMetadata) param.Type.Metadata!).Symbol.Type.ToString());
+                                                     .Select(
+                                                          param => ((SymbolMetadata) param.Type.Metadata!).Symbol.Type.ToString()
+                                                      );
                 string paramString = String.Join(", ", paramTypes);
 
                 Symbol constructorSymbol = ((SymbolMetadata) node.Metadata!).Symbol;
 
                 UseScope(constructorSymbol.Scope);
-                
+
                 foreach (Symbol sym in constructorSymbol.Scope.LookupMultipleSymbols("constructor", false))
                 {
-                    if (sym == constructorSymbol) continue;
+                    if (sym == constructorSymbol)
+                    {
+                        continue;
+                    }
 
                     VariableNode[]? symParams = GetParams(sym);
-                    if (symParams == null) continue;
+                    if (symParams == null)
+                    {
+                        continue;
+                    }
 
                     IEnumerable<string> foreignParamTypes = symParams
-                        .Select(param => ((SymbolMetadata) param.Type.Metadata!).Symbol.Type.ToString());
+                       .Select(param => ((SymbolMetadata) param.Type.Metadata!).Symbol.Type.ToString());
                     string foreignParamString = String.Join(", ", foreignParamTypes);
 
                     if (paramString == foreignParamString)
@@ -321,7 +346,7 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                         MessageCollection.Error("There are multiple constructors with the same parameters", node.Location);
                     }
                 }
-                
+
                 // Check body
                 foreach (Node child in node)
                 {
@@ -342,16 +367,18 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             case Pass.DefineTypeMembers:
             {
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.ExternMethod,
-                    GetSemType(node.Type),
-                    node.Name ?? "constructor",
-                    PushScope(node.Name ?? "constructor"),
-                    node
-                )
-                {
-                    IsStatic = node.IsStatic
-                });
+                node.Metadata = new SymbolMetadata(
+                    new Symbol(
+                        SymbolKind.ExternMethod,
+                        GetSemType(node.Type),
+                        node.Name ?? "constructor",
+                        PushScope(node.Name ?? "constructor"),
+                        node
+                    )
+                    {
+                        IsStatic = node.IsStatic
+                    }
+                );
                 PopScope();
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
@@ -369,7 +396,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             {
                 Visit(node.Type);
 
-                if (node.IsStatic && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
+                if (node.IsStatic
+                    && ((SymbolMetadata) node.Type.Metadata!).Symbol.Type.IsGenericParam)
                 {
                     MessageCollection.Error(
                         $"Cannot use generic type on static property {node.Name}",
@@ -377,16 +405,18 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     );
                 }
 
-                node.Metadata = new SymbolMetadata(new Symbol(
-                    SymbolKind.Property,
-                    ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
-                    node.Name,
-                    _scopes.Peek(),
-                    node
-                )
-                {
-                    IsStatic = node.IsStatic
-                });
+                node.Metadata = new SymbolMetadata(
+                    new Symbol(
+                        SymbolKind.Property,
+                        ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
+                        node.Name,
+                        _scopes.Peek(),
+                        node
+                    )
+                    {
+                        IsStatic = node.IsStatic
+                    }
+                );
                 AddSymbolToScope((SymbolMetadata) node.Metadata);
                 break;
             }
@@ -399,8 +429,10 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
                     if (((SymbolMetadata) node.Type.Metadata!).Symbol == SpecialTypes.Void)
                     {
-                        MessageCollection.Error($"Cannot have void as type for property {node.Name}",
-                            node.Type.Location);
+                        MessageCollection.Error(
+                            $"Cannot have void as type for property {node.Name}",
+                            node.Type.Location
+                        );
                     }
 
                     // We should have already errored
@@ -416,7 +448,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     {
                         MessageCollection.Error(
                             $"Cannot provide an initialization value for generic type {varType} (on property {varSymbol.Name})",
-                            node.Location);
+                            node.Location
+                        );
                     }
                     else
                     {
@@ -426,9 +459,12 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                             AreTypesCompatible(varType, valueType);
                         if (!compatible)
                         {
-                            MessageCollection.Error($"Type mismatch for variable {varSymbol.Name}" +
-                                                    $"\n\tExpected: {expectedFullName}" +
-                                                    $"\n\tGiven:    {givenFullName}", node.Location);
+                            MessageCollection.Error(
+                                $"Type mismatch for variable {varSymbol.Name}"
+                                + $"\n\tExpected: {expectedFullName}"
+                                + $"\n\tGiven:    {givenFullName}",
+                                node.Location
+                            );
                         }
                     }
                 }
@@ -450,25 +486,28 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         }
 
         // Check for variable shadowing, unless variable name is _
-        if (node.Name != "_" && CurrentScope.LookupSymbol(node.Name, true) != null)
+        if (node.Name                                     != "_"
+            && CurrentScope.LookupSymbol(node.Name, true) != null)
         {
             MessageCollection.Error($"Variable {node.Name} has already been defined in the same scope", node.Location);
         }
 
-        node.Metadata = new SymbolMetadata(new Symbol(
-            SymbolKind.Variable,
-            ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
-            node.Name,
-            _scopes.Peek(),
-            node
-        ));
+        node.Metadata = new SymbolMetadata(
+            new Symbol(
+                SymbolKind.Variable,
+                ((SymbolMetadata) node.Type.Metadata!).Symbol.Type,
+                node.Name,
+                _scopes.Peek(),
+                node
+            )
+        );
 
         AddSymbolToScope((SymbolMetadata) node.Metadata);
 
         if (node.Value != null)
         {
             Visit(node.Value);
-            
+
             // We should have already errored
             if (node.Value.Metadata is not SymbolMetadata metadata)
             {
@@ -484,9 +523,12 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             (bool compatible, string expectedFullName, string givenFullName) = AreTypesCompatible(varType, valueType);
             if (!compatible)
             {
-                MessageCollection.Error($"Type mismatch for variable {varSymbol.Name}" +
-                                        $"\n\tExpected: {expectedFullName}" +
-                                        $"\n\tGiven:    {givenFullName}", node.Location);
+                MessageCollection.Error(
+                    $"Type mismatch for variable {varSymbol.Name}"
+                    + $"\n\tExpected: {expectedFullName}"
+                    + $"\n\tGiven:    {givenFullName}",
+                    node.Location
+                );
             }
         }
 
@@ -503,14 +545,16 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             MessageCollection.Error($"Cannot instantiate void", node.Type.Location);
         }
 
-        node.Metadata = new SymbolMetadata(new Symbol(
-            SymbolKind.Instance,
-            typeSymbol.Type,
-            "$",
-            _scopes.Peek(),
-            node
-        ));
-        
+        node.Metadata = new SymbolMetadata(
+            new Symbol(
+                SymbolKind.Instance,
+                typeSymbol.Type,
+                "$",
+                _scopes.Peek(),
+                node
+            )
+        );
+
         FindOverload("constructor", node.ConstructorArgs, typeSymbol.Scope, true, true, node.Location);
 
         return null!;
@@ -548,11 +592,15 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
         Symbol? methodSymbol = FindOverload(node.MethodName, node.Arguments, lookScope, false, false, node.Location);
 
-        if (methodSymbol == null) return null!;
-        
+        if (methodSymbol == null)
+        {
+            return null!;
+        }
+
         node.Metadata = new SymbolMetadata(methodSymbol);
 
-        if (methodSymbol.IsStatic && !invokedStatically)
+        if (methodSymbol.IsStatic
+            && !invokedStatically)
         {
             // Tried to call by instance
             MessageCollection.Error(
@@ -610,14 +658,23 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         {
             node.Metadata = new SymbolMetadata(found);
 
-            if (node.Target == null && found.Kind == SymbolKind.Variable && !found.LocalVariableInitialized)
+            if (node.Target   == null
+                && found.Kind == SymbolKind.Variable
+                && !found.LocalVariableInitialized)
             {
-                MessageCollection.Error($"Variable {found.Name} may not be initialized when used. Make sure to initialize it in every code path leading up to this statement.", node.Location);
+                MessageCollection.Error(
+                    $"Variable {found.Name} may not be initialized when used. Make sure to initialize it in every code path leading up to this statement.",
+                    node.Location
+                );
             }
 
-            if (found.Kind is not (SymbolKind.Property or SymbolKind.Method or SymbolKind.ExternMethod)) return null!;
-            
-            if (found.IsStatic && !referencedStatically)
+            if (found.Kind is not (SymbolKind.Property or SymbolKind.Method or SymbolKind.ExternMethod))
+            {
+                return null!;
+            }
+
+            if (found.IsStatic
+                && !referencedStatically)
             {
                 // Tried to call by instance
                 MessageCollection.Error(
@@ -658,13 +715,13 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             node.Metadata = new SymbolMetadata(SpecialTypes.UnknownType);
 
             MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
-            
+
             // Check generic arg just to be sure we've dealt with that too
             if (node.GenericTypeName != null)
             {
                 Visit(node.GenericTypeName);
             }
-            
+
             return null!;
         }
 
@@ -679,7 +736,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
         // Let's evaluate the generic type as well.
 
         // Wait! Before that - if this is a generic param itself, it can't have a generic param!!!
-        if (type.Kind == SymbolKind.GenericTypeParam && node.GenericTypeName != null)
+        if (type.Kind               == SymbolKind.GenericTypeParam
+            && node.GenericTypeName != null)
         {
             MessageCollection.Error(
                 $"Cannot use a generic argument with parameter {type.Name}",
@@ -687,7 +745,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             );
         }
 
-        if (type.Type.GenericTypeParameter != null && node.GenericTypeName == null)
+        if (type.Type.GenericTypeParameter != null
+            && node.GenericTypeName        == null)
         {
             // We *require* a generic param/arg but one isn't given!
             MessageCollection.Error(
@@ -695,7 +754,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                 node.Location
             );
         }
-        else if (type.Type.GenericTypeParameter == null && node.GenericTypeName != null)
+        else if (type.Type.GenericTypeParameter == null
+                 && node.GenericTypeName        != null)
         {
             // We're trying to pass a generic arg to a type that has no generic params
             MessageCollection.Error(
@@ -817,9 +877,12 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
             (bool compatible, string expectedFullName, string givenFullName) = AreTypesCompatible(varType, valueType);
             if (!compatible)
             {
-                MessageCollection.Error($"Type mismatch for {varSymbol.Kind.ToString().ToLower()} {varSymbol.Name}" +
-                                        $"\n\tExpected: {expectedFullName}" +
-                                        $"\n\tGiven:    {givenFullName}", node.Location);
+                MessageCollection.Error(
+                    $"Type mismatch for {varSymbol.Kind.ToString().ToLower()} {varSymbol.Name}"
+                    + $"\n\tExpected: {expectedFullName}"
+                    + $"\n\tGiven:    {givenFullName}",
+                    node.Location
+                );
             }
 
             varSymbol.LocalVariableInitialized = true;
@@ -833,7 +896,8 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
                     MessageCollection.Error($"Cannot modify get-only property {decl.Name}", node.Location);
                 }
 
-                if (varSymbol.IsStatic && !referencedStatically)
+                if (varSymbol.IsStatic
+                    && !referencedStatically)
                 {
                     // Tried to call by instance
                     MessageCollection.Error(
@@ -861,13 +925,15 @@ public sealed partial class SemanticAnalyzer : IAstVisitor<None>
 
     public None Integer(IntegerNode node)
     {
-        node.Metadata = new SymbolMetadata(new Symbol(
-            SymbolKind.Instance,
-            new SemType("std::Int32", null),
-            "$",
-            _scopes.Peek(),
-            node
-        ));
+        node.Metadata = new SymbolMetadata(
+            new Symbol(
+                SymbolKind.Instance,
+                new SemType("std::Int32", null),
+                "$",
+                _scopes.Peek(),
+                node
+            )
+        );
 
         return null!;
     }

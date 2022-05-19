@@ -9,17 +9,17 @@ public class TypeDefinitionNode : ContainerNode
 {
     public TypeDefinitionNode(string name, string module, GetAccessibility accessibility)
     {
-        LocalName = name;
-        ModuleName = module;
+        LocalName     = name;
+        ModuleName    = module;
         Accessibility = accessibility;
     }
-    
+
     /// <summary>
     /// The name of the type without the module path.
     /// E.g., Console instead of std::Console
     /// </summary>
     public string LocalName { get; }
-    
+
     /// <summary>
     /// The name of the module the type is located within.
     /// </summary>
@@ -31,6 +31,7 @@ public class TypeDefinitionNode : ContainerNode
     public GetAccessibility Accessibility { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
-        => throw new InvalidOperationException($"Cannot visit TypeDefinitions directly. Use subclasses.");
-    
+    {
+        throw new InvalidOperationException($"Cannot visit TypeDefinitions directly. Use subclasses.");
+    }
 }

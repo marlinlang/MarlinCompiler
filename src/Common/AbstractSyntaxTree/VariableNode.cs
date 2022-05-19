@@ -9,14 +9,14 @@ public class VariableNode : Node
 {
     public VariableNode(TypeReferenceNode type, string name, ExpressionNode? value)
     {
-        Type = type;
-        Name = name;
+        Type  = type;
+        Name  = name;
         Value = value;
     }
-    
-    public TypeReferenceNode Type { get; }
-    public string Name { get; }
-    public ExpressionNode? Value { get; }
+
+    public TypeReferenceNode Type  { get; }
+    public string            Name  { get; }
+    public ExpressionNode?   Value { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {

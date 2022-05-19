@@ -8,5 +8,8 @@
 /// <param name="Col">The column of the line of the location.</param>
 public record struct FileLocation(string Path, int? Line = null, int? Col = null)
 {
-    public override string ToString() => $"{Path} on Line {Line}:{Col}";
+    public override string ToString()
+    {
+        return $"{Path} on Line {Line}:{Col}";
+    }
 }

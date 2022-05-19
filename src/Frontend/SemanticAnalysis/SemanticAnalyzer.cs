@@ -7,7 +7,7 @@ public sealed partial class SemanticAnalyzer
 {
     public SemanticAnalyzer(ContainerNode root)
     {
-        _root = root;
+        _root             = root;
         MessageCollection = new MessageCollection();
     }
 
@@ -15,7 +15,7 @@ public sealed partial class SemanticAnalyzer
     /// A collection of the analyzer messages.
     /// </summary>
     public MessageCollection MessageCollection { get; }
-    
+
     /// <summary>
     /// The file root.
     /// </summary>

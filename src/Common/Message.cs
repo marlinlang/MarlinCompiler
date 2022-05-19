@@ -9,12 +9,12 @@ public enum MessageFatality
     /// Fatal error.
     /// </summary>
     Severe,
-    
+
     /// <summary>
     /// A stylistic or semantic possible mistake.
     /// </summary>
     Warning,
-    
+
     /// <summary>
     /// Any message that isn't caused by a mistake or fatal error.
     /// </summary>
@@ -31,7 +31,7 @@ public record struct Message(string Content)
     /// The location of the cause of the message.
     /// </summary>
     public FileLocation? Location { get; init; } = null;
-    
+
     /// <summary>
     /// The fatality of the message.
     /// </summary>
@@ -39,9 +39,9 @@ public record struct Message(string Content)
 
     public ConsoleColor PrintColor => Fatality switch
     {
-        MessageFatality.Severe => ConsoleColor.Red,
-        MessageFatality.Warning => ConsoleColor.Yellow,
+        MessageFatality.Severe      => ConsoleColor.Red,
+        MessageFatality.Warning     => ConsoleColor.Yellow,
         MessageFatality.Information => ConsoleColor.Cyan,
-        _ => throw new InvalidOperationException()
+        _                           => throw new InvalidOperationException()
     };
 }

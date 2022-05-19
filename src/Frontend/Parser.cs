@@ -22,23 +22,23 @@ public sealed class Parser
     /// <param name="filePath">Path to the source file. Used solely for error reporting.</param>
     public Parser(Tokens tokens, string filePath)
     {
-        MessageCollection = new MessageCollection();
-        _tokens = tokens;
-        _path = filePath;
-        _moduleName = "<global>";
+        MessageCollection            = new MessageCollection();
+        _tokens                      = tokens;
+        _path                        = filePath;
+        _moduleName                  = "<global>";
         _compilationUnitDependencies = new List<(string, FileLocation)>();
     }
-    
+
     /// <summary>
     /// All parser messages.
     /// </summary>
     public MessageCollection MessageCollection { get; }
-    
+
     /// <summary>
     /// A reference to the current parse operation token list.
     /// </summary>
     private readonly Tokens _tokens;
-    
+
     /// <summary>
     /// A filename to be used for error reporting.
     /// </summary>
@@ -53,7 +53,7 @@ public sealed class Parser
     /// The dependencies for this compilation unit.
     /// </summary>
     private readonly List<(string, FileLocation)> _compilationUnitDependencies;
-    
+
     /// <summary>
     /// An exception for parse errors.
     /// </summary>
@@ -86,11 +86,14 @@ public sealed class Parser
     /// <returns>The compilation unit node or null when the token source is empty.</returns>
     public CompilationUnitNode Parse()
     {
-        if (!_tokens.HasNext) return null!;
+        if (!_tokens.HasNext)
+        {
+            return null!;
+        }
 
         return ExpectCompilationUnit();
     }
-    
+
     /// <summary>
     /// Tries to parse a compilation unit. Does not throw parse exceptions.
     /// </summary>
@@ -101,7 +104,7 @@ public sealed class Parser
         _moduleName = name;
 
         List<Node> children = new();
-        
+
         try
         {
             while (_tokens.HasNext)
@@ -146,10 +149,10 @@ public sealed class Parser
 
         return next.Type switch
         {
-            TokenType.Class => ExpectClassDefinition(),
+            TokenType.Class  => ExpectClassDefinition(),
             TokenType.Struct => ExpectStructDefinition(),
             TokenType.Extern => ExpectExternTypeDefinition(),
-            _ => throw new ParseException($"Expected type definition, got {next.Type}", next)
+            _                => throw new ParseException($"Expected type definition, got {next.Type}", next)
         };
     }
 
@@ -159,7 +162,7 @@ public sealed class Parser
     private ContainerNode ExpectTypeBody()
     {
         ContainerNode bodyNode = new();
-        
+
         Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
@@ -185,7 +188,7 @@ public sealed class Parser
     private ContainerNode ExpectExternTypeBody()
     {
         ContainerNode bodyNode = new();
-        
+
         Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
@@ -204,7 +207,7 @@ public sealed class Parser
 
         return bodyNode;
     }
-    
+
     /// <summary>
     /// Expects a type member (i.e. property or method)
     /// </summary>
@@ -215,23 +218,23 @@ public sealed class Parser
         // this way we can advance without really screwing up our own state
         // bonus: we can access all private methods!
         Parser tempParser = CreateSubParser();
-        
+
         // Type members are method declarations and property declarations
         // Both start off with modifiers, type name and then the name of the member
         // but then methods have a left paren, which is what we'll use to determine
         // which one we have
         tempParser.GrabModifiers(); // don't care about those
-        
+
         // If the next token is the 'constructor' keyword, we have a constructor!
         if (tempParser._tokens.NextIsOfType(TokenType.Constructor))
         {
             // Constructor!
             return ExpectConstructor();
         }
-        
-        tempParser.ExpectTypeName(); // don't care about this either
+
+        tempParser.ExpectTypeName();                          // don't care about this either
         tempParser.GrabNextByExpecting(TokenType.Identifier); // nope
-        
+
         // and now we can just check if the next token is a left paren
         if (tempParser._tokens.NextIsOfType(TokenType.LeftParen))
         {
@@ -292,20 +295,20 @@ public sealed class Parser
             Location = nameToken.Location
         };
     }
-    
+
     /// <summary>
     /// Expects a class definition.
     /// </summary>
     private ClassTypeDefinitionNode ExpectClassDefinition()
     {
         string[] modifiers = GrabModifiers();
-        
+
         GrabNextByExpecting(TokenType.Class);
-        
+
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
-        
+
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "static");
 
         string? genericTypeParamName = null;
@@ -315,7 +318,7 @@ public sealed class Parser
             genericTypeParamName = GrabNextByExpecting(TokenType.Identifier);
             Require(TokenType.RightAngle);
         }
-        
+
         TypeReferenceNode? baseClass = null;
         if (_tokens.NextIsOfType(TokenType.Colon))
         {
@@ -337,16 +340,16 @@ public sealed class Parser
             genericTypeParamName
         )
         {
-            Location = nameToken.Location,
+            Location = nameToken.Location
         };
 
         // Add type body
         ContainerNode typeBody = ExpectTypeBody();
         classNode.Children.AddRange(typeBody);
-        
+
         return classNode;
     }
-    
+
     /// <summary>
     /// Expects a struct definition.
     /// </summary>
@@ -355,11 +358,11 @@ public sealed class Parser
         string[] modifiers = GrabModifiers();
 
         GrabNextByExpecting(TokenType.Struct);
-        
+
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
-        
+
         ApplyModifierFilters(modifiers, nameToken, "public", "internal");
 
         StructTypeDefinitionNode structNode = new(
@@ -370,11 +373,11 @@ public sealed class Parser
         {
             Location = nameToken.Location
         };
-        
+
         // Type body
         ContainerNode typeBody = ExpectTypeBody();
         structNode.Children.AddRange(typeBody);
-        
+
         return structNode;
     }
 
@@ -392,7 +395,7 @@ public sealed class Parser
         Token nameToken = _tokens.CurrentToken;
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         bool isStatic = modifiers.Contains("static");
-        
+
         if (!isStatic)
         {
             if (_tokens.NextIsOfType(TokenType.At))
@@ -420,7 +423,7 @@ public sealed class Parser
 
         return node;
     }
-    
+
     /// <summary>
     /// Expects a constructor declaration.
     /// </summary>
@@ -429,12 +432,12 @@ public sealed class Parser
         string[] modifiers = GrabModifiers();
         GrabNextByExpecting(TokenType.Constructor);
         Token ctorToken = _tokens.CurrentToken;
-        
+
         ApplyModifierFilters(modifiers, ctorToken, "public", "internal", "protected", "private");
         VariableNode[] args = GrabTupleTypeDefinition();
 
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
-        
+
         ConstructorDeclarationNode node = new(
             accessibility,
             args
@@ -464,7 +467,7 @@ public sealed class Parser
 
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         bool isStatic = modifiers.Contains("static");
-        
+
         MethodDeclarationNode node = new(
             accessibility,
             type,
@@ -491,7 +494,7 @@ public sealed class Parser
     private ContainerNode ExpectStatementBody(bool insideLoop)
     {
         ContainerNode node = new();
-        
+
         Require(TokenType.LeftBrace);
         while (!_tokens.NextIsOfType(TokenType.RightBrace))
         {
@@ -521,7 +524,7 @@ public sealed class Parser
         TypeReferenceNode type = ExpectTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
-        
+
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
         GetAccessibility get = VisibilityFromModifiers(modifiers);
         SetAccessibility set = SetAccessibility.NoModify;
@@ -536,10 +539,13 @@ public sealed class Parser
             bool assignedSet = false;
             while (true)
             {
-                if (peek == null) throw new CancelParsingException("Premature EOF");
-                
+                if (peek == null)
+                {
+                    throw new CancelParsingException("Premature EOF");
+                }
+
                 string currentAccessibility = get.ToString().ToLower();
-                
+
                 if (peek.Type == TokenType.Modifier)
                 {
                     currentAccessibility = _tokens.GrabToken()!.Value;
@@ -554,7 +560,10 @@ public sealed class Parser
                     }
 
                     peek = _tokens.PeekToken();
-                    if (peek == null) throw new CancelParsingException("Premature EOF");
+                    if (peek == null)
+                    {
+                        throw new CancelParsingException("Premature EOF");
+                    }
                 }
 
                 if (peek.Type == TokenType.Get)
@@ -572,9 +581,9 @@ public sealed class Parser
                             peek.Location
                         );
                     }
-                    
+
                     Enum.TryParse(currentAccessibility, true, out get);
-                    
+
                     _tokens.Skip(); // get
 
                     if (_tokens.NextIsOfType(TokenType.Comma))
@@ -596,14 +605,14 @@ public sealed class Parser
                     assignedSet = true;
                     Enum.TryParse(currentAccessibility, true, out set);
 
-                    if ((short)set > (short)get)
+                    if ((short) set > (short) get)
                     {
                         MessageCollection.Error(
                             "Get accessibility cannot be more restrictive than set",
                             peek.Location
                         );
                     }
-                    
+
                     _tokens.Skip(); // set
 
                     if (_tokens.NextIsOfType(TokenType.Comma))
@@ -633,7 +642,7 @@ public sealed class Parser
                     nameToken.Location
                 );
             }
-            
+
             if (assignedGet && !assignedSet)
             {
                 MessageCollection.Warn(
@@ -642,13 +651,13 @@ public sealed class Parser
                 );
             }
         }
-        
+
         if (_tokens.NextIsOfType(TokenType.Assign))
         {
             _tokens.Skip(); // =
             value = ExpectExpression();
         }
-        
+
         Require(TokenType.Semicolon);
 
         bool isStatic = modifiers.Contains("static");
@@ -675,7 +684,7 @@ public sealed class Parser
         {
             _tokens.Skip(); // mut
         }
-        
+
         TypeReferenceNode type = ExpectTypeName();
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
@@ -686,7 +695,7 @@ public sealed class Parser
             _tokens.Skip(); // =
             value = ExpectExpression();
         }
-        
+
         Require(TokenType.Semicolon);
 
         return new LocalVariableDeclarationNode(
@@ -721,13 +730,13 @@ public sealed class Parser
                 Location = _tokens.GrabToken()!.Location
             };
         }
-        
+
         // Statement block
         if (_tokens.NextIsOfType(TokenType.LeftBrace))
         {
             return ExpectStatementBody(insideLoop);
         }
-        
+
         // Variable declaration
         try
         {
@@ -737,20 +746,29 @@ public sealed class Parser
             {
                 parser._tokens.Skip();
             }
-            
+
             parser.ExpectTypeName(); // var type
             parser.GrabNextByExpecting(TokenType.Identifier);
-            if (parser.MessageCollection.HasFatalErrors) throw new FormatException();
+            if (parser.MessageCollection.HasFatalErrors)
+            {
+                throw new FormatException();
+            }
 
             Token? next = parser._tokens.GrabToken();
-            if (next == null) throw new CancelParsingException("Premature EOF");
-            if (next.Type == TokenType.Semicolon || next.Type == TokenType.Assign)
+            if (next == null)
+            {
+                throw new CancelParsingException("Premature EOF");
+            }
+            if (next.Type    == TokenType.Semicolon
+                || next.Type == TokenType.Assign)
             {
                 return ExpectLocalVariableDeclaration(); // use regular parser, not subparser!
             }
         }
-        catch (FormatException) {}
-        
+        catch (FormatException)
+        {
+        }
+
         // Try getting an expression chain (method call/assignment)
         try
         {
@@ -758,14 +776,17 @@ public sealed class Parser
 
             ExpressionNode expr = ExpectExpression(); // should work if the subparser didn't error
 
-            if (expr is MethodCallNode || expr is VariableAssignmentNode)
+            if (expr is MethodCallNode
+                || expr is VariableAssignmentNode)
             {
                 Require(TokenType.Semicolon);
                 return expr;
             }
         }
-        catch (ParseException) {}
-        
+        catch (ParseException)
+        {
+        }
+
         // Cannot figure out what this is
         throw new ParseException(
             $"Expected statement, got {_tokens.PeekToken()!.Type}",
@@ -781,7 +802,7 @@ public sealed class Parser
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         GrabNextByExpecting(TokenType.Assign);
-        ExpressionNode value = ExpectExpression(); 
+        ExpressionNode value = ExpectExpression();
         return new VariableAssignmentNode(name, value) { Location = nameToken.Location };
     }
 
@@ -807,10 +828,13 @@ public sealed class Parser
     private ExpressionNode ExpectExpression(bool doNotEvaluateOperators = false)
     {
         Token? next = _tokens.PeekToken();
-        if (next == null) throw new CancelParsingException("Expected expression, got EOF");
+        if (next == null)
+        {
+            throw new CancelParsingException("Expected expression, got EOF");
+        }
 
         ExpressionNode expr;
-        
+
         switch (next.Type)
         {
             case TokenType.LeftParen:
@@ -822,17 +846,20 @@ public sealed class Parser
             case TokenType.Integer:
                 expr = new IntegerNode(Int32.Parse(_tokens.GrabToken()!.Value)) { Location = next.Location };
                 break;
-                
+
             case TokenType.Decimal:
                 throw new NotImplementedException();
-            
+
             case TokenType.New:
                 expr = ExpectNew();
                 break;
-            
+
             case TokenType.Identifier:
                 Token? peek = _tokens.PeekToken(2);
-                if (peek == null) throw new CancelParsingException("Expected expression, got EOF");
+                if (peek == null)
+                {
+                    throw new CancelParsingException("Expected expression, got EOF");
+                }
 
                 if (peek.Type == TokenType.DoubleColon)
                 {
@@ -850,14 +877,17 @@ public sealed class Parser
                 {
                     expr = new MemberAccessNode(_tokens.GrabToken()!.Value) { Location = peek.Location };
                 }
-                
+
                 break;
 
             default:
                 throw new ParseException($"Expected expression, got {next.Type}", next);
         }
 
-        if (doNotEvaluateOperators) return expr;
+        if (doNotEvaluateOperators)
+        {
+            return expr;
+        }
         return ExpectExpressionRhs(expr, 0);
     }
 
@@ -868,7 +898,10 @@ public sealed class Parser
     private ExpressionNode ExpectExpressionRhs(ExpressionNode left, int minimumPrecedence)
     {
         Token? peek = _tokens.PeekToken();
-        if (peek == null) throw new CancelParsingException("Premature EOF");
+        if (peek == null)
+        {
+            throw new CancelParsingException("Premature EOF");
+        }
 
         // MEMBER ACCESS
         if (peek.Type == TokenType.Dot)
@@ -884,25 +917,34 @@ public sealed class Parser
                 }
 
                 node.Target = left;
-                left = node;
+                left        = node;
             }
 
             peek = _tokens.PeekToken();
         }
 
-        if (peek == null) throw new CancelParsingException("Premature EOF");
+        if (peek == null)
+        {
+            throw new CancelParsingException("Premature EOF");
+        }
 
         while (peek.Precedence > minimumPrecedence)
         {
             Token? op = _tokens.GrabToken();
-            if (op == null) throw new CancelParsingException("Premature EOF");
+            if (op == null)
+            {
+                throw new CancelParsingException("Premature EOF");
+            }
             ExpressionNode right = ExpectExpression();
 
             peek = _tokens.PeekToken();
-            if (peek == null) return left;
-            
+            if (peek == null)
+            {
+                return left;
+            }
+
             while (peek.Precedence > op.Precedence
-                   || (peek.IsRightAssocBinOp && peek.Precedence == op.Precedence))
+                   || peek.IsRightAssocBinOp && peek.Precedence == op.Precedence)
             {
                 right = ExpectExpressionRhs(right, op.Precedence + (peek.Precedence > op.Precedence ? 0 : 1));
             }
@@ -950,20 +992,23 @@ public sealed class Parser
     {
         Require(TokenType.LeftParen);
         List<ExpressionNode> expressions = new();
-        
+
         while (!_tokens.NextIsOfType(TokenType.RightParen))
         {
             expressions.Add(ExpectExpression());
 
             Token? next = _tokens.PeekToken();
 
-            if (next == null) throw new CancelParsingException("Premature EOF");
-            
+            if (next == null)
+            {
+                throw new CancelParsingException("Premature EOF");
+            }
+
             if (next.Type == TokenType.RightParen)
             {
                 break;
             }
-            
+
             if (next.Type == TokenType.Comma)
             {
                 _tokens.Skip();
@@ -973,7 +1018,7 @@ public sealed class Parser
                 MessageCollection.Error($"Expected comma or ), got {next}", next.Location);
             }
         }
-        
+
         Require(TokenType.RightParen);
 
         return expressions.ToArray();
@@ -992,7 +1037,8 @@ public sealed class Parser
             TypeReferenceNode type = ExpectTypeName();
             string name = GrabNextByExpecting(TokenType.Identifier);
             Token nameToken = _tokens.CurrentToken;
-            vars.Add(new VariableNode(
+            vars.Add(
+                new VariableNode(
                     type,
                     name,
                     null
@@ -1005,7 +1051,7 @@ public sealed class Parser
             {
                 throw new CancelParsingException("Premature EOF while parsing argument list");
             }
-            
+
             if (peek.Type == TokenType.Comma)
             {
                 _tokens.Skip(); // ,
@@ -1019,14 +1065,14 @@ public sealed class Parser
 
         return vars.ToArray();
     }
-    
+
     /// <summary>
     /// Utility method for parsing using directives.
     /// </summary>
     private IEnumerable<(string, FileLocation)> GrabUsingDirectives()
     {
         List<(string, FileLocation)> dependencies = new();
-        
+
         while (_tokens.NextIsOfType(TokenType.Using))
         {
             _tokens.Skip(); // using
@@ -1048,7 +1094,7 @@ public sealed class Parser
             {
                 LogErrorAndRecover(ex, false);
             }
-            
+
             Require(TokenType.Semicolon);
         }
 
@@ -1093,7 +1139,7 @@ public sealed class Parser
 
         return token.Value;
     }
-    
+
     /// <summary>
     /// Utility method for parsing the module name directive.
     /// </summary>
@@ -1127,7 +1173,7 @@ public sealed class Parser
 
         return name;
     }
-    
+
     /// <summary>
     /// Utility method for reading a module name.
     /// </summary>
@@ -1141,7 +1187,7 @@ public sealed class Parser
         }
 
         StringBuilder name = new();
-        
+
         while (_tokens.TryExpect(TokenType.Identifier, out Token current))
         {
             _tokens.Skip(); // current token
@@ -1184,19 +1230,21 @@ public sealed class Parser
                 Location = _tokens.GrabToken()!.Location
             };
         }
-        
+
         string name = GrabModuleName();
         Token nameToken = _tokens.CurrentToken;
-        
+
         TypeReferenceNode? genericName = null;
 
         if (!_tokens.NextIsOfType(TokenType.LeftAngle))
-            return new TypeReferenceNode(name, genericName) {Location = nameToken.Location};
-        
+        {
+            return new TypeReferenceNode(name, genericName) { Location = nameToken.Location };
+        }
+
         _tokens.Skip(); // <
 
         genericName = ExpectTypeName();
-            
+
         Require(TokenType.RightAngle);
 
         return new TypeReferenceNode(name, genericName) { Location = nameToken.Location };
@@ -1208,11 +1256,17 @@ public sealed class Parser
     private GetAccessibility VisibilityFromModifiers(string[] modifiers)
     {
         if (modifiers.Contains("public"))
+        {
             return GetAccessibility.Public;
+        }
         if (modifiers.Contains("protected"))
+        {
             return GetAccessibility.Protected;
+        }
         if (modifiers.Contains("private"))
+        {
             return GetAccessibility.Private;
+        }
 
         if (!modifiers.Contains("internal"))
         {
@@ -1224,7 +1278,7 @@ public sealed class Parser
 
         return GetAccessibility.Internal;
     }
-    
+
     /// <summary>
     /// Utility method for requiring a token.
     /// </summary>
@@ -1240,7 +1294,7 @@ public sealed class Parser
             {
                 throw new CancelParsingException("Premature EOF");
             }
-            
+
             throw new ParseException($"Expected {expected}, got {fail.Type.ToString()}", fail);
         }
     }
@@ -1287,9 +1341,10 @@ public sealed class Parser
         {
             throw new CancelParsingException("Too many errors found in file during parsing");
         }
-        
+
         // Recover
-        while (!_tokens.NextIsOfType(TokenType.RightBrace) && !_tokens.TryExpect(TokenType.Semicolon, out Token _))
+        while (!_tokens.NextIsOfType(TokenType.RightBrace)
+               && !_tokens.TryExpect(TokenType.Semicolon, out Token _))
         {
             _tokens.Skip();
         }

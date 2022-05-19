@@ -30,7 +30,7 @@ public sealed partial class SemanticAnalyzer
     /// plop them in this list.
     /// </summary>
     private readonly List<string> _dependenciesThatWereNotFound = new();
-    
+
     /// <summary>
     /// Adds a new scope on top.
     /// </summary>
@@ -44,13 +44,19 @@ public sealed partial class SemanticAnalyzer
     /// <summary>
     /// Adds the given scope to the scope stack without changing the scope itself.
     /// </summary>
-    private void UseScope(Scope scope) => _scopes.Push(scope);
-    
+    private void UseScope(Scope scope)
+    {
+        _scopes.Push(scope);
+    }
+
     /// <summary>
     /// Removes the topmost scope.
     /// </summary>
-    private void PopScope() => _scopes.Pop();
-    
+    private void PopScope()
+    {
+        _scopes.Pop();
+    }
+
     /// <summary>
     /// Adds the symbol in the metadata to the topmost scope. 
     /// </summary>
@@ -74,11 +80,14 @@ public sealed partial class SemanticAnalyzer
         {
             allCompilationUnits[i] = ((CompilationUnitNode) _root.Children[i]).FullName;
         }
-        
+
         foreach ((string dependencyName, FileLocation location) in compilationUnit.Dependencies)
         {
-            if (allCompilationUnits.Contains(dependencyName)) continue;
-            
+            if (allCompilationUnits.Contains(dependencyName))
+            {
+                continue;
+            }
+
             _dependenciesThatWereNotFound.Add(dependencyName);
             MessageCollection.Error($"Unknown module {dependencyName}", location);
         }
@@ -100,7 +109,7 @@ public sealed partial class SemanticAnalyzer
             return;
         }
 
-        var dep = Array.Find(_currentCompilationUnit.Dependencies, x => originalName == $"{x.Item1}::{name}");
+        (string, FileLocation) dep = Array.Find(_currentCompilationUnit.Dependencies, x => originalName == $"{x.Item1}::{name}");
         if (dep != default)
         {
             _usedDependencies.Add(dep);
@@ -114,7 +123,10 @@ public sealed partial class SemanticAnalyzer
         else
         {
             string moduleName = originalName[..(lioColon - 2)];
-            MessageCollection.Error($"Unknown type {originalName} - did you forget to import a module ({moduleName})?", errorLocation);
+            MessageCollection.Error(
+                $"Unknown type {originalName} - did you forget to import a module ({moduleName})?",
+                errorLocation
+            );
         }
     }
 
@@ -126,13 +138,14 @@ public sealed partial class SemanticAnalyzer
         foreach ((string name, FileLocation importLocation) in unit.Dependencies)
         {
             (string, FileLocation) found = _usedDependencies.Find(x => x.Item1 == name);
-            if (found == default && !_dependenciesThatWereNotFound.Contains(name))
+            if (found == default
+                && !_dependenciesThatWereNotFound.Contains(name))
             {
                 MessageCollection.Warn($"Unused dependency {name}", importLocation);
             }
         }
     }
-    
+
     /// <summary>
     /// Tries to find an overload of the given method name.
     /// </summary>
@@ -144,35 +157,48 @@ public sealed partial class SemanticAnalyzer
     /// found' error, as opposed to an 'name does not exist' error</param>
     /// <param name="errLocation">The location to report errors at</param>
     /// <returns>The symbol of the found method or null.</returns>
-    private Symbol? FindOverload(string name, IReadOnlyList<ExpressionNode> arguments, Scope scope, bool useThisScopeOnly, bool reportMissingAsNoOverload, FileLocation? errLocation)
+    private Symbol? FindOverload(
+        string name,
+        IReadOnlyList<ExpressionNode> arguments,
+        Scope scope,
+        bool useThisScopeOnly,
+        bool reportMissingAsNoOverload,
+        FileLocation? errLocation)
     {
         IEnumerable<Symbol> symbols = scope.LookupMultipleSymbols(name, useThisScopeOnly);
 
         bool foundAny = false;
-        
+
         foreach (Symbol sym in symbols)
         {
             VariableNode[]? thisOverloadParams = GetParams(sym);
-            if (thisOverloadParams == null) continue;
-            if (thisOverloadParams.Length != arguments.Count) continue;
-            
+            if (thisOverloadParams == null)
+            {
+                continue;
+            }
+            if (thisOverloadParams.Length != arguments.Count)
+            {
+                continue;
+            }
+
             bool compatible = true;
-            
+
             for (int i = 0; i < arguments.Count && compatible; i++)
             {
                 foundAny = true;
                 Visit(thisOverloadParams[i].Type);
-                
+
                 // We can't use the type linked to the node directly, since that *could* be a generic param
                 // We have to fetch it to make sure we get the accurate one (by looking for the param symbol)
                 //SemType nodeExpType = ((SymbolMetadata) decl.Parameters[i].Type.Metadata!).Symbol.Type;
                 //SemType actualExpType = methodSymbol.Scope.LookupType(nodeExpType).Type;
-                SemType actualExpType = sym.Scope.LookupSymbol(thisOverloadParams[i].Name, false)?.Type ?? throw new InvalidOperationException();
-                
+                SemType actualExpType = sym.Scope.LookupSymbol(thisOverloadParams[i].Name, false)?.Type
+                                        ?? throw new InvalidOperationException();
+
                 // Argument type
                 Visit(arguments[i]);
                 SemType givenType = ((SymbolMetadata) arguments[i].Metadata!).Symbol.Type;
-                
+
                 (bool compat, string _, string _) = AreTypesCompatible(
                     actualExpType,
                     givenType
@@ -197,11 +223,13 @@ public sealed partial class SemanticAnalyzer
 
         return null;
     }
-    
+
     /// <summary>
     /// Checks whether two types are compatible. Supports generics.
     /// </summary>
-    private static (bool compatible, string expectedFullName, string givenFullName) AreTypesCompatible(SemType expected, SemType given)
+    private static (bool compatible, string expectedFullName, string givenFullName) AreTypesCompatible(
+        SemType expected,
+        SemType given)
     {
         if (expected.Name != given.Name)
         {
@@ -215,13 +243,13 @@ public sealed partial class SemanticAnalyzer
             // One type has generic param, but the other doesn't
             return (false, expected.ToString(), given.ToString());
         }
-        
+
         if (expected.GenericTypeParameter == null)
         {
             // No generic param/arg in either
             return (true, expected.ToString(), given.ToString());
         }
-        
+
         // Both have generic args, make sure they're compatible
         (bool compatible, string _, string _) = AreTypesCompatible(
             expected.GenericTypeParameter!,
@@ -245,7 +273,7 @@ public sealed partial class SemanticAnalyzer
                 // Constructors
                 continue;
             }
-            
+
             if (sym.Type.Name == typeName)
             {
                 sym.Type = with;
@@ -264,7 +292,7 @@ public sealed partial class SemanticAnalyzer
             }
         }
     }
-    
+
     /// <summary>
     /// Utility method to get the params from a method/constructor.
     /// </summary>
@@ -272,13 +300,13 @@ public sealed partial class SemanticAnalyzer
     {
         return sym.Kind switch
         {
-            SymbolKind.Method => ((MethodDeclarationNode) sym.Node).Parameters,
+            SymbolKind.Method       => ((MethodDeclarationNode) sym.Node).Parameters,
             SymbolKind.ExternMethod => ((ExternedMethodNode) sym.Node).Parameters,
-            SymbolKind.Constructor => ((ConstructorDeclarationNode) sym.Node).Parameters,
-            _ => null
+            SymbolKind.Constructor  => ((ConstructorDeclarationNode) sym.Node).Parameters,
+            _                       => null
         };
     }
-    
+
     /// <summary>
     /// Helper method.
     /// </summary>
@@ -288,12 +316,12 @@ public sealed partial class SemanticAnalyzer
         {
             return SpecialTypes.Void.Type;
         }
-        
+
         return new SemType(
             node.FullName,
             node.GenericTypeName != null
                 ? GetSemType(node.GenericTypeName)
                 : null
-            );
+        );
     }
 }

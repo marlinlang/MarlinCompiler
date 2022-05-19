@@ -12,7 +12,7 @@ public class ContainerNode : Node, IEnumerable<Node>
     {
         Children = new List<Node>();
     }
-    
+
     /// <summary>
     /// The children of the node.
     /// </summary>
@@ -28,6 +28,13 @@ public class ContainerNode : Node, IEnumerable<Node>
         return default!;
     }
 
-    public IEnumerator<Node> GetEnumerator() => Children.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => Children.GetEnumerator();
+    public IEnumerator<Node> GetEnumerator()
+    {
+        return Children.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return Children.GetEnumerator();
+    }
 }

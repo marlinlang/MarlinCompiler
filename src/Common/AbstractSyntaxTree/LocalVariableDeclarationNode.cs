@@ -12,7 +12,7 @@ public class LocalVariableDeclarationNode : VariableNode
     {
         Mutable = mutable;
     }
-    
+
     public bool Mutable { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

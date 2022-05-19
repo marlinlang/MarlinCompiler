@@ -6,11 +6,11 @@ public class VariableAssignmentNode : IndexableExpressionNode
 {
     public VariableAssignmentNode(string name, ExpressionNode value)
     {
-        Name = name;
+        Name  = name;
         Value = value;
     }
-    
-    public string Name { get; }
+
+    public string         Name  { get; }
     public ExpressionNode Value { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)

@@ -15,12 +15,12 @@ public sealed partial class SemanticAnalyzer
         /// Define types.
         /// </summary>
         DefineTypes,
-        
+
         /// <summary>
         /// Define type members without evaluating anything more than their types.
         /// </summary>
         DefineTypeMembers,
-        
+
         /// <summary>
         /// Visit the bodies/values of type members.
         /// </summary>
@@ -49,7 +49,7 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     public record SemType(string Name, SemType? GenericTypeParameter)
     {
-        public string Name { get; } = Name;
+        public string   Name                 { get; }      = Name;
         public SemType? GenericTypeParameter { get; set; } = GenericTypeParameter;
 
         /// <summary>
@@ -65,8 +65,8 @@ public sealed partial class SemanticAnalyzer
         public override string ToString()
         {
             return GenericTypeParameter != null
-                ? $"{Name}<{GenericTypeParameter}>"
-                : Name;
+                       ? $"{Name}<{GenericTypeParameter}>"
+                       : Name;
         }
     }
 
@@ -75,14 +75,14 @@ public sealed partial class SemanticAnalyzer
     /// </summary>
     public record Symbol(SymbolKind Kind, SemType Type, string Name, Scope Scope, Node Node)
     {
-        public SemType Type { get; set; } = Type;
-        public Scope Scope { get; set; } = Scope;
+        public SemType Type  { get; set; } = Type;
+        public Scope   Scope { get; set; } = Scope;
 
         /// <summary>
         /// For local variables - is the variable initialized with 100% certainty?
         /// </summary>
         public bool LocalVariableInitialized { get; set; }
-        
+
         /// <summary>
         /// For methods and properties.
         /// </summary>
@@ -121,14 +121,14 @@ public sealed partial class SemanticAnalyzer
     {
         public Scope(string name, Scope? parent)
         {
-            Name = name;
+            Name   = name;
             Parent = parent;
         }
 
         public string Name { get; }
 
-        private Scope? Parent { get; }
-        public List<Symbol> Symbols { get; } = new();
+        private Scope?       Parent  { get; }
+        public  List<Symbol> Symbols { get; } = new();
 
         public List<string> Generics { get; } = new();
 
@@ -156,10 +156,13 @@ public sealed partial class SemanticAnalyzer
 
             // Add local
             symbols.AddRange(Symbols.Where(x => x.Name == name));
-            
+
             // Add from parent
-            if (!thisScopeOnly && Parent != null)
+            if (!thisScopeOnly
+                && Parent != null)
+            {
                 symbols.AddRange(Parent.LookupMultipleSymbols(name, false));
+            }
 
             return symbols;
         }
@@ -173,7 +176,7 @@ public sealed partial class SemanticAnalyzer
             {
                 return SpecialTypes.Void;
             }
-            
+
             string? generic = Generics.Find(x => x == type.Name);
             if (generic != default)
             {
@@ -196,12 +199,18 @@ public sealed partial class SemanticAnalyzer
         /// <summary>
         /// Adds a symbol to this scope. Also used for adding types.
         /// </summary>
-        public void AddSymbol(Symbol symbol) => Symbols.Add(symbol);
+        public void AddSymbol(Symbol symbol)
+        {
+            Symbols.Add(symbol);
+        }
 
         /// <summary>
         /// Adds a new generic param.
         /// </summary>
-        public void AddGenericParam(string name) => Generics.Add(name);
+        public void AddGenericParam(string name)
+        {
+            Generics.Add(name);
+        }
 
         public Scope CloneScope()
         {

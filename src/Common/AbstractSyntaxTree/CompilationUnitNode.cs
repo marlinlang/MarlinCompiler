@@ -7,10 +7,10 @@ public class CompilationUnitNode : ContainerNode
 {
     public CompilationUnitNode(string fullName, (string, FileLocation)[] dependencies)
     {
-        FullName = fullName;
+        FullName     = fullName;
         Dependencies = dependencies;
     }
-    
+
     /// <summary>
     /// The full name of the module, including parent modules, separated by double colons.
     /// </summary>

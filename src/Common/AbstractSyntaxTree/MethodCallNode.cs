@@ -9,14 +9,14 @@ public class MethodCallNode : IndexableExpressionNode
 {
     public MethodCallNode(string methodName, bool isNativeCall, ExpressionNode[] arguments)
     {
-        MethodName = methodName;
+        MethodName   = methodName;
         IsNativeCall = isNativeCall;
-        Arguments = arguments;
+        Arguments    = arguments;
     }
-    
-    public string MethodName { get; }
-    public ExpressionNode[] Arguments { get; }
-    
+
+    public string           MethodName { get; }
+    public ExpressionNode[] Arguments  { get; }
+
     /// <summary>
     /// True for calls to LLVM functions instead of Marlin-defined ones
     /// </summary>

@@ -7,11 +7,11 @@ public class ConstructorDeclarationNode : ContainerNode
     public ConstructorDeclarationNode(GetAccessibility accessibility, VariableNode[] parameters)
     {
         Accessibility = accessibility;
-        Parameters = parameters;
+        Parameters    = parameters;
     }
-    
+
     public GetAccessibility Accessibility { get; }
-    public VariableNode[] Parameters { get; }
+    public VariableNode[]   Parameters    { get; }
 
     public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
     {

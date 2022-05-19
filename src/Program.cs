@@ -12,7 +12,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         Console.ResetColor();
-        
+
         RootCommand command = new("Marlin Compiler")
         {
             new Argument<string>(
@@ -41,33 +41,34 @@ internal static class Program
         int returnCode = compiler.Compile(analyzeOnly);
         int msgCount = compiler.MessageCollection.Count();
         bool fail = compiler.MessageCollection.HasFatalErrors;
-        
+
         // Crazy output time
         Console.ForegroundColor = ConsoleColor.White;
         Console.Write("Marlin build ");
-        
+
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.Write(fail ? "failed" : "successful");
-        
+
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine($" with {msgCount} message{(msgCount == 1 ? "" : 's')}{(msgCount == 0 ? "" : ':')}");
-        
+
         foreach (Message msg in compiler.MessageCollection)
         {
             string location = msg.Location?.ToString() ?? "";
-            
+
             // Shorter file paths
-            if (!verbose && location.StartsWith(path))
+            if (!verbose
+                && location.StartsWith(path))
             {
                 location = location[path.Length..];
             }
 
             string fatality = msg.Fatality switch
             {
-                MessageFatality.Severe => "ERROR",
-                MessageFatality.Warning => "WARN",
+                MessageFatality.Severe      => "ERROR",
+                MessageFatality.Warning     => "WARN",
                 MessageFatality.Information => "INFO",
-                _ => throw new InvalidOperationException()
+                _                           => throw new InvalidOperationException()
             };
 
             if (location != "")
@@ -77,7 +78,7 @@ internal static class Program
 
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.Write(" at ");
-                
+
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.Write(location);
 
@@ -92,11 +93,11 @@ internal static class Program
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.WriteLine(":");
             }
-            
+
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("   | " + msg.Content.Replace("\n", "\n   : "));
         }
-        
+
         return returnCode;
     }
 }
