@@ -18,7 +18,7 @@ public class ContainerNode : Node, IEnumerable<Node>
     /// </summary>
     public List<Node> Children { get; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         foreach (Node node in Children)
         {

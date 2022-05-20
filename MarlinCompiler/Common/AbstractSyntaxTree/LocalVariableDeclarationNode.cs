@@ -15,7 +15,7 @@ public class LocalVariableDeclarationNode : VariableNode
 
     public bool Mutable { get; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         return visitor.LocalVariable(this);
     }

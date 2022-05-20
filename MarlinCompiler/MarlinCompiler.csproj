@@ -9,7 +9,8 @@
         <AssemblyName>Marlin</AssemblyName>
         <Company>Marlin Project</Company>
         <Product>Marlin</Product>
-        <AssemblyVersion>1.0.0.0</AssemblyVersion>
+        <AssemblyVersion>0.1.0.0</AssemblyVersion>
+        <NeutralLanguage>en-001</NeutralLanguage>
     </PropertyGroup>
 
     <ItemGroup>
@@ -21,6 +22,10 @@
 
     <ItemGroup>
         <None Remove="MarlinCompiler.sln.DotSettings" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Backend" />
     </ItemGroup>
 
 </Project>

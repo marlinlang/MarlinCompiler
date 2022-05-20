@@ -8,7 +8,7 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class EmptyStatementNode : Node
 {
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         return default!;
     }

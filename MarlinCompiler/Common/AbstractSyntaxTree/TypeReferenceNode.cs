@@ -30,7 +30,7 @@ public class TypeReferenceNode : IndexableExpressionNode
                    : FullName;
     }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         return visitor.TypeReference(this);
     }

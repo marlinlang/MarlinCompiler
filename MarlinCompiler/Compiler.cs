@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using MarlinCompiler.Backend;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
@@ -154,9 +153,10 @@ public sealed class Compiler
     /// </summary>
     private void Build(ContainerNode program)
     {
-        OutputBuilder builder = new(program, _outPath);
-        builder.Build();
-        MessageCollection.AddRange(builder.MessageCollection);
+        // TODO: Invoke LLVM tools
+        //OutputBuilder builder = new(program, _outPath);
+        //builder.Build();
+        //MessageCollection.AddRange(builder.MessageCollection);
     }
 
     #endregion

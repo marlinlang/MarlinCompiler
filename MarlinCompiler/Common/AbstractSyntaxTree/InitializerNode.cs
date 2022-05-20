@@ -14,7 +14,7 @@ public class InitializerNode : IndexableExpressionNode
 
     public TypeReferenceNode Type { get; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         throw new InvalidOperationException();
     }

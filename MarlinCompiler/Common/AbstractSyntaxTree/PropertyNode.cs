@@ -24,7 +24,7 @@ public class PropertyNode : VariableNode
     public GetAccessibility GetAccessibility { get; }
     public SetAccessibility SetAccessibility { get; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         return visitor.Property(this);
     }

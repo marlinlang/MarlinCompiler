@@ -19,7 +19,7 @@ public class BinaryOperatorNode : ExpressionNode
     public Node      Left     { get; set; }
     public Node      Right    { get; set; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         throw new InvalidOperationException("Use subclasses");
     }

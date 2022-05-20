@@ -30,7 +30,7 @@ public class TypeDefinitionNode : ContainerNode
     /// </summary>
     public GetAccessibility Accessibility { get; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         throw new InvalidOperationException($"Cannot visit TypeDefinitions directly. Use subclasses.");
     }

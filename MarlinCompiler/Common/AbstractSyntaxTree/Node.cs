@@ -48,5 +48,5 @@ public abstract class Node
     /// <summary>
     /// Routes a visitor to the correct method on itself for this node type.
     /// </summary>
-    public abstract T AcceptVisitor<T>(IAstVisitor<T> visitor);
+    public abstract T AcceptVisitor<T>(AstVisitor<T> visitor);
 }

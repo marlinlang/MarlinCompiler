@@ -11,7 +11,7 @@ public class IntegerNode : ExpressionNode
 
     public int Value { get; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         return visitor.Integer(this);
     }

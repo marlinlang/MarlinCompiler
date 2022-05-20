@@ -13,7 +13,7 @@ public class ConstructorDeclarationNode : ContainerNode
     public GetAccessibility Accessibility { get; }
     public VariableNode[]   Parameters    { get; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
         return visitor.ConstructorDeclaration(this);
     }

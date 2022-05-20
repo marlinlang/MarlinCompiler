@@ -35,8 +35,8 @@ public class ExternMethodNode : Node
     public VariableNode[]   Parameters { get; }
     public ExpressionNode[] PassedArgs { get; }
 
-    public override T AcceptVisitor<T>(IAstVisitor<T> visitor)
+    public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {
-        return visitor.ExternedMethodMapping(this);
+        return visitor.ExternMethodMapping(this);
     }
 }
