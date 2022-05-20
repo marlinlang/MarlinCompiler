@@ -3,7 +3,6 @@ using MarlinCompiler.Backend;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
 using MarlinCompiler.Frontend.Lexing;
-using SemanticAnalyzer = MarlinCompiler.Frontend.SemanticAnalysis.SemanticAnalyzer;
 
 namespace MarlinCompiler.Common;
 
@@ -135,11 +134,15 @@ public sealed class Compiler
     /// <summary>
     /// Invokes the semantic analyzer for the given root.
     /// </summary>
+    // TODO: Remove resharper warning disable comments when the analyzer is implemented
+    // ReSharper disable once UnusedParameter.Local
+    // ReSharper disable once MemberCanBeMadeStatic.Local
     private void Analyze(ContainerNode root)
     {
-        SemanticAnalyzer analyzer = new(root);
+        // TODO: Invoke semantic analyzer
+        /*Analyzer analyzer = new(root);
         analyzer.Analyze();
-        MessageCollection.AddRange(analyzer.MessageCollection);
+        MessageCollection.AddRange(analyzer.MessageCollection);*/
     }
 
     /// <summary>

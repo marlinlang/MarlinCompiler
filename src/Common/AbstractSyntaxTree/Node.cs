@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Common.Visitors;
+﻿using System.Data;
+using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
@@ -13,9 +14,26 @@ public abstract class Node
     public FileLocation? Location { get; init; }
 
     /// <summary>
-    /// The metadata attached to this node.
+    /// The metadata for the node.
     /// </summary>
-    public INodeMetadata? Metadata { get; set; }
+    private object? _metadata;
+
+    /// <summary>
+    /// Accesses the metadata for a node.
+    /// </summary>
+    /// <typeparam name="TMetadata">The expected type of the metadata.</typeparam>
+    /// <returns>The metadata, always a non-null value.</returns>
+    /// <exception cref="NoNullAllowedException">Thrown if the stored metadata is null.</exception>
+    /// <exception cref="ArgumentException">Thrown if the generic param <typeparamref name="TMetadata"/>
+    /// doesn't match the type of the stored metadata.</exception>
+    public TMetadata GetMetadata<TMetadata>() => _metadata switch
+    {
+        null => throw new NoNullAllowedException("The metadata for this node is empty."),
+        TMetadata metadata => metadata,
+        _ => throw new ArgumentException("Generic type passed to GetMetadata does not match the actual type of the metadata")
+    };
+
+    public void SetMetadata(object metadata) => _metadata = metadata;
 
     /// <summary>
     /// Routes a visitor to the correct method on itself for this node type.
