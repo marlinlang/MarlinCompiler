@@ -1,10 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using MarlinCompiler.Backend;
+using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
 using MarlinCompiler.Frontend.Lexing;
 
-namespace MarlinCompiler.Common;
+namespace MarlinCompiler;
 
 /// <summary>
 /// Main class for the compilation process.
