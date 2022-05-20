@@ -9,7 +9,7 @@ public class TypeDefinitionNode : ContainerNode
 {
     public TypeDefinitionNode(string name, string module, GetAccessibility accessibility)
     {
-        ClassName     = name;
+        TypeName     = name;
         ModuleName    = module;
         Accessibility = accessibility;
     }
@@ -18,7 +18,7 @@ public class TypeDefinitionNode : ContainerNode
     /// The name of the type without the module path.
     /// E.g., Console instead of std::Console
     /// </summary>
-    public string ClassName { get; }
+    public string TypeName { get; }
 
     /// <summary>
     /// The name of the module the type is located within.

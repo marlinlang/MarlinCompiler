@@ -14,6 +14,11 @@ public abstract class Node
     public FileLocation? Location { get; init; }
 
     /// <summary>
+    /// Whether the node has metadata.
+    /// </summary>
+    public bool HasMetadata => _metadata != null;
+
+    /// <summary>
     /// The metadata for the node.
     /// </summary>
     private object? _metadata;
@@ -32,6 +37,11 @@ public abstract class Node
         TMetadata metadata => metadata,
         _ => throw new ArgumentException("Generic type passed to GetMetadata does not match the actual type of the metadata")
     };
+    
+    /// <summary>
+    /// Checks whether the node metadata is of the specified type.
+    /// </summary>
+    public bool MetadataIs<TMetadata>() => _metadata is TMetadata;
 
     public void SetMetadata(object metadata) => _metadata = metadata;
 

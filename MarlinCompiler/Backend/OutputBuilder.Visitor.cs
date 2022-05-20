@@ -14,7 +14,7 @@ public sealed partial class OutputBuilder : IAstVisitor<None>
 
     public None ClassDefinition(ClassTypeDefinitionNode node)
     {
-        Emit($"{node.Accessibility.ToString().ToLower()} {(node.IsStatic ? "static " : "")}class {node.ClassName}", false);
+        Emit($"{node.Accessibility.ToString().ToLower()} {(node.IsStatic ? "static " : "")}class {node.TypeName}", false);
         Emit(node.GenericTypeParamName != null ? $"<{node.GenericTypeParamName}>" : "", true);
         OpenScope();
         foreach (Node n in node)
@@ -27,7 +27,7 @@ public sealed partial class OutputBuilder : IAstVisitor<None>
 
     public None StructDefinition(StructTypeDefinitionNode node)
     {
-        Emit($"{node.Accessibility.ToString().ToLower()} class {node.ClassName}", true);
+        Emit($"{node.Accessibility.ToString().ToLower()} class {node.TypeName}", true);
         OpenScope();
         foreach (Node n in node)
         {
@@ -37,7 +37,7 @@ public sealed partial class OutputBuilder : IAstVisitor<None>
         return null!;
     }
 
-    public None ExternedTypeDefinition(ExternedTypeDefinitionNode node)
+    public None ExternedTypeDefinition(ExternTypeDefinitionNode node)
     {
         return null!;
     }

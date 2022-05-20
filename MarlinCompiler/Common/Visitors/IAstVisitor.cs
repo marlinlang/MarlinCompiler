@@ -31,7 +31,7 @@ public interface IAstVisitor<T>
     /// <summary>
     /// Visits an externed type declaration.
     /// </summary>
-    public T ExternedTypeDefinition(ExternedTypeDefinitionNode node)
+    public T ExternedTypeDefinition(ExternTypeDefinitionNode node)
     {
         throw new NotImplementedException();
     }
@@ -71,7 +71,7 @@ public interface IAstVisitor<T>
     /// <summary>
     /// Visits an externed method mapping.
     /// </summary>
-    public T ExternedMethodMapping(ExternedMethodNode node)
+    public T ExternedMethodMapping(ExternMethodNode node)
     {
         throw new NotImplementedException();
     }

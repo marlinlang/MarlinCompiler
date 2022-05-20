@@ -5,9 +5,9 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// <summary>
 /// Represents a method mapping in an externed type.
 /// </summary>
-public class ExternedMethodNode : Node
+public class ExternMethodNode : Node
 {
-    public ExternedMethodNode(
+    public ExternMethodNode(
         GetAccessibility accessibility,
         TypeReferenceNode type,
         string? name,

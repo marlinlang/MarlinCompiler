@@ -50,7 +50,6 @@ public sealed class SymbolTable
                          )
                        ?.PrimarySymbol;
 
-        // ReSharper disable once InvertIf - this warning is stupidly refactored here!!!
         if (found == default)
         {
             if (PrimarySymbol != default
@@ -92,7 +91,6 @@ public sealed class SymbolTable
                          )
                        ?.PrimarySymbol;
 
-        // ReSharper disable once InvertIf - this warning is stupidly refactored here!!!
         if (found == default)
         {
             if (PrimarySymbol                  != default

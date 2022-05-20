@@ -70,7 +70,8 @@ public class CompilerModulesTests
         Assert.AreEqual(lexer.MessageCollection.Count(), 0, "Lexer had errors.");
 
         Parser parser = new(new Tokens(tokens), "<test>");
-        Node rootNode = parser.Parse();
+        Node? rootNode = parser.Parse();
+        Assert.NotNull(rootNode);
         Assert.AreEqual(parser.MessageCollection.Count(), 0, "Parser had errors.");
 
         if (rootNode is CompilationUnitNode container)

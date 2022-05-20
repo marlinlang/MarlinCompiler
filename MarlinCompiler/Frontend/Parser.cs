@@ -1,6 +1,9 @@
-﻿using System.Text;
+﻿using System.Data;
+using System.Text;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Symbols;
+using MarlinCompiler.Common.Symbols.Kinds;
 using MarlinCompiler.Frontend.Lexing;
 using static MarlinCompiler.Frontend.Lexing.Lexer;
 
@@ -84,14 +87,11 @@ public sealed class Parser
     /// Starts the parse operation.
     /// </summary>
     /// <returns>The compilation unit node or null when the token source is empty.</returns>
-    public CompilationUnitNode Parse()
+    public CompilationUnitNode? Parse()
     {
-        if (!_tokens.HasNext)
-        {
-            return null!;
-        }
-
-        return ExpectCompilationUnit();
+        return !_tokens.HasNext
+                   ? null
+                   : ExpectCompilationUnit();
     }
 
     /// <summary>
@@ -131,6 +131,23 @@ public sealed class Parser
 
         CompilationUnitNode node = new(name, _compilationUnitDependencies.ToArray());
         node.Children.AddRange(children);
+
+        // Create symbol
+        ModuleSymbol symbol = new(node);
+        SymbolTable scope = new(null, symbol);
+        foreach (Node childNode in children)
+        {
+            if (!childNode.HasMetadata)
+            {
+                throw new NoNullAllowedException("Type node does not have metadata.");
+            }
+            
+            // Types are scopes, so we are expecting a symbol table
+            SymbolTable typeTable = childNode.GetMetadata<SymbolTable>();
+            scope.AddSymbol(typeTable);
+        }
+        node.SetMetadata(scope);
+        
         return node;
     }
 
@@ -283,7 +300,7 @@ public sealed class Parser
 
         GetAccessibility getAccessibility = VisibilityFromModifiers(modifiers);
         bool isStatic = modifiers.Contains("static");
-        return new ExternedMethodNode(
+        return new ExternMethodNode(
             getAccessibility,
             type,
             name,
@@ -347,6 +364,30 @@ public sealed class Parser
         ContainerNode typeBody = ExpectTypeBody();
         classNode.Children.AddRange(typeBody);
 
+        // Create symbol
+        ClassTypeSymbol symbol = new(classNode);
+        SymbolTable scope = new(null, symbol);
+        foreach (Node childNode in typeBody)
+        {
+            if (!childNode.HasMetadata)
+            {
+                throw new NoNullAllowedException("Class member does not have metadata.");
+            }
+            
+            // Types have members, which are symbols (properties) OR tables (methods)
+            if (childNode.MetadataIs<ISymbol>())
+            {
+                ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
+                scope.AddSymbol(memberSymbol);
+            }
+            else if (childNode.MetadataIs<SymbolTable>())
+            {
+                SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
+                scope.AddSymbol(memberSymbolTable);
+            }
+        }
+        classNode.SetMetadata(scope);
+        
         return classNode;
     }
 
@@ -378,13 +419,37 @@ public sealed class Parser
         ContainerNode typeBody = ExpectTypeBody();
         structNode.Children.AddRange(typeBody);
 
+        // Create symbol
+        StructTypeSymbol symbol = new(structNode);
+        SymbolTable scope = new(null, symbol);
+        foreach (Node childNode in typeBody)
+        {
+            if (!childNode.HasMetadata)
+            {
+                throw new NoNullAllowedException("Struct member does not have metadata.");
+            }
+            
+            // Types have members, which are symbols (properties) OR tables (methods)
+            if (childNode.MetadataIs<ISymbol>())
+            {
+                ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
+                scope.AddSymbol(memberSymbol);
+            }
+            else if (childNode.MetadataIs<SymbolTable>())
+            {
+                SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
+                scope.AddSymbol(memberSymbolTable);
+            }
+        }
+        structNode.SetMetadata(scope);
+
         return structNode;
     }
 
     /// <summary>
     /// Expects an external struct mapping.
     /// </summary>
-    private ExternedTypeDefinitionNode ExpectExternTypeDefinition()
+    private ExternTypeDefinitionNode ExpectExternTypeDefinition()
     {
         string[] modifiers = GrabModifiers();
 
@@ -412,16 +477,40 @@ public sealed class Parser
             }
         }
 
-        ExternedTypeDefinitionNode node = new(name, _moduleName, accessibility, isStatic, llvmTypeName)
+        ExternTypeDefinitionNode externTypeNode = new(name, _moduleName, accessibility, isStatic, llvmTypeName)
         {
             Location = nameToken.Location
         };
 
         // Type body
-        ContainerNode body = ExpectExternTypeBody();
-        node.Children.AddRange(body.Children);
+        ContainerNode typeBody = ExpectExternTypeBody();
+        externTypeNode.Children.AddRange(typeBody.Children);
+        
+        // Create symbol
+        ExternTypeSymbol symbol = new(externTypeNode);
+        SymbolTable scope = new(null, symbol);
+        foreach (Node childNode in typeBody)
+        {
+            if (!childNode.HasMetadata)
+            {
+                throw new NoNullAllowedException("Extern type member does not have metadata.");
+            }
+            
+            // Types have members, which are symbols (properties) OR tables (methods)
+            if (childNode.MetadataIs<ISymbol>())
+            {
+                ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
+                scope.AddSymbol(memberSymbol);
+            }
+            else if (childNode.MetadataIs<SymbolTable>())
+            {
+                SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
+                scope.AddSymbol(memberSymbolTable);
+            }
+        }
+        externTypeNode.SetMetadata(scope);
 
-        return node;
+        return externTypeNode;
     }
 
     /// <summary>
@@ -446,8 +535,12 @@ public sealed class Parser
             Location = ctorToken.Location
         };
 
+        ConstructorSymbol symbol = new(node);
+        SymbolTable scope = new(null, symbol);
+        node.SetMetadata(scope);
+
         // Body!!!
-        ContainerNode body = ExpectStatementBody(false);
+        ContainerNode body = ExpectStatementBody(scope, false);
         node.Children.AddRange(body);
 
         return node;
@@ -479,8 +572,12 @@ public sealed class Parser
             Location = nameToken.Location
         };
 
+        MethodSymbol symbol = new(node);
+        SymbolTable scope = new(null, symbol);
+        node.SetMetadata(scope);
+
         // Body!!!!
-        ContainerNode body = ExpectStatementBody(false);
+        ContainerNode body = ExpectStatementBody(scope, false);
         node.Children.AddRange(body.Children);
 
         return node;
@@ -489,9 +586,10 @@ public sealed class Parser
     /// <summary>
     /// Expects a collection of statements surrounded by curly braces.
     /// </summary>
+    /// <param name="scope">The symbol table to populate.</param>
     /// <param name="insideLoop">Are we inside a loop? This enables continue and break statements.</param>
     /// TODO Implement insideLoop
-    private ContainerNode ExpectStatementBody(bool insideLoop)
+    private ContainerNode ExpectStatementBody(SymbolTable scope, bool insideLoop)
     {
         ContainerNode node = new();
 
@@ -503,6 +601,20 @@ public sealed class Parser
                 Node child = ExpectStatement(insideLoop);
 
                 node.Children.Add(child);
+
+                if (child.HasMetadata)
+                {
+                    if (child.MetadataIs<ISymbol>())
+                    {
+                        ISymbol symbol = child.GetMetadata<ISymbol>();
+                        scope.AddSymbol(symbol);
+                    }
+                    else if (child.MetadataIs<SymbolTable>())
+                    {
+                        SymbolTable table = child.GetMetadata<SymbolTable>();
+                        scope.AddSymbol(table);
+                    }
+                }
             }
             catch (ParseException ex)
             {
@@ -511,6 +623,8 @@ public sealed class Parser
         }
 
         Require(TokenType.RightBrace);
+        
+        node.SetMetadata(scope);
 
         return node;
     }
@@ -734,7 +848,8 @@ public sealed class Parser
         // Statement block
         if (_tokens.NextIsOfType(TokenType.LeftBrace))
         {
-            return ExpectStatementBody(insideLoop);
+            SymbolTable newScope = new(null);
+            return ExpectStatementBody(newScope, insideLoop);
         }
 
         // Variable declaration

@@ -8,7 +8,7 @@ namespace MarlinCompiler.Common.Symbols.Kinds;
 public sealed class ClassTypeSymbol : TypeSymbol
 {
     public ClassTypeSymbol(ClassTypeDefinitionNode node)
-        : base(node.ModuleName, node.ClassName, node.Accessibility)
+        : base(node.ModuleName, node.TypeName, node.Accessibility)
     {
         GenericParamName = node.GenericTypeParamName;
         IsStatic         = node.IsStatic;

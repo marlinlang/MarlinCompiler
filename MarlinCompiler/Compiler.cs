@@ -100,8 +100,11 @@ public sealed class Compiler
 
                 Parser parser = new(tokens, path);
 
-                CompilationUnitNode unit = parser.Parse();
-                compilationUnits.Add(unit);
+                CompilationUnitNode? unit = parser.Parse();
+                if (unit != null)
+                {
+                    compilationUnits.Add(unit);
+                }
 
                 MessageCollection.AddRange(parser.MessageCollection);
             }

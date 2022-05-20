@@ -5,9 +5,9 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// <summary>
 /// Represents an externed type.
 /// </summary>
-public class ExternedTypeDefinitionNode : TypeDefinitionNode
+public class ExternTypeDefinitionNode : TypeDefinitionNode
 {
-    public ExternedTypeDefinitionNode(
+    public ExternTypeDefinitionNode(
         string name,
         string module,
         GetAccessibility accessibility,
