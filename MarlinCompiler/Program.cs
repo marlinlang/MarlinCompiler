@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.NamingConventionBinder;
 using MarlinCompiler.Common;
+using MarlinCompiler.Common.Symbols;
 
 namespace MarlinCompiler;
 
@@ -33,7 +34,7 @@ internal static class Program
 
         return command.Invoke(args);
     }
-
+    
     private static int CompilationHandler(string path, bool verbose, bool analyzeOnly)
     {
         Compiler compiler = new(path);

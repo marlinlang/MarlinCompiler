@@ -152,7 +152,7 @@ public sealed class Parser
             TokenType.Class  => ExpectClassDefinition(),
             TokenType.Struct => ExpectStructDefinition(),
             TokenType.Extern => ExpectExternTypeDefinition(),
-            _                => throw new ParseException($"Expected type definition, got {next.Type}", next)
+            _                => throw new ParseException($"Expected type definition, got {next.Type} ('{next.Value}')", next)
         };
     }
 

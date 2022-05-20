@@ -8,8 +8,9 @@ namespace MarlinCompiler.Common.Symbols;
 /// </summary>
 public sealed class SymbolTable
 {
-    public SymbolTable(ISymbol? primarySymbol = null)
+    public SymbolTable(SymbolTable? parentTable, ISymbol? primarySymbol = null)
     {
+        ParentTable   = parentTable;
         PrimarySymbol = primarySymbol;
         _childTables  = new HashSet<SymbolTable>();
     }
@@ -19,12 +20,12 @@ public sealed class SymbolTable
     /// In these cases, this symbol will be the symbol of the method or type respectively. 
     /// </summary>
     /// <remarks>This is easier to implement than symbols having symbol tables.</remarks>
-    public ISymbol? PrimarySymbol { get; set; }
+    public ISymbol? PrimarySymbol { get; }
 
     /// <summary>
     /// The parent table of this table, i.e. the parent scope.
     /// </summary>
-    public SymbolTable? ParentTable { get; set; }
+    public SymbolTable? ParentTable { get; private set; }
 
     /// <summary>
     /// The children tables (scopes).
@@ -49,14 +50,18 @@ public sealed class SymbolTable
                          )
                        ?.PrimarySymbol;
 
-        if (PrimarySymbol != default
-            && predicate(PrimarySymbol))
+        // ReSharper disable once InvertIf - this warning is stupidly refactored here!!!
+        if (found == default)
         {
-            found = PrimarySymbol;
-        }
-        else if (ParentTable != default)
-        {
-            found = ParentTable.LookupSymbol<ISymbol>(predicate);
+            if (PrimarySymbol != default
+                && predicate(PrimarySymbol))
+            {
+                found = PrimarySymbol;
+            }
+            else if (ParentTable != default)
+            {
+                found = ParentTable.LookupSymbol<ISymbol>(predicate);
+            }
         }
 
         return found switch
@@ -87,14 +92,18 @@ public sealed class SymbolTable
                          )
                        ?.PrimarySymbol;
 
-        if (PrimarySymbol                  != default
-            && PrimarySymbol.GetHashCode() == hashCode)
+        // ReSharper disable once InvertIf - this warning is stupidly refactored here!!!
+        if (found == default)
         {
-            found = PrimarySymbol;
-        }
-        else if (ParentTable != default)
-        {
-            found = ParentTable.LookupSymbol<ISymbol>(hashCode);
+            if (PrimarySymbol                  != default
+                && PrimarySymbol.GetHashCode() == hashCode)
+            {
+                found = PrimarySymbol;
+            }
+            else if (ParentTable != default)
+            {
+                found = ParentTable.LookupSymbol<ISymbol>(hashCode);
+            }
         }
 
         return found switch
@@ -113,15 +122,17 @@ public sealed class SymbolTable
     /// and stores the symbol as the <see cref="PrimarySymbol"/>.</remarks>
     public void AddSymbol(ISymbol symbol)
     {
-        _childTables.Add(new SymbolTable(symbol));
+        _childTables.Add(new SymbolTable(this, symbol));
     }
 
     /// <summary>
     /// Adds a child scope under this symbol table.
     /// </summary>
     /// <param name="symbolTable">The symbol table to add.</param>
+    /// <remarks>This will modify the parent table of the added table to the current one.</remarks>
     public void AddSymbol(SymbolTable symbolTable)
     {
+        symbolTable.ParentTable = this;
         _childTables.Add(symbolTable);
     }
 }
