@@ -199,8 +199,8 @@ public sealed class Parser
     }
 
     /// <summary>
-    /// Expects a body for an externed type, including the braces.
-    /// An externed body consists of method mappings.
+    /// Expects a body for an extern type, including the braces.
+    /// An extern body consists of method mappings.
     /// </summary>
     private ContainerNode ExpectExternTypeBody()
     {
@@ -266,7 +266,7 @@ public sealed class Parser
     }
 
     /// <summary>
-    /// Expects an externed method or constructor mapping.
+    /// Expects an extern method or constructor mapping.
     /// </summary>
     private Node ExpectExternMethod()
     {
@@ -277,7 +277,7 @@ public sealed class Parser
 
         if (_tokens.NextIsOfType(TokenType.Constructor))
         {
-            type = new TypeReferenceNode("<$constructor$>");
+            type = new TypeReferenceNode(ExternMethodSymbol.ConstructorTypeName);
             _tokens.Skip(); // constructor
         }
         else
@@ -300,7 +300,7 @@ public sealed class Parser
 
         GetAccessibility getAccessibility = VisibilityFromModifiers(modifiers);
         bool isStatic = modifiers.Contains("static");
-        return new ExternMethodNode(
+        ExternMethodNode node = new(
             getAccessibility,
             type,
             name,
@@ -311,6 +311,12 @@ public sealed class Parser
         {
             Location = nameToken.Location
         };
+
+        // Symbol
+        ExternMethodSymbol symbol = new(node);
+        node.SetMetadata(symbol);
+        
+        return node;
     }
 
     /// <summary>
@@ -471,7 +477,7 @@ public sealed class Parser
             else
             {
                 MessageCollection.Error(
-                    $"Expected LLVM type name for non-static externed type {name}",
+                    $"Expected LLVM type name for non-static extern type {name}",
                     nameToken.Location
                 );
             }
@@ -523,13 +529,13 @@ public sealed class Parser
         Token ctorToken = _tokens.CurrentToken;
 
         ApplyModifierFilters(modifiers, ctorToken, "public", "internal", "protected", "private");
-        VariableNode[] args = GrabTupleTypeDefinition();
+        VariableNode[] parameters = GrabTupleTypeDefinition();
 
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
 
         ConstructorDeclarationNode node = new(
             accessibility,
-            args
+            parameters
         )
         {
             Location = ctorToken.Location
@@ -537,6 +543,12 @@ public sealed class Parser
 
         ConstructorSymbol symbol = new(node);
         SymbolTable scope = new(null, symbol);
+        foreach (VariableNode param in parameters)
+        {
+            VariableSymbol variableSymbol = new(param);
+            param.SetMetadata(variableSymbol);
+            scope.AddSymbol(variableSymbol);
+        }
         node.SetMetadata(scope);
 
         // Body!!!
@@ -556,7 +568,7 @@ public sealed class Parser
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
-        VariableNode[] args = GrabTupleTypeDefinition();
+        VariableNode[] parameters = GrabTupleTypeDefinition();
 
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         bool isStatic = modifiers.Contains("static");
@@ -566,7 +578,7 @@ public sealed class Parser
             type,
             name,
             isStatic,
-            args
+            parameters
         )
         {
             Location = nameToken.Location
@@ -574,6 +586,12 @@ public sealed class Parser
 
         MethodSymbol symbol = new(node);
         SymbolTable scope = new(null, symbol);
+        foreach (VariableNode param in parameters)
+        {
+            VariableSymbol variableSymbol = new(param);
+            param.SetMetadata(variableSymbol);
+            scope.AddSymbol(variableSymbol);
+        }
         node.SetMetadata(scope);
 
         // Body!!!!
@@ -775,7 +793,7 @@ public sealed class Parser
         Require(TokenType.Semicolon);
 
         bool isStatic = modifiers.Contains("static");
-        return new PropertyNode(
+        PropertyNode node = new(
             type,
             name,
             isStatic,
@@ -786,6 +804,11 @@ public sealed class Parser
         {
             Location = nameToken.Location
         };
+        
+        PropertySymbol symbol = new(node);
+        node.SetMetadata(symbol);
+
+        return node;
     }
 
     /// <summary>
@@ -812,7 +835,7 @@ public sealed class Parser
 
         Require(TokenType.Semicolon);
 
-        return new LocalVariableDeclarationNode(
+        LocalVariableDeclarationNode node = new(
             type,
             name,
             mutable,
@@ -821,6 +844,12 @@ public sealed class Parser
         {
             Location = nameToken.Location
         };
+        
+        
+        VariableSymbol symbol = new(node);
+        node.SetMetadata(symbol);
+
+        return node;
     }
 
     /// <summary>
@@ -877,7 +906,7 @@ public sealed class Parser
             if (next.Type    == TokenType.Semicolon
                 || next.Type == TokenType.Assign)
             {
-                return ExpectLocalVariableDeclaration(); // use regular parser, not subparser!
+                return ExpectLocalVariableDeclaration(); // use regular parser, not sub-parser!
             }
         }
         catch (FormatException)
@@ -889,7 +918,7 @@ public sealed class Parser
         {
             CreateSubParser();
 
-            ExpressionNode expr = ExpectExpression(); // should work if the subparser didn't error
+            ExpressionNode expr = ExpectExpression(); // should work if the sub-parser didn't error
 
             if (expr is MethodCallNode
                 || expr is VariableAssignmentNode)
