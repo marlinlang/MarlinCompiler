@@ -14,7 +14,7 @@ internal static class Program
     {
         Console.ResetColor();
 
-        RootCommand command = new("Marlin Compiler")
+        Command compileCommand = new("compile", "Compile Marlin source code.")
         {
             new Argument<string>(
                 "path",
@@ -29,12 +29,13 @@ internal static class Program
                 "The compiler will only analyze the files and not build a program."
             )
         };
+        compileCommand.Handler = CommandHandler.Create(CompilationHandler);
 
-        command.Handler = CommandHandler.Create(CompilationHandler);
-
-        return command.Invoke(args);
+        RootCommand rootCommand = new("Marlin Compiler");
+        rootCommand.AddCommand(compileCommand);
+        return rootCommand.Invoke(args);
     }
-    
+
     private static int CompilationHandler(string path, bool verbose, bool analyzeOnly)
     {
         Compiler compiler = new(path);
