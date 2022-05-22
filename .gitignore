@@ -6,3 +6,4 @@ obj/
 riderModule.iml
 MarlinCompiler.sln.DotSettings
 MarlinCompiler.sln.DotSettings.user
+MarlinCompiler/MarlinCompiler.csproj.DotSettings
