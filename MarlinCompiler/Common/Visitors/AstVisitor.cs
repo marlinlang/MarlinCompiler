@@ -53,7 +53,7 @@ public abstract class AstVisitor<T>
     public abstract T ExternMethodMapping(ExternMethodNode node);
 
     /// <summary>
-    /// Visits a method declaration.
+    /// Visits a constructor declaration.
     /// </summary>
     public abstract T ConstructorDeclaration(ConstructorDeclarationNode node);
 
