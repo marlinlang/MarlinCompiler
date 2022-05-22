@@ -6,11 +6,11 @@ namespace MarlinCompiler.Common.Symbols.Kinds;
 /// <summary>
 /// Extern method.
 /// </summary>
-public class ExternMethodSymbol : ISymbol
+public class ExternMethodSymbol : NamedSymbol
 {
     public const string ConstructorTypeName = "<$constructor$>";
 
-    public ExternMethodSymbol(ExternMethodNode node)
+    public ExternMethodSymbol(ExternMethodNode node) : base(null!)
     {
         IsConstructor = node.Type.FullName == ConstructorTypeName;
         Accessibility = node.Accessibility;
@@ -30,7 +30,7 @@ public class ExternMethodSymbol : ISymbol
     /// The name of this method.
     /// </summary>
     /// <exception cref="InvalidOperationException">The method is a constructor.</exception>
-    public string Name
+    public override string Name
     {
         get
         {

@@ -7,7 +7,7 @@ using MarlinCompiler.Common.Symbols.Kinds;
 using MarlinCompiler.Frontend.Lexing;
 using static MarlinCompiler.Frontend.Lexing.Lexer;
 
-namespace MarlinCompiler.Frontend;
+namespace MarlinCompiler.Frontend.Parsing;
 
 /// <summary>
 /// Parser class.
@@ -56,32 +56,6 @@ public sealed class Parser
     /// The dependencies for this compilation unit.
     /// </summary>
     private readonly List<(string, FileLocation)> _compilationUnitDependencies;
-
-    /// <summary>
-    /// An exception for parse errors.
-    /// </summary>
-    private class ParseException : Exception
-    {
-        /// <summary>
-        /// The token that caused the error.
-        /// </summary>
-        public Token OffendingToken { get; }
-
-        public ParseException(string errorMessage, Token offendingToken) : base(errorMessage)
-        {
-            OffendingToken = offendingToken;
-        }
-    }
-
-    /// <summary>
-    /// Exception used to cancel the parsing process due to too many errors.
-    /// </summary>
-    private class CancelParsingException : Exception
-    {
-        public CancelParsingException(string reason) : base(reason)
-        {
-        }
-    }
 
     /// <summary>
     /// Starts the parse operation.
@@ -141,13 +115,25 @@ public sealed class Parser
             {
                 throw new NoNullAllowedException("Type node does not have metadata.");
             }
-            
+
             // Types are scopes, so we are expecting a symbol table
             SymbolTable typeTable = childNode.GetMetadata<SymbolTable>();
-            scope.AddSymbol(typeTable);
+            try
+            {
+                scope.AddSymbol(typeTable);
+            }
+            catch (SymbolNameAlreadyExistsException ex)
+            {
+                if (childNode.Location == null)
+                {
+                    throw new NoNullAllowedException("Types must report their location");
+                }
+
+                LogErrorAndRecover(ex.Message, (FileLocation) childNode.Location, true);
+            }
         }
         node.SetMetadata(scope);
-        
+
         return node;
     }
 
@@ -277,7 +263,7 @@ public sealed class Parser
 
         if (_tokens.NextIsOfType(TokenType.Constructor))
         {
-            type = new TypeReferenceNode(ExternMethodSymbol.ConstructorTypeName);
+            type = new TypeReferenceNode(ExternMethodSymbol.ConstructorTypeName, Array.Empty<TypeReferenceNode>());
             _tokens.Skip(); // constructor
         }
         else
@@ -315,7 +301,7 @@ public sealed class Parser
         // Symbol
         ExternMethodSymbol symbol = new(node);
         node.SetMetadata(symbol);
-        
+
         return node;
     }
 
@@ -334,14 +320,21 @@ public sealed class Parser
 
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "static");
 
-        string? genericTypeParamName = null;
+        // Generics
+        // Most classes don't have generic params, we'll try to waste as little memory as possible
+        List<string> genericTypeParamNames = new(0);
         if (_tokens.NextIsOfType(TokenType.LeftAngle))
         {
-            _tokens.Skip();
-            genericTypeParamName = GrabNextByExpecting(TokenType.Identifier);
+            do
+            {
+                _tokens.Skip(); // < or comma
+                genericTypeParamNames.Add(GrabNextByExpecting(TokenType.Identifier));
+            }
+            while (_tokens.NextIsOfType(TokenType.Comma));
             Require(TokenType.RightAngle);
         }
 
+        // Inheritance
         TypeReferenceNode? baseClass = null;
         if (_tokens.NextIsOfType(TokenType.Colon))
         {
@@ -350,7 +343,7 @@ public sealed class Parser
         }
         else if (_moduleName + "::Object" != "std::Object") // don't make the base obj inherit from itself lol
         {
-            baseClass = new TypeReferenceNode("std::Object") { Location = nameToken.Location };
+            baseClass = new TypeReferenceNode("std::Object", Array.Empty<TypeReferenceNode>()) { Location = nameToken.Location };
         }
 
         bool isStatic = modifiers.Contains("static");
@@ -360,7 +353,7 @@ public sealed class Parser
             accessibility,
             isStatic,
             baseClass,
-            genericTypeParamName
+            genericTypeParamNames.ToArray()
         )
         {
             Location = nameToken.Location
@@ -375,25 +368,32 @@ public sealed class Parser
         SymbolTable scope = new(null, symbol);
         foreach (Node childNode in typeBody)
         {
-            if (!childNode.HasMetadata)
-            {
-                throw new NoNullAllowedException("Class member does not have metadata.");
-            }
-            
             // Types have members, which are symbols (properties) OR tables (methods)
-            if (childNode.MetadataIs<ISymbol>())
+
+            try
             {
-                ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
-                scope.AddSymbol(memberSymbol);
+                if (childNode.MetadataIs<ISymbol>())
+                {
+                    ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
+                    scope.AddSymbol(memberSymbol);
+                }
+                else if (childNode.MetadataIs<SymbolTable>())
+                {
+                    SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
+                    scope.AddSymbol(memberSymbolTable);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Class member has invalid metadata.");
+                }
             }
-            else if (childNode.MetadataIs<SymbolTable>())
+            catch (SymbolNameAlreadyExistsException ex)
             {
-                SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
-                scope.AddSymbol(memberSymbolTable);
+                MessageCollection.Error(ex.Message, childNode.Location);
             }
         }
         classNode.SetMetadata(scope);
-        
+
         return classNode;
     }
 
@@ -430,21 +430,27 @@ public sealed class Parser
         SymbolTable scope = new(null, symbol);
         foreach (Node childNode in typeBody)
         {
-            if (!childNode.HasMetadata)
+            try
             {
-                throw new NoNullAllowedException("Struct member does not have metadata.");
+                // Types have members, which are symbols (properties) OR tables (methods)
+                if (childNode.MetadataIs<ISymbol>())
+                {
+                    ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
+                    scope.AddSymbol(memberSymbol);
+                }
+                else if (childNode.MetadataIs<SymbolTable>())
+                {
+                    SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
+                    scope.AddSymbol(memberSymbolTable);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Struct member has invalid metadata.");
+                }
             }
-            
-            // Types have members, which are symbols (properties) OR tables (methods)
-            if (childNode.MetadataIs<ISymbol>())
+            catch (SymbolNameAlreadyExistsException ex)
             {
-                ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
-                scope.AddSymbol(memberSymbol);
-            }
-            else if (childNode.MetadataIs<SymbolTable>())
-            {
-                SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
-                scope.AddSymbol(memberSymbolTable);
+                MessageCollection.Error(ex.Message, childNode.Location);
             }
         }
         structNode.SetMetadata(scope);
@@ -491,27 +497,33 @@ public sealed class Parser
         // Type body
         ContainerNode typeBody = ExpectExternTypeBody();
         externTypeNode.Children.AddRange(typeBody.Children);
-        
+
         // Create symbol
         ExternTypeSymbol symbol = new(externTypeNode);
         SymbolTable scope = new(null, symbol);
         foreach (Node childNode in typeBody)
         {
-            if (!childNode.HasMetadata)
-            {
-                throw new NoNullAllowedException("Extern type member does not have metadata.");
-            }
-            
             // Types have members, which are symbols (properties) OR tables (methods)
-            if (childNode.MetadataIs<ISymbol>())
+            try
             {
-                ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
-                scope.AddSymbol(memberSymbol);
+                if (childNode.MetadataIs<ISymbol>())
+                {
+                    ISymbol memberSymbol = childNode.GetMetadata<ISymbol>();
+                    scope.AddSymbol(memberSymbol);
+                }
+                else if (childNode.MetadataIs<SymbolTable>())
+                {
+                    SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
+                    scope.AddSymbol(memberSymbolTable);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Extern type member has invalid metadata.");
+                }
             }
-            else if (childNode.MetadataIs<SymbolTable>())
+            catch (SymbolNameAlreadyExistsException ex)
             {
-                SymbolTable memberSymbolTable = childNode.GetMetadata<SymbolTable>();
-                scope.AddSymbol(memberSymbolTable);
+                MessageCollection.Error(ex.Message, childNode.Location);
             }
         }
         externTypeNode.SetMetadata(scope);
@@ -547,7 +559,15 @@ public sealed class Parser
         {
             VariableSymbol variableSymbol = new(param);
             param.SetMetadata(variableSymbol);
-            scope.AddSymbol(variableSymbol);
+
+            try
+            {
+                scope.AddSymbol(variableSymbol);
+            }
+            catch (SymbolNameAlreadyExistsException ex)
+            {
+                MessageCollection.Error(ex.Message, param.Location);
+            }
         }
         node.SetMetadata(scope);
 
@@ -590,7 +610,15 @@ public sealed class Parser
         {
             VariableSymbol variableSymbol = new(param);
             param.SetMetadata(variableSymbol);
-            scope.AddSymbol(variableSymbol);
+
+            try
+            {
+                scope.AddSymbol(variableSymbol);
+            }
+            catch (SymbolNameAlreadyExistsException ex)
+            {
+                MessageCollection.Error(ex.Message, param.Location);
+            }
         }
         node.SetMetadata(scope);
 
@@ -622,15 +650,22 @@ public sealed class Parser
 
                 if (child.HasMetadata)
                 {
-                    if (child.MetadataIs<ISymbol>())
+                    try
                     {
-                        ISymbol symbol = child.GetMetadata<ISymbol>();
-                        scope.AddSymbol(symbol);
+                        if (child.MetadataIs<ISymbol>())
+                        {
+                            ISymbol symbol = child.GetMetadata<ISymbol>();
+                            scope.AddSymbol(symbol);
+                        }
+                        else if (child.MetadataIs<SymbolTable>())
+                        {
+                            SymbolTable table = child.GetMetadata<SymbolTable>();
+                            scope.AddSymbol(table);
+                        }
                     }
-                    else if (child.MetadataIs<SymbolTable>())
+                    catch (SymbolNameAlreadyExistsException ex)
                     {
-                        SymbolTable table = child.GetMetadata<SymbolTable>();
-                        scope.AddSymbol(table);
+                        MessageCollection.Error(ex.Message, child.Location);
                     }
                 }
             }
@@ -641,7 +676,7 @@ public sealed class Parser
         }
 
         Require(TokenType.RightBrace);
-        
+
         node.SetMetadata(scope);
 
         return node;
@@ -804,7 +839,7 @@ public sealed class Parser
         {
             Location = nameToken.Location
         };
-        
+
         PropertySymbol symbol = new(node);
         node.SetMetadata(symbol);
 
@@ -844,8 +879,8 @@ public sealed class Parser
         {
             Location = nameToken.Location
         };
-        
-        
+
+
         VariableSymbol symbol = new(node);
         node.SetMetadata(symbol);
 
@@ -1378,20 +1413,24 @@ public sealed class Parser
         string name = GrabModuleName();
         Token nameToken = _tokens.CurrentToken;
 
-        TypeReferenceNode? genericName = null;
-
         if (!_tokens.NextIsOfType(TokenType.LeftAngle))
         {
-            return new TypeReferenceNode(name, genericName) { Location = nameToken.Location };
+            return new TypeReferenceNode(name, Array.Empty<TypeReferenceNode>()) { Location = nameToken.Location };
         }
 
-        _tokens.Skip(); // <
+        // We have some generic args
+        List<TypeReferenceNode> genericNames = new();
 
-        genericName = ExpectTypeName();
+        do
+        {
+            _tokens.Skip(); // < or comma!!
+            genericNames.Add(ExpectTypeName());
+        }
+        while (_tokens.NextIsOfType(TokenType.Comma));
 
         Require(TokenType.RightAngle);
 
-        return new TypeReferenceNode(name, genericName) { Location = nameToken.Location };
+        return new TypeReferenceNode(name, genericNames.ToArray()) { Location = nameToken.Location };
     }
 
     /// <summary>
@@ -1478,8 +1517,19 @@ public sealed class Parser
     /// <param name="recoverConsumes">Whether or not the recover process should consume the final token.</param>
     /// <exception cref="CancelParsingException">When there are too many parse errors</exception>
     private void LogErrorAndRecover(ParseException ex, bool recoverConsumes)
+        => LogErrorAndRecover(ex.Message, ex.OffendingToken.Location, recoverConsumes);
+
+    /// <summary>
+    /// Utility method for logging parse exceptions.
+    /// Recovers from errors by going to the next semicolon or right brace.
+    /// </summary>
+    /// <param name="message">The message to log.</param>
+    /// <param name="location">The location of the offending code.</param>
+    /// <param name="recoverConsumes">Whether or not the recover process should consume the final token.</param>
+    /// <exception cref="CancelParsingException">When there are too many parse errors</exception>
+    private void LogErrorAndRecover(string message, FileLocation location, bool recoverConsumes)
     {
-        MessageCollection.Error(ex.Message, ex.OffendingToken.Location);
+        MessageCollection.Error(message, location);
 
         if (MessageCollection.Count(x => x.Fatality == MessageFatality.Severe) > 8)
         {

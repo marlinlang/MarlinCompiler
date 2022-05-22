@@ -13,12 +13,12 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
         GetAccessibility accessibility,
         bool isStatic,
         TypeReferenceNode? baseType,
-        string? genericTypeParamName)
+        string[] genericTypeParamNames)
         : base(name, module, accessibility)
     {
-        BaseType             = baseType;
-        IsStatic             = isStatic;
-        GenericTypeParamName = genericTypeParamName;
+        BaseType              = baseType;
+        IsStatic              = isStatic;
+        GenericTypeParamNames = genericTypeParamNames;
     }
 
     /// <summary>
@@ -32,7 +32,7 @@ public class ClassTypeDefinitionNode : TypeDefinitionNode
     /// <summary>
     /// The type that is named by the generic type param
     /// </summary>
-    public string? GenericTypeParamName { get; }
+    public string[] GenericTypeParamNames { get; }
 
     public override T AcceptVisitor<T>(AstVisitor<T> visitor)
     {

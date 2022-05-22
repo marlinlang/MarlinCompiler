@@ -131,21 +131,19 @@ public sealed class Lexer
             int currentPos = _startingLength - _parseContent.Length;
             int line = 1;
             int col = 0;
-            for (int i = 0; i < currentPos; i++)
+            for (int i = 0; i < currentPos; ++i)
             {
-                if (_startingContent[i] == '\r')
+                switch (_startingContent[i])
                 {
-                    continue;
-                }
-
-                if (_startingContent[i] == '\n')
-                {
-                    line++;
-                    col = 0;
-                }
-                else
-                {
-                    col++;
+                    case '\r':
+                        continue;
+                    case '\n':
+                        line++;
+                        col = 0;
+                        break;
+                    default:
+                        col++;
+                        break;
                 }
             }
 

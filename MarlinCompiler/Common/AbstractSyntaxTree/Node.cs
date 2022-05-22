@@ -37,11 +37,13 @@ public abstract class Node
         TMetadata metadata => metadata,
         _ => throw new ArgumentException("Generic type passed to GetMetadata does not match the actual type of the metadata")
     };
-    
+
     /// <summary>
     /// Checks whether the node metadata is of the specified type.
     /// </summary>
-    public bool MetadataIs<TMetadata>() => _metadata is TMetadata;
+    /// <exception cref="NoNullAllowedException">Metadata is not set.</exception>
+    public bool MetadataIs<TMetadata>()
+        => _metadata != null ? _metadata is TMetadata : throw new NoNullAllowedException("Metadata is not set.");
 
     public void SetMetadata(object metadata) => _metadata = metadata;
 

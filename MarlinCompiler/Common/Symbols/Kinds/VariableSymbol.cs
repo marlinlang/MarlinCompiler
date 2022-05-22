@@ -2,19 +2,13 @@
 
 namespace MarlinCompiler.Common.Symbols.Kinds;
 
-public class VariableSymbol : ISymbol
+public class VariableSymbol : NamedSymbol
 {
-    public VariableSymbol(VariableNode node)
+    public VariableSymbol(VariableNode node) : base(node.Name)
     {
-        Name = node.Name;
         Type = null;
     }
 
-    /// <summary>
-    /// The name of the property.
-    /// </summary>
-    public string Name { get; }
-    
     /// <summary>
     /// The type of the property.
     /// </summary>

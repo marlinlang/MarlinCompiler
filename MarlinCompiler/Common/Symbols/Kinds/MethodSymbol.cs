@@ -5,13 +5,12 @@ namespace MarlinCompiler.Common.Symbols.Kinds;
 /// <summary>
 /// Represents a method symbol.
 /// </summary>
-public class MethodSymbol : ISymbol
+public class MethodSymbol : NamedSymbol
 {
-    public MethodSymbol(MethodDeclarationNode node)
+    public MethodSymbol(MethodDeclarationNode node) : base(node.Name)
     {
         Accessibility = node.Accessibility;
         ReturnType    = null;
-        Name          = node.Name;
         IsStatic      = node.IsStatic;
         Parameters    = node.Parameters;
     }
@@ -26,11 +25,6 @@ public class MethodSymbol : ISymbol
     /// </summary>
     /// <remarks>This is null by default. Semantic analysis is expected to fill it in.</remarks>
     public TypeUsageSymbol? ReturnType { get; }
-    
-    /// <summary>
-    /// The name of the method.
-    /// </summary>
-    public string Name { get; }
     
     /// <summary>
     /// Whether the method is static.

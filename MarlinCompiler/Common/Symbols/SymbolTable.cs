@@ -1,5 +1,6 @@
 ﻿using System.CommandLine.Help;
 using System.Data;
+using MarlinCompiler.Common.Symbols.Kinds;
 
 namespace MarlinCompiler.Common.Symbols;
 
@@ -38,7 +39,7 @@ public sealed class SymbolTable
     /// <param name="predicate">The predicate to look with.</param>
     /// <typeparam name="TSymbol">The expected type of the symbol.</typeparam>
     /// <returns>The found symbol, never null.</returns>
-    /// <exception cref="NoNullAllowedException">Thrown if the symbol does not exist..</exception>
+    /// <exception cref="NoNullAllowedException">Thrown if the symbol does not exist.</exception>
     /// <exception cref="ArgumentException">Thrown if the generic param <typeparamref name="TSymbol"/>
     /// doesn't match the type of the found symbol.</exception>
     public TSymbol LookupSymbol<TSymbol>(Predicate<ISymbol> predicate)
@@ -113,13 +114,30 @@ public sealed class SymbolTable
     }
 
     /// <summary>
+    /// Calls <see cref="LookupSymbol{TSymbol}(System.Predicate{MarlinCompiler.Common.Symbols.ISymbol})"/> with
+    /// a predicate for a named symbol of the same name.
+    /// </summary>
+    /// <param name="name">The name to look for.</param>
+    /// <typeparam name="TSymbol">Expected symbol type.</typeparam>
+    public TSymbol LookupSymbol<TSymbol>(string name) => LookupSymbol<TSymbol>(x => x is NamedSymbol named && named.Name == name);
+
+    /// <summary>
     /// Adds a symbol to this symbol table (scope).
     /// </summary>
     /// <param name="symbol">The symbol to add.</param>
+    /// <exception cref="SymbolNameAlreadyExistsException">Thrown if the name of the symbol is taken.</exception>
     /// <remarks>Creates a new symbol table under the hood
     /// and stores the symbol as the <see cref="PrimarySymbol"/>.</remarks>
     public void AddSymbol(ISymbol symbol)
     {
+        if (symbol is NamedSymbol namedSymbol
+            && _childTables.Any(
+                x => x.PrimarySymbol is NamedSymbol checkNamedSymbol && checkNamedSymbol.Name == namedSymbol.Name
+            ))
+        {
+            throw new SymbolNameAlreadyExistsException(namedSymbol.Name);
+        }
+
         _childTables.Add(new SymbolTable(this, symbol));
     }
 
@@ -127,9 +145,18 @@ public sealed class SymbolTable
     /// Adds a child scope under this symbol table.
     /// </summary>
     /// <param name="symbolTable">The symbol table to add.</param>
+    /// <exception cref="SymbolNameAlreadyExistsException">Thrown if the name of the symbol is taken.</exception>
     /// <remarks>This will modify the parent table of the added table to the current one.</remarks>
     public void AddSymbol(SymbolTable symbolTable)
     {
+        if (symbolTable.PrimarySymbol is NamedSymbol namedSymbol
+            && _childTables.Any(
+                x => x.PrimarySymbol is NamedSymbol checkNamedSymbol && checkNamedSymbol.Name == namedSymbol.Name
+            ))
+        {
+            throw new SymbolNameAlreadyExistsException(namedSymbol.Name);
+        }
+
         symbolTable.ParentTable = this;
         _childTables.Add(symbolTable);
     }

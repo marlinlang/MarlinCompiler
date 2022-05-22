@@ -10,20 +10,20 @@ public sealed class ClassTypeSymbol : TypeSymbol
     public ClassTypeSymbol(ClassTypeDefinitionNode node)
         : base(node.ModuleName, node.TypeName, node.Accessibility)
     {
-        GenericParamName = node.GenericTypeParamName;
-        IsStatic         = node.IsStatic;
+        GenericParamNames = node.GenericTypeParamNames;
+        IsStatic          = node.IsStatic;
     }
-    
+
     /// <summary>
     /// The generic parameter, if one exists.
     /// </summary>
-    public string? GenericParamName { get; }
-    
+    public string[] GenericParamNames { get; }
+
     /// <summary>
     /// Whether the class is static or not.
     /// </summary>
     public bool IsStatic { get; }
-    
+
     /// <summary>
     /// The type that this class inherits. 
     /// </summary>

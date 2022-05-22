@@ -1,5 +1,8 @@
-﻿using MarlinCompiler.Common;
+﻿using System.Data;
+using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Symbols;
+using MarlinCompiler.Common.Symbols.Kinds;
 using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Frontend.SemanticAnalysis;
@@ -12,8 +15,14 @@ public class Analyzer : AstVisitor<None>
     public Analyzer(IEnumerable<CompilationUnitNode> compilationUnits)
     {
         _compilationUnits = compilationUnits;
+        MessageCollection = new MessageCollection();
     }
     
+    /// <summary>
+    /// Analysis messages.
+    /// </summary>
+    public MessageCollection MessageCollection { get; }
+
     /// <summary>
     /// The compilation units.
     /// </summary>
@@ -21,14 +30,12 @@ public class Analyzer : AstVisitor<None>
 
     public void Analyze()
     {
-        // TODO: Analyze the compilation units.
-        
         foreach (CompilationUnitNode compilationUnit in _compilationUnits)
         {
             Visit(compilationUnit);
         }
     }
-    
+
     public override None MemberAccess(MemberAccessNode node)
     {
         throw new NotImplementedException();
@@ -36,27 +43,83 @@ public class Analyzer : AstVisitor<None>
 
     public override None ClassDefinition(ClassTypeDefinitionNode node)
     {
-        throw new NotImplementedException();
+        node.BaseType ??= new TypeReferenceNode("std::Object", Array.Empty<TypeReferenceNode>());
+
+        // give the metadata to type ref so it can find the symbol
+        node.BaseType.SetMetadata(node.GetMetadata<SymbolTable>());
+
+        Visit(node.BaseType);
+
+        foreach (Node member in node)
+        {
+            Visit(member);
+        }
+
+        return None.Null;
     }
 
     public override None ExternTypeDefinition(ExternTypeDefinitionNode node)
     {
-        throw new NotImplementedException();
+        foreach (Node member in node)
+        {
+            Visit(member);
+        }
+
+        return None.Null;
     }
 
     public override None StructDefinition(StructTypeDefinitionNode node)
     {
-        throw new NotImplementedException();
+        foreach (Node member in node)
+        {
+            Visit(member);
+        }
+
+        return None.Null;
     }
 
     public override None TypeReference(TypeReferenceNode node)
     {
-        throw new NotImplementedException();
+        if (!node.HasMetadata)
+        {
+            throw new NoNullAllowedException("TypeReferenceNode must have metadata");
+        }
+
+        try
+        {
+            SymbolTable symbolTable = node.GetMetadata<SymbolTable>();
+            SymbolTable symbol = symbolTable.LookupSymbol<SymbolTable>(
+                x => x is TypeSymbol typeSymbol && $"{typeSymbol.ModuleName}::{typeSymbol.TypeName}" == node.FullName
+            );
+
+            node.SetMetadata(symbol);
+        }
+        catch (NoNullAllowedException)
+        {
+            MessageCollection.Error($"Type reference not found: {node.FullName}", node.Location);
+        }
+        
+        return None.Null;
     }
 
     public override None Property(PropertyNode node)
     {
-        throw new NotImplementedException();
+        node.Type.SetMetadata(node.GetMetadata<ISymbol>());
+        Visit(node.Type);
+
+        if (node.Value != null)
+        {
+            Visit(node.Value);
+
+            TypeSymbol propertyType = SemanticUtils.TypeOfReference(node.Type);
+            TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(this, node.Value);
+            if (SemanticUtils.IsAssignable(this, propertyType, typeOfExpr))
+            {
+                MessageCollection.Error("Property value type doesn't match property type", node.Location);
+            }
+        }
+        
+        return None.Null;
     }
 
     public override None MethodDeclaration(MethodDeclarationNode node)
@@ -91,7 +154,8 @@ public class Analyzer : AstVisitor<None>
 
     public override None Integer(IntegerNode node)
     {
-        throw new NotImplementedException();
+        node.SetMetadata(SemanticUtils.TypeOfExpr(this, node));
+        return None.Null;
     }
 
     public override None NewClassInstance(NewClassInitializerNode node)

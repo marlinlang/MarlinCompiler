@@ -7,10 +7,10 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class TypeReferenceNode : IndexableExpressionNode
 {
-    public TypeReferenceNode(string fullName, TypeReferenceNode? genericTypeName = null)
+    public TypeReferenceNode(string fullName, TypeReferenceNode[] genericTypeArgs)
     {
-        FullName        = fullName;
-        GenericTypeName = genericTypeName;
+        FullName             = fullName;
+        GenericTypeArguments = genericTypeArgs;
     }
 
     /// <summary>
@@ -21,12 +21,13 @@ public class TypeReferenceNode : IndexableExpressionNode
     /// <summary>
     /// Generic type name (e.g. Array&lt;string&gt; - the string part)
     /// </summary>
-    public TypeReferenceNode? GenericTypeName { get; }
+    public TypeReferenceNode[] GenericTypeArguments { get; }
 
     public override string ToString()
     {
-        return GenericTypeName != null
-                   ? $"{FullName}<{GenericTypeName}>"
+        // don't you love creating a whole list because someone created two ambiguous ext methods? I sure do! /s
+        return GenericTypeArguments.Any()
+                   ? $"{FullName}<{String.Join(", ", GenericTypeArguments.ToList())}>"
                    : FullName;
     }
 

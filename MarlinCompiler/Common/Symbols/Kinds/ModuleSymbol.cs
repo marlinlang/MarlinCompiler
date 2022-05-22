@@ -5,18 +5,12 @@ namespace MarlinCompiler.Common.Symbols.Kinds;
 /// <summary>
 /// Represents a module.
 /// </summary>
-public sealed class ModuleSymbol : ISymbol
+public sealed class ModuleSymbol : NamedSymbol
 {
-    public ModuleSymbol(CompilationUnitNode node)
+    public ModuleSymbol(CompilationUnitNode node) : base(node.FullName)
     {
-        Name         = node.FullName;
         Dependencies = new ModuleSymbol[node.Dependencies.Length];
     }
-
-    /// <summary>
-    /// The name of the module.
-    /// </summary>
-    public string Name { get; }
 
     /// <summary>
     /// The dependencies of the module.

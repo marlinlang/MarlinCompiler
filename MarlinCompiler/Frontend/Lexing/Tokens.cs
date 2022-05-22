@@ -110,7 +110,7 @@ public class Tokens
     public Token? PeekNextTokenBySkipping(TokenType toSkip, int skipAfter)
     {
         int startPos = _position + 1;
-        for (int i = _position + 1; i < _tokens.Length; i++)
+        for (int i = _position + 1; i < _tokens.Length; ++i)
         {
             if (_tokens[i].Type != toSkip)
             {

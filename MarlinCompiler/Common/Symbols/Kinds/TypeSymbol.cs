@@ -3,9 +3,13 @@
 /// <summary>
 /// Represents a symbol for a type.
 /// </summary>
-public abstract class TypeSymbol : ISymbol
+public class TypeSymbol : NamedSymbol
 {
+    public static readonly TypeSymbol Void = new("", "void", GetAccessibility.Public);
+    public static readonly TypeSymbol UnknownType = new("???", "???", GetAccessibility.Public);
+    
     protected TypeSymbol(string moduleName, string typeName, GetAccessibility accessibility)
+        : base($"{moduleName}::{typeName}")
     {
         ModuleName    = moduleName;
         TypeName      = typeName;
