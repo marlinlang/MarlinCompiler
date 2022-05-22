@@ -80,6 +80,12 @@ public class Analyzer : AstVisitor<None>
 
     public override None TypeReference(TypeReferenceNode node)
     {
+        if (node is VoidTypeReferenceNode)
+        {
+            node.SetMetadata(TypeSymbol.Void);
+            return None.Null;
+        }
+        
         if (!node.HasMetadata)
         {
             throw new NoNullAllowedException("TypeReferenceNode must have metadata");
@@ -124,7 +130,19 @@ public class Analyzer : AstVisitor<None>
 
     public override None MethodDeclaration(MethodDeclarationNode node)
     {
-        throw new NotImplementedException();
+        TypeReference(node.Type);
+        
+        foreach (VariableNode parameter in node.Parameters)
+        {
+            Visit(parameter);
+        }
+        
+        foreach (Node statement in node)
+        {
+            Visit(statement);
+        }
+
+        return None.Null;
     }
 
     public override None ExternMethodMapping(ExternMethodNode node)
