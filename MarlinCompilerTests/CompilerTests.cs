@@ -138,7 +138,7 @@ public class CompilerModulesTests
                 GetAccessibility.Internal,
                 false,
                 null,
-                null
+                Array.Empty<string>()
             )
         );
 
