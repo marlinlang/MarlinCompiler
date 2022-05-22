@@ -28,4 +28,10 @@
       <Folder Include="Backend" />
     </ItemGroup>
 
+    <ItemGroup>
+        <Content Include="..\library\**\*">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+    
 </Project>

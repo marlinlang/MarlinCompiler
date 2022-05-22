@@ -4,6 +4,7 @@ using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Frontend;
 using MarlinCompiler.Frontend.Lexing;
 using MarlinCompiler.Frontend.Parsing;
+using MarlinCompiler.Frontend.SemanticAnalysis;
 
 namespace MarlinCompiler;
 
@@ -138,15 +139,13 @@ public sealed class Compiler
     /// <summary>
     /// Invokes the semantic analyzer for the given root.
     /// </summary>
-    // TODO: Remove resharper warning disable comments when the analyzer is implemented
-    // ReSharper disable once UnusedParameter.Local
-    // ReSharper disable once MemberCanBeMadeStatic.Local
     private void Analyze(ContainerNode root)
     {
         // TODO: Invoke semantic analyzer
-        /*Analyzer analyzer = new(root);
+        List<CompilationUnitNode> units = root.Children.ConvertAll(x => (CompilationUnitNode) x);
+        Analyzer analyzer = new(units);
         analyzer.Analyze();
-        MessageCollection.AddRange(analyzer.MessageCollection);*/
+        MessageCollection.AddRange(analyzer.MessageCollection);
     }
 
     /// <summary>
