@@ -13,6 +13,38 @@ public static class SemanticUtils
     /// </summary>
     public static TypeUsageSymbol TypeOfExpr(Analyzer analyzer, ExpressionNode node)
     {
+        FileLocation location = node.Location;
+
+        // Expressions that don't need metadata lookups
+        switch (node)
+        {
+            case VoidTypeReferenceNode:
+                return new TypeUsageSymbol(TypeSymbol.Void);
+
+            case IntegerNode:
+            {
+                if (analyzer.CurrentVisitor is not MainPass mainPassVisitor)
+                {
+                    // Irrelevant
+                    return new TypeUsageSymbol(TypeSymbol.UnknownType);
+                }
+
+                return new TypeUsageSymbol(
+                    GetTypeOrUnknown(analyzer, "std::Int32", location, mainPassVisitor.ScopeManager.CurrentScope)
+                );
+            }
+
+            case MethodCallNode methodCallNode:
+                return methodCallNode.GetMetadata<TypeUsageSymbol>();
+
+            case MemberAccessNode memberAccessNode:
+                return memberAccessNode.GetMetadata<TypeUsageSymbol>();
+
+            case NewClassInitializerNode newClassInitializerNode:
+                return newClassInitializerNode.GetMetadata<TypeUsageSymbol>();
+        }
+
+        // Expressions that do need metadata lookups
         if (!node.HasMetadata)
         {
             throw new NoNullAllowedException("Node must have metadata");
@@ -30,18 +62,9 @@ public static class SemanticUtils
         }
 
         SymbolTable scope = type.SymbolTable;
-        FileLocation location = node.Location;
 
         switch (node)
         {
-            case VoidTypeReferenceNode:
-                return new TypeUsageSymbol(TypeSymbol.Void);
-
-            case IntegerNode:
-            {
-                return new TypeUsageSymbol(GetTypeOrUnknown(analyzer, "std::Int32", location, scope));
-            }
-
             case TypeReferenceNode typeReferenceNode:
             {
                 TypeSymbol typeSymbol = GetTypeOrUnknown(analyzer, typeReferenceNode.FullName, location, scope);
@@ -52,37 +75,15 @@ public static class SemanticUtils
                 }
 
                 TypeUsageSymbol sym = typeReferenceNode.GenericTypeArguments.Any()
-                           ? AttemptApplyGenerics(analyzer, typeSymbol, typeReferenceNode)
-                           : new TypeUsageSymbol(typeSymbol);
+                                          ? AttemptApplyGenerics(analyzer, typeSymbol, typeReferenceNode)
+                                          : new TypeUsageSymbol(typeSymbol);
                 sym.TypeReferencedStatically = true;
                 return sym;
-            }
-
-            case MethodCallNode methodCallNode:
-            {
-                analyzer.CurrentVisitor.Visit(methodCallNode);
-                // we're expecting a TypeUsageSymbol here
-                return methodCallNode.GetMetadata<TypeUsageSymbol>();
-            }
-
-            case MemberAccessNode memberAccessNode:
-            {
-                analyzer.CurrentVisitor.Visit(memberAccessNode);
-                // we're expecting a TypeUsageSymbol here
-                return memberAccessNode.GetMetadata<TypeUsageSymbol>();
-            }
-
-            case NewClassInitializerNode newClassInitializerNode:
-            {
-                analyzer.CurrentVisitor.Visit(newClassInitializerNode);
-                // we're expecting a TypeUsageSymbol here
-                return newClassInitializerNode.GetMetadata<TypeUsageSymbol>();
             }
 
             case BinaryOperatorNode binaryOperatorNode:
             case InitializerNode initializerNode:
             case VariableAssignmentNode variableAssignmentNode:
-            case IndexableExpressionNode indexableExpressionNode:
                 throw new NotImplementedException();
 
             default:
@@ -97,7 +98,7 @@ public static class SemanticUtils
     {
         if (node.MetadataIs<ISymbol>())
         {
-            return node.GetMetadata<ISymbol>() as TypeSymbol ?? throw new NoNullAllowedException();
+            return node.GetMetadata<TypeUsageSymbol>().Type;
         }
 
         if (node.MetadataIs<SymbolTable>())
@@ -113,6 +114,12 @@ public static class SemanticUtils
     /// </summary>
     public static bool IsAssignable(Analyzer analyzer, TypeSymbol super, TypeUsageSymbol sub)
     {
+        if (super == sub.Type)
+        {
+            // Automatic pass, obviously
+            return true;
+        }
+
         return false;
     }
 

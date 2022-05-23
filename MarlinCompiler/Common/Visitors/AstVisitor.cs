@@ -7,7 +7,7 @@ namespace MarlinCompiler.Common.Visitors;
 /// </summary>
 public abstract class AstVisitor<T>
 {
-    public virtual T Visit(Node node)
+    public T Visit(Node node)
     {
         return node.AcceptVisitor(this);
     }

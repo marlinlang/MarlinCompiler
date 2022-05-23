@@ -11,12 +11,13 @@ internal sealed class MainPass : AstVisitor<None>
 {
     public MainPass(Analyzer analyzer)
     {
-        _analyzer     = analyzer;
-        _scopeManager = new ScopeManager();
+        _analyzer    = analyzer;
+        ScopeManager = new ScopeManager();
     }
 
-    private readonly Analyzer     _analyzer;
-    private readonly ScopeManager _scopeManager;
+    public ScopeManager ScopeManager { get; }
+
+    private readonly Analyzer _analyzer;
 
     public override None MemberAccess(MemberAccessNode node)
     {
@@ -37,7 +38,7 @@ internal sealed class MainPass : AstVisitor<None>
         }
         else
         {
-            owner = _scopeManager.CurrentScope;
+            owner = ScopeManager.CurrentScope;
         }
 
         // Properties
@@ -82,7 +83,7 @@ internal sealed class MainPass : AstVisitor<None>
         node.BaseType.SetMetadata(node.GetMetadata<SymbolTable>());
 
         // Push scope
-        _scopeManager.PushScope(node.GetMetadata<SymbolTable>());
+        ScopeManager.PushScope(node.GetMetadata<SymbolTable>());
 
         Visit(node.BaseType);
 
@@ -91,7 +92,7 @@ internal sealed class MainPass : AstVisitor<None>
             Visit(member);
         }
 
-        _scopeManager.PopScope();
+        ScopeManager.PopScope();
 
         return None.Null;
     }
@@ -99,14 +100,14 @@ internal sealed class MainPass : AstVisitor<None>
     public override None ExternTypeDefinition(ExternTypeDefinitionNode node)
     {
         // Push scope
-        _scopeManager.PushScope(node.GetMetadata<SymbolTable>());
+        ScopeManager.PushScope(node.GetMetadata<SymbolTable>());
 
         foreach (Node member in node)
         {
             Visit(member);
         }
 
-        _scopeManager.PopScope();
+        ScopeManager.PopScope();
 
         return None.Null;
     }
@@ -114,21 +115,21 @@ internal sealed class MainPass : AstVisitor<None>
     public override None StructDefinition(StructTypeDefinitionNode node)
     {
         // Push scope
-        _scopeManager.PushScope(node.GetMetadata<SymbolTable>());
+        ScopeManager.PushScope(node.GetMetadata<SymbolTable>());
 
         foreach (Node member in node)
         {
             Visit(member);
         }
 
-        _scopeManager.PopScope();
+        ScopeManager.PopScope();
 
         return None.Null;
     }
 
     public override None TypeReference(TypeReferenceNode node)
     {
-        node.SetMetadata(_scopeManager.CurrentScope);
+        node.SetMetadata(ScopeManager.CurrentScope);
         SemanticUtils.SetTypeRefMetadata(_analyzer, node);
 
         TypeUsageSymbol typeUsageSymbol = node.GetMetadata<TypeUsageSymbol>();
@@ -146,7 +147,7 @@ internal sealed class MainPass : AstVisitor<None>
 
     public override None Property(PropertyNode node)
     {
-        node.Type.SetMetadata(node.GetMetadata<ISymbol>());
+        node.Type.SetMetadata(ScopeManager.CurrentScope);
         Visit(node.Type);
 
         if (node.Value != null)
@@ -155,10 +156,14 @@ internal sealed class MainPass : AstVisitor<None>
 
             TypeSymbol varType = SemanticUtils.TypeOfReference(node.Type);
             TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
-            if (SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
+            if (varType            != TypeSymbol.UnknownType
+                && typeOfExpr.Type != TypeSymbol.UnknownType
+                && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
-                    "Provided value type doesn't match property type",
+                    "Provided value type doesn't match variable type"
+                    + $"\n\tExpected: {varType.Name}"
+                    + $"\n\tActual:   {typeOfExpr.Type.Name}",
                     node.Location
                 );
             }
@@ -172,7 +177,7 @@ internal sealed class MainPass : AstVisitor<None>
         TypeReference(node.Type);
 
         // Push scope
-        _scopeManager.PushScope(node.GetMetadata<SymbolTable>());
+        ScopeManager.PushScope(node.GetMetadata<SymbolTable>());
 
         foreach (VariableNode parameter in node.Parameters)
         {
@@ -184,7 +189,7 @@ internal sealed class MainPass : AstVisitor<None>
             Visit(statement);
         }
 
-        _scopeManager.PopScope();
+        ScopeManager.PopScope();
 
         return None.Null;
     }
@@ -201,16 +206,23 @@ internal sealed class MainPass : AstVisitor<None>
 
     public override None LocalVariable(LocalVariableDeclarationNode node)
     {
+        node.Type.SetMetadata(ScopeManager.CurrentScope);
+        Visit(node.Type);
+        
         if (node.Value != null)
         {
             Visit(node.Value);
 
-            TypeSymbol propertyType = SemanticUtils.TypeOfReference(node.Type);
+            TypeSymbol varType = SemanticUtils.TypeOfReference(node.Type);
             TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
-            if (SemanticUtils.IsAssignable(_analyzer, propertyType, typeOfExpr))
+            if (varType            != TypeSymbol.UnknownType
+                && typeOfExpr.Type != TypeSymbol.UnknownType
+                && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
-                    "Provided value type doesn't match variable type",
+                    "Provided value type doesn't match variable type"
+                    + $"\n\tExpected: {varType.Name}"
+                    + $"\n\tActual:   {typeOfExpr.Type.Name}",
                     node.Location
                 );
             }
@@ -288,7 +300,10 @@ internal sealed class MainPass : AstVisitor<None>
             else if (methodSymbol.IsStatic
                      && !parent.TypeReferencedStatically)
             {
-                _analyzer.MessageCollection.Error("Cannot call static method on an instance of a non-static type.", node.Location);
+                _analyzer.MessageCollection.Error(
+                    "Cannot call static method on an instance of a non-static type.",
+                    node.Location
+                );
             }
             // TODO: Check that the number of arguments matches the method signature
 
@@ -318,10 +333,10 @@ internal sealed class MainPass : AstVisitor<None>
 
     public override None NewClassInstance(NewClassInitializerNode node)
     {
-        node.Type.SetMetadata(_scopeManager.CurrentScope);
+        node.Type.SetMetadata(ScopeManager.CurrentScope);
         Visit(node.Type);
 
-        node.SetMetadata(new TypeUsageSymbol(node.Type.GetMetadata<TypeSymbol>()));
+        node.SetMetadata(node.Type.GetMetadata<TypeUsageSymbol>());
 
         return None.Null;
     }
