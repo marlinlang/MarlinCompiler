@@ -106,7 +106,7 @@ public sealed class Parser
         }
         catch (CancelParsingException ex)
         {
-            MessageCollection.Info($"Parsing cancelled: {ex.Message}", new FileLocation(_path));
+            MessageCollection.Info(MessageId.ParsingCancelled, $"Parsing cancelled: {ex.Message}", new FileLocation(_path));
         }
 
         node.Children.AddRange(children);
@@ -126,7 +126,7 @@ public sealed class Parser
             }
             catch (SymbolNameAlreadyExistsException ex)
             {
-                LogErrorAndRecover(ex.Message, childNode.Location, true);
+                MessageCollection.Error(MessageId.SymbolAlreadyDefined, ex.Message, childNode.Location);
             }
         }
         node.SetMetadata(scope);
@@ -152,7 +152,11 @@ public sealed class Parser
             TokenType.Class  => ExpectClassDefinition(scope),
             TokenType.Struct => ExpectStructDefinition(),
             TokenType.Extern => ExpectExternTypeDefinition(),
-            _                => throw new ParseException($"Expected type definition, got {next.Type} ('{next.Value}')", next)
+            _ => throw new ParseException(
+                     MessageId.UnexpectedToken,
+                     $"Expected type definition, got {next.Type} ('{next.Value}')",
+                     next
+                 )
         };
     }
 
@@ -383,7 +387,7 @@ public sealed class Parser
             }
             catch (SymbolNameAlreadyExistsException ex)
             {
-                MessageCollection.Error(ex.Message, childNode.Location);
+                MessageCollection.Error(MessageId.SymbolAlreadyDefined, ex.Message, childNode.Location);
             }
         }
 
@@ -447,7 +451,7 @@ public sealed class Parser
             }
             catch (SymbolNameAlreadyExistsException ex)
             {
-                MessageCollection.Error(ex.Message, childNode.Location);
+                MessageCollection.Error(MessageId.SymbolAlreadyDefined, ex.Message, childNode.Location);
             }
         }
         structNode.SetMetadata(scope);
@@ -480,6 +484,7 @@ public sealed class Parser
             else
             {
                 MessageCollection.Error(
+                    MessageId.ExpectedLlvmTypeName,
                     $"Expected LLVM type name for non-static extern type {name}",
                     nameToken.Location
                 );
@@ -522,7 +527,7 @@ public sealed class Parser
             }
             catch (SymbolNameAlreadyExistsException ex)
             {
-                MessageCollection.Error(ex.Message, childNode.Location);
+                MessageCollection.Error(MessageId.SymbolAlreadyDefined, ex.Message, childNode.Location);
             }
         }
         externTypeNode.SetMetadata(scope);
@@ -565,7 +570,7 @@ public sealed class Parser
             }
             catch (SymbolNameAlreadyExistsException ex)
             {
-                MessageCollection.Error(ex.Message, param.Location);
+                MessageCollection.Error(MessageId.SymbolAlreadyDefined, ex.Message, param.Location);
             }
         }
         node.SetMetadata(scope);
@@ -616,7 +621,7 @@ public sealed class Parser
             }
             catch (SymbolNameAlreadyExistsException ex)
             {
-                MessageCollection.Error(ex.Message, param.Location);
+                MessageCollection.Error(MessageId.SymbolAlreadyDefined, ex.Message, param.Location);
             }
         }
         node.SetMetadata(scope);
@@ -664,7 +669,7 @@ public sealed class Parser
                     }
                     catch (SymbolNameAlreadyExistsException ex)
                     {
-                        MessageCollection.Error(ex.Message, child.Location);
+                        MessageCollection.Error(MessageId.SymbolAlreadyDefined, ex.Message, child.Location);
                     }
                 }
             }
@@ -719,7 +724,8 @@ public sealed class Parser
                     if (currentAccessibility is not ("public" or "private" or "internal"))
                     {
                         MessageCollection.Error(
-                            $"Unknown visibility specifier {currentAccessibility}",
+                            MessageId.InapplicableModifier,
+                            $"Unexpected modifier {currentAccessibility}",
                             peek.Location
                         );
                         currentAccessibility = "internal";
@@ -736,13 +742,14 @@ public sealed class Parser
                 {
                     if (assignedGet)
                     {
-                        MessageCollection.Error("Repeated get specifier", peek.Location);
+                        MessageCollection.Error(MessageId.RepeatedModifier, "Repeated get specifier", peek.Location);
                     }
                     assignedGet = true;
 
                     if (!String.Equals(currentAccessibility, get.ToString(), StringComparison.InvariantCulture))
                     {
                         MessageCollection.Error(
+                            MessageId.InconsistentAccessibilityModifiers,
                             "Get accessibility must be the same as the accessibility of the property itself.",
                             peek.Location
                         );
@@ -766,7 +773,7 @@ public sealed class Parser
                 {
                     if (assignedSet)
                     {
-                        MessageCollection.Error("Repeated set specifier", peek.Location);
+                        MessageCollection.Error(MessageId.RepeatedModifier, "Repeated set specifier", peek.Location);
                     }
                     assignedSet = true;
                     Enum.TryParse(currentAccessibility, true, out set);
@@ -774,6 +781,7 @@ public sealed class Parser
                     if ((short) set > (short) get)
                     {
                         MessageCollection.Error(
+                            MessageId.InconsistentAccessibilityModifiers,
                             "Get accessibility cannot be more restrictive than set",
                             peek.Location
                         );
@@ -793,7 +801,7 @@ public sealed class Parser
                 }
                 else
                 {
-                    throw new ParseException("Expected specifier", peek);
+                    throw new ParseException(MessageId.UnexpectedToken, "Expected specifier", peek);
                 }
             }
 
@@ -804,6 +812,7 @@ public sealed class Parser
             else if (!assignedGet && assignedSet)
             {
                 MessageCollection.Error(
+                    MessageId.MissingAccessibilityModifier,
                     "Cannot have only set specifier (you must add get as well)",
                     nameToken.Location
                 );
@@ -812,6 +821,7 @@ public sealed class Parser
             if (assignedGet && !assignedSet)
             {
                 MessageCollection.Warn(
+                    MessageId.RedundantPropertyAccessibilityModifier,
                     "Don't add redundant get specifiers (missing set specifier means readonly anyway)",
                     nameToken.Location
                 );
@@ -964,6 +974,7 @@ public sealed class Parser
 
         // Cannot figure out what this is
         throw new ParseException(
+            MessageId.UnexpectedToken,
             $"Expected statement, got {_tokens.PeekToken()!.Type}",
             _tokens.GrabToken()!
         );
@@ -1050,7 +1061,7 @@ public sealed class Parser
                 break;
 
             default:
-                throw new ParseException($"Expected expression, got {next.Type}", next);
+                throw new ParseException(MessageId.UnexpectedToken, $"Expected expression, got {next.Type}", next);
         }
 
         return doNotEvaluateOperators
@@ -1080,7 +1091,7 @@ public sealed class Parser
 
                 if (right is not IndexableExpressionNode node)
                 {
-                    throw new ParseException($"Cannot index {right} expression", peek);
+                    throw new ParseException(MessageId.ExpressionNotIndexable, $"Cannot index {right} expression", peek);
                 }
 
                 node.Target = left;
@@ -1146,6 +1157,7 @@ public sealed class Parser
         else
         {
             throw new ParseException(
+                MessageId.UnexpectedToken,
                 $"Expected [ or ( after new, got {_tokens.PeekToken()!.Type}",
                 _tokens.PeekToken()!
             );
@@ -1182,7 +1194,7 @@ public sealed class Parser
             }
             else
             {
-                MessageCollection.Error($"Expected comma or ), got {next}", next.Location);
+                MessageCollection.Error(MessageId.UnexpectedToken, $"Expected comma or ), got {next}", next.Location);
             }
         }
 
@@ -1225,7 +1237,7 @@ public sealed class Parser
             }
             else if (peek.Type != TokenType.RightParen)
             {
-                throw new ParseException($"Expected comma or closing paren, got {peek}", peek);
+                throw new ParseException(MessageId.UnexpectedToken, $"Expected comma or closing paren, got {peek}", peek);
             }
         }
         Require(TokenType.RightParen);
@@ -1301,7 +1313,7 @@ public sealed class Parser
 
         if (token.Type != expected)
         {
-            MessageCollection.Error($"Expected {expected}, got {token.Type}", token.Location);
+            MessageCollection.Error(MessageId.UnexpectedToken, $"Expected {expected}, got {token.Type}", token.Location);
         }
 
         return token.Value;
@@ -1333,6 +1345,7 @@ public sealed class Parser
         {
             name = "<no_name_given>";
             MessageCollection.Error(
+                MessageId.UnexpectedToken,
                 $"Expected module name statement, got {next.Type.ToString()}",
                 next.Location
             );
@@ -1350,7 +1363,7 @@ public sealed class Parser
     {
         if (!_tokens.TryExpect(TokenType.Identifier, out Token? fail))
         {
-            MessageCollection.Error("Expected module name", fail.Location);
+            MessageCollection.Error(MessageId.UnexpectedToken, "Expected module name", fail.Location);
         }
 
         StringBuilder name = new();
@@ -1367,6 +1380,7 @@ public sealed class Parser
                 if (!_tokens.TryExpect(TokenType.Identifier, out Token? offending))
                 {
                     throw new ParseException(
+                        MessageId.UnexpectedToken,
                         $"Expected identifier in module name, got {offending.Type}",
                         offending
                     );
@@ -1449,6 +1463,7 @@ public sealed class Parser
         if (!modifiers.Contains("internal"))
         {
             MessageCollection.Warn(
+                MessageId.AlwaysSpecifyTypeVisibility,
                 "Always specify visibility. Using internal.",
                 _tokens.CurrentToken.Location
             );
@@ -1473,7 +1488,7 @@ public sealed class Parser
                 throw new CancelParsingException("Premature EOF");
             }
 
-            throw new ParseException($"Expected {expected}, got {fail.Type.ToString()}", fail);
+            throw new ParseException(MessageId.UnexpectedToken, $"Expected {expected}, got {fail.Type.ToString()}", fail);
         }
     }
 
@@ -1489,7 +1504,7 @@ public sealed class Parser
         {
             if (!allowed.Contains(mod))
             {
-                MessageCollection.Error($"Invalid modifier {mod}", errorToken.Location);
+                MessageCollection.Error(MessageId.InapplicableModifier, $"Invalid modifier {mod}", errorToken.Location);
             }
         }
     }
@@ -1512,19 +1527,20 @@ public sealed class Parser
     /// <param name="recoverConsumes">Whether or not the recover process should consume the final token.</param>
     /// <exception cref="CancelParsingException">When there are too many parse errors</exception>
     private void LogErrorAndRecover(ParseException ex, bool recoverConsumes)
-        => LogErrorAndRecover(ex.Message, ex.OffendingToken.Location, recoverConsumes);
+        => LogErrorAndRecover(ex.MessageId, ex.Message, ex.OffendingToken.Location, recoverConsumes);
 
     /// <summary>
     /// Utility method for logging parse exceptions.
     /// Recovers from errors by going to the next semicolon or right brace.
     /// </summary>
+    /// <param name="id">The ID of the message.</param>
     /// <param name="message">The message to log.</param>
     /// <param name="location">The location of the offending code.</param>
     /// <param name="recoverConsumes">Whether or not the recover process should consume the final token.</param>
     /// <exception cref="CancelParsingException">When there are too many parse errors</exception>
-    private void LogErrorAndRecover(string message, FileLocation location, bool recoverConsumes)
+    private void LogErrorAndRecover(MessageId id, string message, FileLocation location, bool recoverConsumes)
     {
-        MessageCollection.Error(message, location);
+        MessageCollection.Error(id, message, location);
 
         if (MessageCollection.Count(x => x.Fatality == MessageFatality.Severe) > 8)
         {

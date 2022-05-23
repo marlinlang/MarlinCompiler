@@ -161,7 +161,7 @@ public sealed class Lexer
                 case TokenType.Skip:
                     continue;
                 case TokenType.Invalid:
-                    MessageCollection.Error($"Invalid token: {current.Value}", current.Location);
+                    MessageCollection.Error(MessageId.InvalidCharacter, $"Invalid character: {current.Value}", current.Location);
                     continue;
                 default:
                     tokens.Add(current);

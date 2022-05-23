@@ -8,7 +8,7 @@ namespace MarlinCompiler.Frontend.SemanticAnalysis;
 /// <summary>
 /// Marlin semantic analyzer.
 /// </summary>
-public sealed partial class Analyzer
+public sealed class Analyzer
 {
     public Analyzer(IEnumerable<CompilationUnitNode> compilationUnits)
     {

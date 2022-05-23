@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Common.Symbols.Kinds;
 using MarlinCompiler.Common.Visitors;
@@ -62,10 +63,25 @@ internal sealed class MainPass : AstVisitor<None>
         }
         else
         {
-            _analyzer.MessageCollection.Error(
-                $"{(node.Target == null ? "Variable" : "Member")} '{node.MemberName}' not found",
-                node.Location
-            );
+            if (node.Target == null)
+            {
+                // Variable
+                _analyzer.MessageCollection.Error(
+                    MessageId.VariableNotFound,
+                    $"Variable or member '{node.MemberName}' not found",
+                    node.Location
+                );
+            }
+            else
+            {
+                // Member
+                _analyzer.MessageCollection.Error(
+                    MessageId.MemberNotFound,
+                    $"Member '{node.MemberName}' not found",
+                    node.Location
+                );
+            }
+
             node.SetMetadata(new TypeUsageSymbol(TypeSymbol.UnknownType));
         }
 
@@ -135,7 +151,7 @@ internal sealed class MainPass : AstVisitor<None>
         TypeUsageSymbol typeUsageSymbol = node.GetMetadata<TypeUsageSymbol>();
         if (typeUsageSymbol.Type == TypeSymbol.UnknownType)
         {
-            _analyzer.MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
+            _analyzer.MessageCollection.Error(MessageId.UnknownType, $"Unknown type {node.FullName}", node.Location);
         }
         else
         {
@@ -161,6 +177,7 @@ internal sealed class MainPass : AstVisitor<None>
                 && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
+                    MessageId.AssignedValueDoesNotMatchType,
                     "Provided value type doesn't match variable type"
                     + $"\n\tExpected: {varType.Name}"
                     + $"\n\tActual:   {typeOfExpr.Type.Name}",
@@ -208,7 +225,7 @@ internal sealed class MainPass : AstVisitor<None>
     {
         node.Type.SetMetadata(ScopeManager.CurrentScope);
         Visit(node.Type);
-        
+
         if (node.Value != null)
         {
             Visit(node.Value);
@@ -220,6 +237,7 @@ internal sealed class MainPass : AstVisitor<None>
                 && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
+                    MessageId.AssignedValueDoesNotMatchType,
                     "Provided value type doesn't match variable type"
                     + $"\n\tExpected: {varType.Name}"
                     + $"\n\tActual:   {typeOfExpr.Type.Name}",
@@ -295,12 +313,17 @@ internal sealed class MainPass : AstVisitor<None>
             if (parent.TypeReferencedStatically
                 && !methodSymbol.IsStatic)
             {
-                _analyzer.MessageCollection.Error("Cannot call non-static method on a static type.", node.Location);
+                _analyzer.MessageCollection.Error(
+                    MessageId.InstanceMethodCallOnTypeName,
+                    "Cannot call non-static method on a static type.",
+                    node.Location
+                );
             }
             else if (methodSymbol.IsStatic
                      && !parent.TypeReferencedStatically)
             {
                 _analyzer.MessageCollection.Error(
+                    MessageId.StaticMethodCallOnInstance,
                     "Cannot call static method on an instance of a non-static type.",
                     node.Location
                 );
@@ -313,6 +336,7 @@ internal sealed class MainPass : AstVisitor<None>
         // We couldn't find the method
         node.SetMetadata(new TypeUsageSymbol(TypeSymbol.UnknownType));
         _analyzer.MessageCollection.Error(
+            MessageId.MemberNotFound,
             $"Cannot find method {node.MethodName} in type {parent.Type.Name}",
             node.Location
         );

@@ -1,6 +1,6 @@
 ﻿using System.Data;
-using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Common.Symbols.Kinds;
 
@@ -13,8 +13,6 @@ public static class SemanticUtils
     /// </summary>
     public static TypeUsageSymbol TypeOfExpr(Analyzer analyzer, ExpressionNode node)
     {
-        FileLocation location = node.Location;
-
         // Expressions that don't need metadata lookups
         switch (node)
         {
@@ -30,7 +28,7 @@ public static class SemanticUtils
                 }
 
                 return new TypeUsageSymbol(
-                    GetTypeOrUnknown(analyzer, "std::Int32", location, mainPassVisitor.ScopeManager.CurrentScope)
+                    GetTypeOrUnknown("std::Int32", mainPassVisitor.ScopeManager.CurrentScope)
                 );
             }
 
@@ -67,7 +65,7 @@ public static class SemanticUtils
         {
             case TypeReferenceNode typeReferenceNode:
             {
-                TypeSymbol typeSymbol = GetTypeOrUnknown(analyzer, typeReferenceNode.FullName, location, scope);
+                TypeSymbol typeSymbol = GetTypeOrUnknown(typeReferenceNode.FullName, scope);
 
                 if (typeSymbol == TypeSymbol.UnknownType)
                 {
@@ -81,9 +79,9 @@ public static class SemanticUtils
                 return sym;
             }
 
-            case BinaryOperatorNode binaryOperatorNode:
-            case InitializerNode initializerNode:
-            case VariableAssignmentNode variableAssignmentNode:
+            case BinaryOperatorNode:
+            case InitializerNode:
+            case VariableAssignmentNode:
                 throw new NotImplementedException();
 
             default:
@@ -144,9 +142,7 @@ public static class SemanticUtils
             node.SetMetadata(
                 new TypeUsageSymbol(
                     GetTypeOrUnknown(
-                        analyzer,
                         node.FullName,
-                        node.Location,
                         node.GetMetadata<SymbolTable>()
                     )
                 )
@@ -154,7 +150,7 @@ public static class SemanticUtils
         }
         catch (NoNullAllowedException)
         {
-            analyzer.MessageCollection.Error($"Type reference not found: {node.FullName}", node.Location);
+            analyzer.MessageCollection.Error(MessageId.UnknownType, $"Type reference not found: {node.FullName}", node.Location);
         }
     }
 
@@ -175,6 +171,7 @@ public static class SemanticUtils
             if (referenceNode.GenericTypeArguments.Any())
             {
                 analyzer.MessageCollection.Error(
+                    MessageId.GenericArgsOnNonGenericType,
                     $"Cannot pass generic args to non-class type {type.ModuleName}::{type.TypeName}",
                     referenceNode.Location
                 );
@@ -191,6 +188,7 @@ public static class SemanticUtils
         if (argsCount != paramsCount)
         {
             analyzer.MessageCollection.Error(
+                MessageId.GenericArgsDoNotMatchParams,
                 $"Generic type arguments do not match the number of generic parameters. Expected {paramsCount}, got {argsCount}.",
                 referenceNode.Location
             );
@@ -210,7 +208,7 @@ public static class SemanticUtils
     /// <summary>
     /// Attempts to get a type, otherwise logs an error.
     /// </summary>
-    private static TypeSymbol GetTypeOrUnknown(Analyzer analyzer, string name, FileLocation usageLocation, SymbolTable scope)
+    private static TypeSymbol GetTypeOrUnknown(string name, SymbolTable scope)
     {
         // Find compilation unit (module)
         string[] nameSplit = name.Split("::");

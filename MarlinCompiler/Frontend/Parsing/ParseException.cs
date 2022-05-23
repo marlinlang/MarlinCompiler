@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Frontend.Lexing;
+﻿using MarlinCompiler.Common.Messages;
+using MarlinCompiler.Frontend.Lexing;
 
 namespace MarlinCompiler.Frontend.Parsing;
 
@@ -7,13 +8,19 @@ namespace MarlinCompiler.Frontend.Parsing;
 /// </summary>
 public class ParseException : Exception
 {
+    public ParseException(MessageId id, string errorMessage, Lexer.Token offendingToken) : base(errorMessage)
+    {
+        OffendingToken = offendingToken;
+        MessageId      = id;
+    }
+
     /// <summary>
     /// The token that caused the error.
     /// </summary>
     public Lexer.Token OffendingToken { get; }
 
-    public ParseException(string errorMessage, Lexer.Token offendingToken) : base(errorMessage)
-    {
-        OffendingToken = offendingToken;
-    }
+    /// <summary>
+    /// The ID of the message.
+    /// </summary>
+    public MessageId MessageId { get; }
 }

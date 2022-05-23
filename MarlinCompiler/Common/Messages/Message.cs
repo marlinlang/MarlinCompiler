@@ -25,7 +25,7 @@ public enum MessageFatality
 /// A compilation message.
 /// </summary>
 /// <param name="Content">The message itself.</param>
-public readonly record struct Message(string Content)
+public readonly record struct Message(MessageId Id, string Content)
 {
     /// <summary>
     /// The location of the cause of the message.

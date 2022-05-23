@@ -109,6 +109,9 @@ internal static class Program
                 Console.ForegroundColor = msg.PrintColor;
                 Console.Write(fatality);
 
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write($" MN{(int) msg.Id}");
+
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.Write(" at ");
 
