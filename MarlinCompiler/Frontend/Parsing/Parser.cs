@@ -278,7 +278,7 @@ public sealed class Parser
 
         Require(TokenType.Semicolon);
 
-        GetAccessibility getAccessibility = VisibilityFromModifiers(modifiers);
+        GetAccessibility getAccessibility = VisibilityFromModifiers(modifiers, MessageId.AlwaysSpecifyMemberVisibility);
         bool isStatic = modifiers.Contains("static");
         ExternMethodNode node = new(
             getAccessibility,
@@ -302,17 +302,16 @@ public sealed class Parser
     /// <summary>
     /// Expects a class definition.
     /// </summary>
-    /// <remarks><see cref="typeScope"/> is necessary for base class</remarks>
-    private ClassTypeDefinitionNode ExpectClassDefinition(SymbolTable typeScope)
+    /// <remarks><see cref="moduleScope"/> is necessary for base class</remarks>
+    private ClassTypeDefinitionNode ExpectClassDefinition(SymbolTable moduleScope)
     {
-        // TODO: Get rid of typeScope
         string[] modifiers = GrabModifiers();
 
         GrabNextByExpecting(TokenType.Class);
 
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
-        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers, MessageId.AlwaysSpecifyTypeVisibility);
 
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "static");
 
@@ -335,7 +334,7 @@ public sealed class Parser
         if (_tokens.NextIsOfType(TokenType.Colon))
         {
             _tokens.Skip(); // colon
-            baseClass = ExpectTypeName(typeScope);
+            baseClass = ExpectTypeName(moduleScope);
         }
         else if (_moduleName + "::Object" != "std::Object") // don't make the base obj inherit from itself lol
         {
@@ -407,7 +406,7 @@ public sealed class Parser
 
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
-        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers, MessageId.AlwaysSpecifyTypeVisibility);
 
         ApplyModifierFilters(modifiers, nameToken, "public", "internal");
 
@@ -471,7 +470,7 @@ public sealed class Parser
         string name = GrabNextByExpecting(TokenType.Identifier);
         string? llvmTypeName = null;
         Token nameToken = _tokens.CurrentToken;
-        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers, MessageId.AlwaysSpecifyTypeVisibility);
         bool isStatic = modifiers.Contains("static");
 
         if (!isStatic)
@@ -547,7 +546,7 @@ public sealed class Parser
         ApplyModifierFilters(modifiers, ctorToken, "public", "internal", "protected", "private");
         VariableNode[] parameters = GrabTupleTypeDefinition(typeScope);
 
-        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers, MessageId.AlwaysSpecifyMemberVisibility);
 
         ConstructorDeclarationNode node = new(
             accessibility,
@@ -594,7 +593,7 @@ public sealed class Parser
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
         VariableNode[] parameters = GrabTupleTypeDefinition(typeScope);
 
-        GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
+        GetAccessibility accessibility = VisibilityFromModifiers(modifiers, MessageId.AlwaysSpecifyMemberVisibility);
         bool isStatic = modifiers.Contains("static");
 
         MethodDeclarationNode node = new(
@@ -697,7 +696,7 @@ public sealed class Parser
         Token nameToken = _tokens.CurrentToken;
 
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
-        GetAccessibility get = VisibilityFromModifiers(modifiers);
+        GetAccessibility get = VisibilityFromModifiers(modifiers, MessageId.AlwaysSpecifyMemberVisibility);
         SetAccessibility set = SetAccessibility.NoModify;
         ExpressionNode? value = null;
 
@@ -746,7 +745,7 @@ public sealed class Parser
                     }
                     assignedGet = true;
 
-                    if (!String.Equals(currentAccessibility, get.ToString(), StringComparison.InvariantCulture))
+                    if (!String.Equals(currentAccessibility, get.ToString(), StringComparison.InvariantCultureIgnoreCase))
                     {
                         MessageCollection.Error(
                             MessageId.InconsistentAccessibilityModifiers,
@@ -890,7 +889,10 @@ public sealed class Parser
         };
 
 
-        VariableSymbol symbol = new(node);
+        VariableSymbol symbol = new(node)
+        {
+            IsInitialized = value != null
+        };
         node.SetMetadata(symbol);
 
         return node;
@@ -908,7 +910,6 @@ public sealed class Parser
         //   local variable declaration         type identifier (assign expr)? semicolon
         //   variable assignment                (accessPath dot)? identifier assign expr semicolon
         //   method call                        (accessPath dot)? identifier tuple semicolon
-        //   todo more
 
         // Empty statement
         if (_tokens.NextIsOfType(TokenType.Semicolon))
@@ -1445,7 +1446,7 @@ public sealed class Parser
     /// <summary>
     /// Understands what the visibility of a symbols is by looking at modifiers.
     /// </summary>
-    private GetAccessibility VisibilityFromModifiers(string[] modifiers)
+    private GetAccessibility VisibilityFromModifiers(string[] modifiers, MessageId codeStyleWarningCode)
     {
         if (modifiers.Contains("public"))
         {
@@ -1463,7 +1464,7 @@ public sealed class Parser
         if (!modifiers.Contains("internal"))
         {
             MessageCollection.Warn(
-                MessageId.AlwaysSpecifyTypeVisibility,
+                codeStyleWarningCode,
                 "Always specify visibility. Using internal.",
                 _tokens.CurrentToken.Location
             );

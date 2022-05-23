@@ -151,7 +151,6 @@ public sealed class Compiler
     /// </summary>
     private void Analyze(ContainerNode root)
     {
-        // TODO: Invoke semantic analyzer
         List<CompilationUnitNode> units = root.Children.ConvertAll(x => (CompilationUnitNode) x);
         Analyzer analyzer = new(units);
         analyzer.Analyze();
@@ -203,8 +202,10 @@ public sealed class Compiler
     /// <returns>Whether the stdlib directory exists.</returns>
     private static bool IsStdLibPresent()
     {
-        // TODO: When LLVM compilation is done, this method should do more extensive checks.
-        // TODO: The stdlib should be provided in a custom package format.
+        /*
+         * TODO: When LLVM compilation is done, this method should do more extensive checks.
+         *       The stdlib should be provided in a custom package format.
+         */
 
         return Directory.Exists(GetStdLibPath());
     }

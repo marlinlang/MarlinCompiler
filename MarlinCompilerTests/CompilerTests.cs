@@ -15,25 +15,24 @@ public class CompilerModulesTests
     [Test]
     public void Lexing()
     {
-        /*
-         TODO Fix this test
+        FileLocation location = new("test.marlin");
         Lexer.Token[] expected =
         {
-            new(TokenType.Modifier, "public", default),
-            new(TokenType.Modifier, "static", default),
-            new(TokenType.Void, "void", default),
-            new(TokenType.Identifier, "Main", default),
-            new(TokenType.LeftParen, "(", default),
-            new(TokenType.RightParen, ")", default),
-            new(TokenType.LeftBrace, "{", default),
-            new(TokenType.Identifier, "std", default),
-            new(TokenType.DoubleColon, "::", default),
-            new(TokenType.Identifier, "Int32", default),
-            new(TokenType.Identifier, "number", default),
-            new(TokenType.Assign, "=", default),
-            new(TokenType.String, "string", default),
-            new(TokenType.Semicolon, ";", default),
-            new(TokenType.RightBrace, "}", default),
+            new(TokenType.Modifier, "public", location),
+            new(TokenType.Modifier, "static", location),
+            new(TokenType.Void, "void", location),
+            new(TokenType.Identifier, "Main", location),
+            new(TokenType.LeftParen, "(", location),
+            new(TokenType.RightParen, ")", location),
+            new(TokenType.LeftBrace, "{", location),
+            new(TokenType.Identifier, "std", location),
+            new(TokenType.DoubleColon, "::", location),
+            new(TokenType.Identifier, "Int32", location),
+            new(TokenType.Identifier, "number", location),
+            new(TokenType.Assign, "=", location),
+            new(TokenType.String, "string", location),
+            new(TokenType.Semicolon, ";", location),
+            new(TokenType.RightBrace, "}", location),
         };
 
         Lexer lexer = new(
@@ -52,7 +51,6 @@ public class CompilerModulesTests
         {
             Assert.AreEqual(expected[i], tokens[i], $"Token {i + 1} does not match expected token.");
         }
-        */
     }
 
     [Test]

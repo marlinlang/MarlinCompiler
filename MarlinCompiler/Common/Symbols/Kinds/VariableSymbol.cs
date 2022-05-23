@@ -4,14 +4,21 @@ namespace MarlinCompiler.Common.Symbols.Kinds;
 
 public class VariableSymbol : NamedSymbol
 {
+    public static readonly VariableSymbol UnknownVariable = new(new VariableNode(null!, "<unknown>", null));
+    
     public VariableSymbol(VariableNode node) : base(node.Name)
     {
-        Type = null;
+        Type          = new TypeUsageSymbol(TypeSymbol.UnknownType);
+        IsInitialized = true;
     }
 
     /// <summary>
     /// The type of the property.
     /// </summary>
-    /// <remarks>Null by default.</remarks>
-    public TypeUsageSymbol? Type { get; set; }
+    public TypeUsageSymbol Type { get; set; }
+
+    /// <summary>
+    /// For local variables, this should be false, until a value is assigned.
+    /// </summary>
+    public bool IsInitialized { get; set; }
 }

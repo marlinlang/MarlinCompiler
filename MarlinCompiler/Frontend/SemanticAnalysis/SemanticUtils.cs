@@ -47,13 +47,25 @@ public static class SemanticUtils
         {
             throw new NoNullAllowedException("Node must have metadata");
         }
-
+        
+        TypeSymbol? type = null;
         if (!node.MetadataIs<TypeUsageSymbol>())
         {
-            throw new InvalidOperationException("Expressions must have a TypeUsageSymbol as their metadata.");
+            if (node is VariableAssignmentNode variableAssignmentNode)
+            {
+                // This is a variable assignment, so the type of the variable is the type of the expression
+                type = variableAssignmentNode.GetMetadata<VariableSymbol>().Type.Type;
+            }
+            else
+            {
+                throw new InvalidOperationException("Expressions must have a TypeUsageSymbol as their metadata.");
+            }
+        }
+        else if (type == null)
+        {
+            type = node.GetMetadata<TypeUsageSymbol>().Type;
         }
 
-        TypeSymbol type = node.GetMetadata<TypeUsageSymbol>().Type;
         if (type == TypeSymbol.UnknownType)
         {
             return new TypeUsageSymbol(TypeSymbol.UnknownType);
@@ -79,9 +91,12 @@ public static class SemanticUtils
                 return sym;
             }
 
-            case BinaryOperatorNode:
-            case InitializerNode:
             case VariableAssignmentNode:
+            {
+                return node.GetMetadata<VariableSymbol>().Type;
+            }
+
+            case BinaryOperatorNode:
                 throw new NotImplementedException();
 
             default:
