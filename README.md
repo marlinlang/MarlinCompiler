@@ -1,9 +1,15 @@
 # The Marlin Compiler
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/marlinlang/MarlinCompiler/.NET)
+![GitHub License](https://img.shields.io/github/license/marlinlang/MarlinCompiler)
+![GitHub top language](https://img.shields.io/github/languages/top/marlinlang/MarlinCompiler)
+
 
 Marlin is a compiled, statically/strongly typed & no-undefined-behaviours programming language designed for general
 purpose use. The language focuses itself on being as explicit as possible.
 
 This is the repository of the official compiler for the language.
+
+***This project is in WIP stages!***
 
 ---
 
@@ -28,3 +34,15 @@ public static class Program {
 ```
 
 More examples can be found in the `examples/` directory of the repo.
+
+## Roadmap
+
+- [X] Lexing/parsing
+- [ ] Semantic analysis - **current**
+- [ ] Code generation
+- [ ] Code optimization
+- [ ] Documentation
+- [ ] LSP (Language Server Protocol) implementation
+- [ ] IDE integrations (vscode, sublime, etc)
+- [ ] Unit tests
+- [ ] Code coverage
