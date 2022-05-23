@@ -16,6 +16,7 @@ public class CompilerModulesTests
     public void Lexing()
     {
         /*
+         TODO Fix this test
         Lexer.Token[] expected =
         {
             new(TokenType.Modifier, "public", default),

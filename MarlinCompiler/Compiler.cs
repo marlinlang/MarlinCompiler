@@ -2,6 +2,7 @@
 using System.Reflection;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Messages;
+using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Frontend.Lexing;
 using MarlinCompiler.Frontend.Parsing;
 using MarlinCompiler.Frontend.SemanticAnalysis;
@@ -84,6 +85,7 @@ public sealed class Compiler
     private ContainerNode Parse()
     {
         ContainerNode root = new();
+        SymbolTable rootScope = new(null);
 
         ConcurrentBag<CompilationUnitNode> compilationUnits = new();
 
@@ -124,6 +126,7 @@ public sealed class Compiler
                 }
 
                 existingUnit.Children.AddRange(unit);
+                existingUnit.GetMetadata<SymbolTable>().TakeSymbolsFrom(unit.GetMetadata<SymbolTable>());
                 found = true;
                 break;
             }
@@ -132,6 +135,12 @@ public sealed class Compiler
             {
                 root.Children.Add(unit);
             }
+        }
+        
+        foreach (Node node in root)
+        {
+            CompilationUnitNode unit = (CompilationUnitNode) node;
+            rootScope.AddSymbol(unit.GetMetadata<SymbolTable>());
         }
 
         return root;

@@ -82,6 +82,7 @@ public sealed class Parser
         CompilationUnitNode node = new(name, _compilationUnitDependencies.ToArray());
         ModuleSymbol symbol = new(node);
         SymbolTable scope = new(null, symbol);
+        symbol.SymbolTable = scope;
         List<Node> children = new();
 
         try

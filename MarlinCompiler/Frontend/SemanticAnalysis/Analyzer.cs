@@ -49,6 +49,9 @@ public sealed partial class Analyzer
         foreach (CompilationUnitNode compilationUnit in _compilationUnits)
         {
             UseVisitor(declarationsPass, compilationUnit);
+        }
+        foreach (CompilationUnitNode compilationUnit in _compilationUnits)
+        {
             UseVisitor(mainPass, compilationUnit);
         }
     }

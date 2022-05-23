@@ -75,7 +75,10 @@ public sealed partial class Analyzer
 
         public override None ClassDefinition(ClassTypeDefinitionNode node)
         {
-            node.BaseType ??= new TypeReferenceNode("std::Object", Array.Empty<TypeReferenceNode>());
+            node.BaseType ??= new TypeReferenceNode("std::Object", Array.Empty<TypeReferenceNode>())
+            {
+                Location = node.Location
+            };
 
             // give the metadata to type ref so it can find the symbol
             node.BaseType.SetMetadata(node.GetMetadata<SymbolTable>());
@@ -128,6 +131,11 @@ public sealed partial class Analyzer
         public override None TypeReference(TypeReferenceNode node)
         {
             SemanticUtils.SetTypeRefMetadata(_analyzer, node);
+
+            if (node.GetMetadata<TypeSymbol>() == TypeSymbol.UnknownType)
+            {
+                _analyzer.MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
+            }
 
             return None.Null;
         }

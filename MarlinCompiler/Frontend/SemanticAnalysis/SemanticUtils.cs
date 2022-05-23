@@ -126,17 +126,7 @@ public static class SemanticUtils
 
         try
         {
-            SymbolTable symbolTable = node.GetMetadata<SymbolTable>();
-            if (symbolTable.TryLookupSymbol(node.FullName, out ISymbol symbol))
-            {
-                node.SetMetadata(symbol);
-            }
-            else
-            {
-                analyzer.MessageCollection.Error($"Could not find type '{node.FullName}'", node.Location);
-
-                node.SetMetadata(TypeSymbol.UnknownType);
-            }
+            node.SetMetadata(GetTypeOrUnknown(analyzer, node.FullName, node.Location, node.GetMetadata<SymbolTable>()));
         }
         catch (NoNullAllowedException)
         {
@@ -198,18 +188,20 @@ public static class SemanticUtils
     /// </summary>
     private static TypeSymbol GetTypeOrUnknown(Analyzer analyzer, string name, FileLocation usageLocation, SymbolTable scope)
     {
-        if (!scope.TryLookupSymbol(name, out ISymbol? symbol))
+        // Find compilation unit (module)
+        string[] nameSplit = name.Split("::");
+        string moduleName = String.Join("::", nameSplit[..^1]);
+
+        // Find module
+        if (!scope.TryLookupSymbol(moduleName, out ModuleSymbol module))
         {
-            analyzer.MessageCollection.Error($"Unknown type {name}", usageLocation);
             return TypeSymbol.UnknownType;
         }
 
-        if (symbol is not TypeSymbol typeSymbol)
-        {
-            analyzer.MessageCollection.Error($"{name} is not a type and cannot be used as such", usageLocation);
-            return TypeSymbol.UnknownType;
-        }
-
-        return typeSymbol;
+        // Find type
+        // the Name of types is the mod::typeName, not just the type name
+        return !module.SymbolTable.TryLookupSymbol(name, out TypeSymbol type)
+                   ? TypeSymbol.UnknownType
+                   : type;
     }
 }

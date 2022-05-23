@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System.Collections.Immutable;
+using System.Data;
 using MarlinCompiler.Common.Symbols.Kinds;
 
 namespace MarlinCompiler.Common.Symbols;
@@ -159,5 +160,18 @@ public sealed class SymbolTable
 
         symbolTable.ParentTable = this;
         _childTables.Add(symbolTable);
+    }
+
+    /// <summary>
+    /// Takes ownership of all symbols from the other table.
+    /// </summary>
+    /// <param name="other">The table to work with.</param>
+    public void TakeSymbolsFrom(SymbolTable other)
+    {
+        foreach (SymbolTable child in other._childTables.ToImmutableArray())
+        {
+            other._childTables.Remove(child);
+            AddSymbol(child);
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using MarlinCompiler.Common.AbstractSyntaxTree;
+﻿using System.Data;
+using MarlinCompiler.Common.AbstractSyntaxTree;
 
 namespace MarlinCompiler.Common.Symbols.Kinds;
 
@@ -18,4 +19,18 @@ public sealed class ModuleSymbol : NamedSymbol
     /// <remarks>By default, this is an empty array with the size of the dependency array
     /// of the module node that was used to create this symbol.</remarks>
     public ModuleSymbol[] Dependencies { get; }
+
+    /// <summary>
+    /// The symbol table of the module.
+    /// </summary>
+    public SymbolTable SymbolTable
+    {
+        get => _symbolTable ?? throw new NoNullAllowedException();
+        set => _symbolTable = value;
+    }
+    
+    /// <summary>
+    /// Backing field for the <see cref="SymbolTable"/> property.
+    /// </summary>
+    private SymbolTable? _symbolTable;
 }
