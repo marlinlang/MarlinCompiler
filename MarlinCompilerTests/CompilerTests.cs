@@ -4,7 +4,6 @@ using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Common.Symbols.Kinds;
-using MarlinCompiler.Frontend;
 using MarlinCompiler.Frontend.Lexing;
 using MarlinCompiler.Frontend.Parsing;
 using NUnit.Framework;

@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Runtime.CompilerServices;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Symbols;
@@ -24,11 +23,6 @@ public static class SemanticUtils
             throw new InvalidOperationException("Expressions must have a scope (symbol table) as their metadata.");
         }
 
-        if (node.Location == null)
-        {
-            throw new NoNullAllowedException("Expression node doesn't have a location");
-        }
-
         TypeSymbol type = node.GetMetadata<TypeUsageSymbol>().Type;
         if (type == TypeSymbol.UnknownType)
         {
@@ -36,7 +30,7 @@ public static class SemanticUtils
         }
 
         SymbolTable scope = type.SymbolTable;
-        FileLocation location = (FileLocation) node.Location;
+        FileLocation location = node.Location;
 
         switch (node)
         {

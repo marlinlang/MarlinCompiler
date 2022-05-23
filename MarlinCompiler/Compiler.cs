@@ -1,9 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Reflection;
-using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Messages;
-using MarlinCompiler.Frontend;
 using MarlinCompiler.Frontend.Lexing;
 using MarlinCompiler.Frontend.Parsing;
 using MarlinCompiler.Frontend.SemanticAnalysis;
@@ -28,13 +26,7 @@ public sealed class Compiler
 
         _outPath = outPath ?? Path.Combine(Path.GetDirectoryName(rootPath)!, "out/");
 
-        string? mdkPath = Environment.GetEnvironmentVariable("MDK");
-        if (mdkPath != null)
-        {
-            LoadFilePaths(mdkPath);
-        }
-
-        LoadFilePaths(rootPath);
+        _filePaths.AddRange(Directory.GetFiles(rootPath, "*.mn", SearchOption.AllDirectories));
     }
 
     /// <summary>
@@ -95,6 +87,8 @@ public sealed class Compiler
 
         ConcurrentBag<CompilationUnitNode> compilationUnits = new();
 
+        _filePaths.AddRange(Directory.GetFiles(GetStdLibPath(), "*.mn", SearchOption.AllDirectories));
+        
         Parallel.ForEach(
             _filePaths,
             path =>
@@ -171,33 +165,6 @@ public sealed class Compiler
     #region Utilities
 
     /// <summary>
-    /// This method adds .mn files to the internal list of file paths for compilation.
-    /// </summary>
-    /// <param name="fromRoot">The directory to inspect.
-    /// Its subdirectories will be included as well.</param>
-    private void LoadFilePaths(string fromRoot)
-    {
-        fromRoot = Path.GetFullPath(fromRoot);
-
-        // Handle path is a file
-        if (File.Exists(fromRoot))
-        {
-            if (Path.GetExtension(fromRoot) == ".mn")
-            {
-                _filePaths.Add(fromRoot);
-            }
-
-            return;
-        }
-
-        // Handle directories
-        foreach (string dir in Directory.GetFileSystemEntries(fromRoot))
-        {
-            LoadFilePaths(dir);
-        }
-    }
-
-    /// <summary>
     /// Returns the appropriate return code.
     /// </summary>
     private int GetReturnCode()
@@ -230,13 +197,19 @@ public sealed class Compiler
         // TODO: When LLVM compilation is done, this method should do more extensive checks.
         // TODO: The stdlib should be provided in a custom package format.
 
-        string stdLibPath = Path.Combine(
+        return Directory.Exists(GetStdLibPath());
+    }
+
+    /// <summary>
+    /// Retrieves the path to the standard library.
+    /// </summary>
+    private static string GetStdLibPath()
+    {
+        return Path.Combine(
             Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? throw new InvalidOperationException(),
             "stdlib.marlin"
         );
-
-        return Directory.Exists(stdLibPath);
     }
-
+    
     #endregion
 }

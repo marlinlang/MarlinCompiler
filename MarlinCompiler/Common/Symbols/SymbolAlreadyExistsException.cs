@@ -1,6 +1,4 @@
-﻿using MarlinCompiler.Frontend.Parsing;
-
-namespace MarlinCompiler.Common.Symbols;
+﻿namespace MarlinCompiler.Common.Symbols;
 
 /// <summary>
 /// Thrown when a symbol name already exists in a table.

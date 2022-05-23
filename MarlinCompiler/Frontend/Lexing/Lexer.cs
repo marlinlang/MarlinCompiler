@@ -1,9 +1,7 @@
-﻿using System.Runtime.CompilerServices;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.Messages;
-using Ubiquity.NET.Llvm.Values;
 
 namespace MarlinCompiler.Frontend.Lexing;
 

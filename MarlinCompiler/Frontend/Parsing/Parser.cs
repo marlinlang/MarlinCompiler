@@ -125,12 +125,7 @@ public sealed class Parser
             }
             catch (SymbolNameAlreadyExistsException ex)
             {
-                if (childNode.Location == null)
-                {
-                    throw new NoNullAllowedException("Types must report their location");
-                }
-
-                LogErrorAndRecover(ex.Message, (FileLocation) childNode.Location, true);
+                LogErrorAndRecover(ex.Message, childNode.Location, true);
             }
         }
         node.SetMetadata(scope);
@@ -1259,7 +1254,7 @@ public sealed class Parser
 
                 // This ! is required!!! The program will sometimes not compile without it.
                 // ReSharper disable once RedundantSuppressNullableWarningExpression
-                dependencies.Add((GrabModuleName(), (FileLocation) location!));
+                dependencies.Add((GrabModuleName(), location!));
             }
             catch (ParseException ex)
             {

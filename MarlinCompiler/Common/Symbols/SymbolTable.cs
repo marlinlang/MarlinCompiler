@@ -1,5 +1,4 @@
-﻿using System.CommandLine.Help;
-using System.Data;
+﻿using System.Data;
 using MarlinCompiler.Common.Symbols.Kinds;
 
 namespace MarlinCompiler.Common.Symbols;

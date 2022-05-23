@@ -45,19 +45,21 @@ public sealed partial class Analyzer
             // Properties
             if (owner.TryLookupSymbol(node.MemberName, out ISymbol symbol))
             {
-                node.SetMetadata(symbol switch
-                {
-                    // Property
-                    PropertySymbol propertySymbol => new TypeUsageSymbol(propertySymbol.Type!.Type),
-                    
-                    // Method
-                    MethodSymbol methodSymbol => new TypeUsageSymbol(methodSymbol.ReturnType!.Type),
-                    
-                    // Variable/arg
-                    VariableSymbol variableSymbol => new TypeUsageSymbol(variableSymbol.Type!.Type),
-                    
-                    _ => throw new NotImplementedException()
-                });
+                node.SetMetadata(
+                    symbol switch
+                    {
+                        // Property
+                        PropertySymbol propertySymbol => new TypeUsageSymbol(propertySymbol.Type!.Type),
+
+                        // Method
+                        MethodSymbol methodSymbol => new TypeUsageSymbol(methodSymbol.ReturnType!.Type),
+
+                        // Variable/arg
+                        VariableSymbol variableSymbol => new TypeUsageSymbol(variableSymbol.Type!.Type),
+
+                        _ => throw new NotImplementedException()
+                    }
+                );
             }
             else
             {
@@ -143,7 +145,10 @@ public sealed partial class Analyzer
                 TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
                 if (SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
                 {
-                    _analyzer.MessageCollection.Error("Provided value type doesn't match property type", node.Location);
+                    _analyzer.MessageCollection.Error(
+                        "Provided value type doesn't match property type",
+                        node.Location
+                    );
                 }
             }
 
@@ -174,7 +179,7 @@ public sealed partial class Analyzer
 
         public override None ExternMethodMapping(ExternMethodNode node)
         {
-            throw new NotImplementedException();
+            return None.Null;
         }
 
         public override None ConstructorDeclaration(ConstructorDeclarationNode node)
@@ -192,7 +197,10 @@ public sealed partial class Analyzer
                 TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
                 if (SemanticUtils.IsAssignable(_analyzer, propertyType, typeOfExpr))
                 {
-                    _analyzer.MessageCollection.Error("Provided value type doesn't match variable type", node.Location);
+                    _analyzer.MessageCollection.Error(
+                        "Provided value type doesn't match variable type",
+                        node.Location
+                    );
                 }
             }
 

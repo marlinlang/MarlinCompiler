@@ -11,7 +11,11 @@ public abstract class Node
     /// <summary>
     /// The location of the source representation of the node.
     /// </summary>
-    public FileLocation? Location { get; init; }
+    public FileLocation Location
+    {
+        get => _location ?? throw new InvalidOperationException("Node doesn't have a location");
+        set => _location = value;
+    }
 
     /// <summary>
     /// Whether the node has metadata.
@@ -22,6 +26,11 @@ public abstract class Node
     /// The metadata for the node.
     /// </summary>
     private object? _metadata;
+    
+    /// <summary>
+    /// The location of the node.
+    /// </summary>
+    private FileLocation? _location;
 
     /// <summary>
     /// Accesses the metadata for a node.

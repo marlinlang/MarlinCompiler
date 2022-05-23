@@ -1,5 +1,4 @@
-﻿using System.Xml.Serialization;
-using MarlinCompiler.Common;
+﻿using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Common.Symbols.Kinds;
