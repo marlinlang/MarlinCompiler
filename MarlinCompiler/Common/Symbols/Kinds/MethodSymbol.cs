@@ -24,7 +24,7 @@ public class MethodSymbol : NamedSymbol
     /// The return type of the method.
     /// </summary>
     /// <remarks>This is null by default. Semantic analysis is expected to fill it in.</remarks>
-    public TypeUsageSymbol? ReturnType { get; }
+    public TypeUsageSymbol? ReturnType { get; set; }
     
     /// <summary>
     /// Whether the method is static.

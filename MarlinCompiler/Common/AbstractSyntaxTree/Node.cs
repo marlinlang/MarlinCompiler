@@ -35,7 +35,8 @@ public abstract class Node
     {
         null => throw new NoNullAllowedException("The metadata for this node is empty."),
         TMetadata metadata => metadata,
-        _ => throw new ArgumentException("Generic type passed to GetMetadata does not match the actual type of the metadata")
+        _ => throw new ArgumentException("Generic type passed to GetMetadata does not match the actual type of the metadata. "
+                                         + $"Expected {typeof(TMetadata).Name}, got {_metadata.GetType().Name}.")
     };
 
     /// <summary>

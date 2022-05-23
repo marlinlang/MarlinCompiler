@@ -147,7 +147,6 @@ public class CompilerModulesTests
         modSymTbl.AddSymbol(clsSymTbl);
         
         modSymTbl.LookupSymbol<ClassTypeSymbol>(x => x is ClassTypeSymbol cls && cls.TypeName == clsSym.TypeName);
-        modSymTbl.LookupSymbol<ClassTypeSymbol>(clsSym.GetHashCode());
         Assert.Catch(() => modSymTbl.LookupSymbol<ClassTypeSymbol>(_ => false));
     }
 }

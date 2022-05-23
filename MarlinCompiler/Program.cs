@@ -1,7 +1,6 @@
 ﻿using System.CommandLine;
 using System.CommandLine.NamingConventionBinder;
-using MarlinCompiler.Common;
-using MarlinCompiler.Common.Symbols;
+using MarlinCompiler.Common.Messages;
 
 namespace MarlinCompiler;
 
@@ -41,10 +40,42 @@ internal static class Program
         Compiler compiler = new(path);
 
         int returnCode = compiler.Compile(analyzeOnly);
-        int msgCount = compiler.MessageCollection.Count();
-        bool fail = compiler.MessageCollection.HasFatalErrors;
 
-        // Crazy output time
+        if (returnCode == 3)
+        {
+            // No stdlib
+            PrintNoStdLib();
+            return returnCode;
+        }
+        else
+        {
+            PrintMessages(compiler.MessageCollection, verbose, path);
+        }
+
+        return returnCode;
+    }
+
+    private static void PrintNoStdLib()
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.Write("Marlin build failed with FATAL ERROR: ");
+
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("No standard library found!");
+
+        Console.WriteLine();
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("This usually indicates a broken compiler installation. Please reinstall the Marlin compiler.");
+
+        Console.ResetColor();
+    }
+
+    private static void PrintMessages(MessageCollection collection, bool verbose, string projectPath)
+    {
+        int msgCount = collection.Count();
+        bool fail = collection.HasFatalErrors;
+
         Console.ForegroundColor = ConsoleColor.White;
         Console.Write("Marlin build ");
 
@@ -54,15 +85,15 @@ internal static class Program
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine($" with {msgCount} message{(msgCount == 1 ? "" : 's')}{(msgCount == 0 ? "" : ':')}");
 
-        foreach (Message msg in compiler.MessageCollection)
+        foreach (Message msg in collection)
         {
             string location = msg.Location?.ToString() ?? "";
 
             // Shorter file paths
             if (!verbose
-                && location.StartsWith(path))
+                && location.StartsWith(projectPath))
             {
-                location = location[path.Length..];
+                location = location[projectPath.Length ..];
             }
 
             string fatality = msg.Fatality switch
@@ -99,7 +130,5 @@ internal static class Program
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("   | " + msg.Content.Replace("\n", "\n   : "));
         }
-
-        return returnCode;
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
 
-namespace MarlinCompiler.Common;
+namespace MarlinCompiler.Common.Messages;
 
 /// <summary>
 /// Utility class for managing a collection of compilation messages.
@@ -13,7 +13,7 @@ public class MessageCollection : IEnumerable<Message>
         _messages = new ConcurrentBag<Message>();
     }
 
-    private ConcurrentBag<Message> _messages;
+    private readonly ConcurrentBag<Message> _messages;
 
     public bool HasFatalErrors => _messages.Any(x => x.Fatality == MessageFatality.Severe);
 

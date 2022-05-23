@@ -2,6 +2,7 @@
 using System.Text;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Common.Symbols.Kinds;
 using MarlinCompiler.Frontend.Lexing;
@@ -77,6 +78,10 @@ public sealed class Parser
         string name = GrabModuleDirective();
         _moduleName = name;
 
+        // Create node & symbol
+        CompilationUnitNode node = new(name, _compilationUnitDependencies.ToArray());
+        ModuleSymbol symbol = new(node);
+        SymbolTable scope = new(null, symbol);
         List<Node> children = new();
 
         try
@@ -85,7 +90,7 @@ public sealed class Parser
             {
                 try
                 {
-                    Node? child = ExpectTypeDefinition();
+                    Node? child = ExpectTypeDefinition(scope);
 
                     if (child != null)
                     {
@@ -103,12 +108,8 @@ public sealed class Parser
             MessageCollection.Info($"Parsing cancelled: {ex.Message}", new FileLocation(_path));
         }
 
-        CompilationUnitNode node = new(name, _compilationUnitDependencies.ToArray());
         node.Children.AddRange(children);
 
-        // Create symbol
-        ModuleSymbol symbol = new(node);
-        SymbolTable scope = new(null, symbol);
         foreach (Node childNode in children)
         {
             if (!childNode.HasMetadata)
@@ -141,7 +142,7 @@ public sealed class Parser
     /// Expects a type definition.
     /// </summary>
     /// <returns>Null for EOF, otherwise the node of the type def.</returns>
-    private TypeDefinitionNode? ExpectTypeDefinition()
+    private TypeDefinitionNode? ExpectTypeDefinition(SymbolTable scope)
     {
         Token? next = _tokens.PeekNextTokenBySkipping(TokenType.Modifier, 0);
 
@@ -152,7 +153,7 @@ public sealed class Parser
 
         return next.Type switch
         {
-            TokenType.Class  => ExpectClassDefinition(),
+            TokenType.Class  => ExpectClassDefinition(scope),
             TokenType.Struct => ExpectStructDefinition(),
             TokenType.Extern => ExpectExternTypeDefinition(),
             _                => throw new ParseException($"Expected type definition, got {next.Type} ('{next.Value}')", next)
@@ -162,7 +163,7 @@ public sealed class Parser
     /// <summary>
     /// Expects a type body, including the braces.
     /// </summary>
-    private ContainerNode ExpectTypeBody()
+    private ContainerNode ExpectTypeBody(SymbolTable typeScope)
     {
         ContainerNode bodyNode = new();
 
@@ -171,7 +172,7 @@ public sealed class Parser
         {
             try
             {
-                Node child = ExpectTypeMember();
+                Node child = ExpectTypeMember(typeScope);
                 bodyNode.Children.Add(child);
             }
             catch (ParseException ex)
@@ -188,7 +189,7 @@ public sealed class Parser
     /// Expects a body for an extern type, including the braces.
     /// An extern body consists of method mappings.
     /// </summary>
-    private ContainerNode ExpectExternTypeBody()
+    private ContainerNode ExpectExternTypeBody(SymbolTable scope)
     {
         ContainerNode bodyNode = new();
 
@@ -197,7 +198,7 @@ public sealed class Parser
         {
             try
             {
-                Node child = ExpectExternMethod();
+                Node child = ExpectExternMethod(scope);
 
                 bodyNode.Children.Add(child);
             }
@@ -214,7 +215,7 @@ public sealed class Parser
     /// <summary>
     /// Expects a type member (i.e. property or method)
     /// </summary>
-    private Node ExpectTypeMember()
+    private Node ExpectTypeMember(SymbolTable typeScope)
     {
         // We gotta look a bit ahead to understand what this actually is
         // We'll cheat: we'll make a new parser and a new Tokens instance
@@ -232,29 +233,22 @@ public sealed class Parser
         if (tempParser._tokens.NextIsOfType(TokenType.Constructor))
         {
             // Constructor!
-            return ExpectConstructor();
+            return ExpectConstructor(typeScope);
         }
 
-        tempParser.ExpectTypeName();                          // don't care about this either
+        tempParser.ExpectTypeName(new SymbolTable(null));     // don't care about this either
         tempParser.GrabNextByExpecting(TokenType.Identifier); // nope
 
         // and now we can just check if the next token is a left paren
-        if (tempParser._tokens.NextIsOfType(TokenType.LeftParen))
-        {
-            // Method!
-            return ExpectMethodDeclaration();
-        }
-        else
-        {
-            // Property! (probably, it'll handle validation itself)
-            return ExpectPropertyDeclaration();
-        }
+        return tempParser._tokens.NextIsOfType(TokenType.LeftParen)
+                   ? ExpectMethodDeclaration(new SymbolTable(null))
+                   : ExpectPropertyDeclaration(new SymbolTable(null));
     }
 
     /// <summary>
     /// Expects an extern method or constructor mapping.
     /// </summary>
-    private Node ExpectExternMethod()
+    private Node ExpectExternMethod(SymbolTable typeScope)
     {
         string[] modifiers = GrabModifiers();
         TypeReferenceNode type;
@@ -268,19 +262,19 @@ public sealed class Parser
         }
         else
         {
-            type = ExpectTypeName();
+            type = ExpectTypeName(typeScope);
             name = GrabNextByExpecting(TokenType.Identifier);
         }
 
         Token nameToken = _tokens.CurrentToken;
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
-        VariableNode[] expectedArgs = GrabTupleTypeDefinition();
+        VariableNode[] expectedArgs = GrabTupleTypeDefinition(typeScope);
 
         GrabNextByExpecting(TokenType.Arrow);
         GrabNextByExpecting(TokenType.At);
 
         GrabNextByExpecting(TokenType.Identifier);
-        ExpressionNode[] passedArgs = GrabTupleValues();
+        ExpressionNode[] passedArgs = GrabTupleValues(typeScope);
 
         Require(TokenType.Semicolon);
 
@@ -308,8 +302,10 @@ public sealed class Parser
     /// <summary>
     /// Expects a class definition.
     /// </summary>
-    private ClassTypeDefinitionNode ExpectClassDefinition()
+    /// <remarks><see cref="typeScope"/> is necessary for base class</remarks>
+    private ClassTypeDefinitionNode ExpectClassDefinition(SymbolTable typeScope)
     {
+        // TODO: Get rid of typeScope
         string[] modifiers = GrabModifiers();
 
         GrabNextByExpecting(TokenType.Class);
@@ -339,7 +335,7 @@ public sealed class Parser
         if (_tokens.NextIsOfType(TokenType.Colon))
         {
             _tokens.Skip(); // colon
-            baseClass = ExpectTypeName();
+            baseClass = ExpectTypeName(typeScope);
         }
         else if (_moduleName + "::Object" != "std::Object") // don't make the base obj inherit from itself lol
         {
@@ -359,13 +355,15 @@ public sealed class Parser
             Location = nameToken.Location
         };
 
-        // Add type body
-        ContainerNode typeBody = ExpectTypeBody();
-        classNode.Children.AddRange(typeBody);
-
         // Create symbol
         ClassTypeSymbol symbol = new(classNode);
         SymbolTable scope = new(null, symbol);
+        symbol.SymbolTable = scope;
+
+        // Add type body
+        ContainerNode typeBody = ExpectTypeBody(scope);
+        classNode.Children.AddRange(typeBody);
+
         foreach (Node childNode in typeBody)
         {
             // Types have members, which are symbols (properties) OR tables (methods)
@@ -392,6 +390,7 @@ public sealed class Parser
                 MessageCollection.Error(ex.Message, childNode.Location);
             }
         }
+
         classNode.SetMetadata(scope);
 
         return classNode;
@@ -421,13 +420,15 @@ public sealed class Parser
             Location = nameToken.Location
         };
 
-        // Type body
-        ContainerNode typeBody = ExpectTypeBody();
-        structNode.Children.AddRange(typeBody);
-
         // Create symbol
         StructTypeSymbol symbol = new(structNode);
         SymbolTable scope = new(null, symbol);
+        symbol.SymbolTable = scope;
+
+        // Type body
+        ContainerNode typeBody = ExpectTypeBody(scope);
+        structNode.Children.AddRange(typeBody);
+
         foreach (Node childNode in typeBody)
         {
             try
@@ -494,13 +495,15 @@ public sealed class Parser
             Location = nameToken.Location
         };
 
-        // Type body
-        ContainerNode typeBody = ExpectExternTypeBody();
-        externTypeNode.Children.AddRange(typeBody.Children);
-
         // Create symbol
         ExternTypeSymbol symbol = new(externTypeNode);
         SymbolTable scope = new(null, symbol);
+        symbol.SymbolTable = scope;
+
+        // Type body
+        ContainerNode typeBody = ExpectExternTypeBody(scope);
+        externTypeNode.Children.AddRange(typeBody.Children);
+
         foreach (Node childNode in typeBody)
         {
             // Types have members, which are symbols (properties) OR tables (methods)
@@ -534,14 +537,14 @@ public sealed class Parser
     /// <summary>
     /// Expects a constructor declaration.
     /// </summary>
-    private ConstructorDeclarationNode ExpectConstructor()
+    private ConstructorDeclarationNode ExpectConstructor(SymbolTable typeScope)
     {
         string[] modifiers = GrabModifiers();
         GrabNextByExpecting(TokenType.Constructor);
         Token ctorToken = _tokens.CurrentToken;
 
         ApplyModifierFilters(modifiers, ctorToken, "public", "internal", "protected", "private");
-        VariableNode[] parameters = GrabTupleTypeDefinition();
+        VariableNode[] parameters = GrabTupleTypeDefinition(typeScope);
 
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
 
@@ -581,14 +584,14 @@ public sealed class Parser
     /// <summary>
     /// Expects a method declaration. 
     /// </summary>
-    private MethodDeclarationNode ExpectMethodDeclaration()
+    private MethodDeclarationNode ExpectMethodDeclaration(SymbolTable typeScope)
     {
         string[] modifiers = GrabModifiers();
-        TypeReferenceNode type = ExpectTypeName();
+        TypeReferenceNode type = ExpectTypeName(typeScope);
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ApplyModifierFilters(modifiers, nameToken, "public", "internal", "protected", "private", "static");
-        VariableNode[] parameters = GrabTupleTypeDefinition();
+        VariableNode[] parameters = GrabTupleTypeDefinition(typeScope);
 
         GetAccessibility accessibility = VisibilityFromModifiers(modifiers);
         bool isStatic = modifiers.Contains("static");
@@ -644,7 +647,7 @@ public sealed class Parser
         {
             try
             {
-                Node child = ExpectStatement(insideLoop);
+                Node child = ExpectStatement(scope, insideLoop);
 
                 node.Children.Add(child);
 
@@ -685,10 +688,10 @@ public sealed class Parser
     /// <summary>
     /// Expects a property declaration.
     /// </summary>
-    private Node ExpectPropertyDeclaration()
+    private Node ExpectPropertyDeclaration(SymbolTable typeScope)
     {
         string[] modifiers = GrabModifiers();
-        TypeReferenceNode type = ExpectTypeName();
+        TypeReferenceNode type = ExpectTypeName(typeScope);
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
 
@@ -741,7 +744,7 @@ public sealed class Parser
                     }
                     assignedGet = true;
 
-                    if (currentAccessibility.ToLower() != get.ToString().ToLower())
+                    if (!String.Equals(currentAccessibility, get.ToString(), StringComparison.InvariantCulture))
                     {
                         MessageCollection.Error(
                             "Get accessibility must be the same as the accessibility of the property itself.",
@@ -822,7 +825,7 @@ public sealed class Parser
         if (_tokens.NextIsOfType(TokenType.Assign))
         {
             _tokens.Skip(); // =
-            value = ExpectExpression();
+            value = ExpectExpression(typeScope);
         }
 
         Require(TokenType.Semicolon);
@@ -849,7 +852,7 @@ public sealed class Parser
     /// <summary>
     /// Expects a local variable declaration.
     /// </summary>
-    private VariableNode ExpectLocalVariableDeclaration()
+    private VariableNode ExpectLocalVariableDeclaration(SymbolTable scope)
     {
         bool mutable = _tokens.NextIsOfType(TokenType.Mutable);
         if (mutable)
@@ -857,7 +860,7 @@ public sealed class Parser
             _tokens.Skip(); // mut
         }
 
-        TypeReferenceNode type = ExpectTypeName();
+        TypeReferenceNode type = ExpectTypeName(scope);
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         ExpressionNode? value = null;
@@ -865,7 +868,7 @@ public sealed class Parser
         if (_tokens.NextIsOfType(TokenType.Assign))
         {
             _tokens.Skip(); // =
-            value = ExpectExpression();
+            value = ExpectExpression(scope);
         }
 
         Require(TokenType.Semicolon);
@@ -890,8 +893,9 @@ public sealed class Parser
     /// <summary>
     /// Expects any statement.
     /// </summary>
+    /// <param name="scope">Current scope.</param>
     /// <param name="insideLoop">Is this a statement inside a loop? This enables continue and break statements.</param>
-    private Node ExpectStatement(bool insideLoop)
+    private Node ExpectStatement(SymbolTable scope, bool insideLoop)
     {
         // Statements:
         //   statement block
@@ -903,7 +907,7 @@ public sealed class Parser
         // Empty statement
         if (_tokens.NextIsOfType(TokenType.Semicolon))
         {
-            return new EmptyStatementNode()
+            return new EmptyStatementNode
             {
                 Location = _tokens.GrabToken()!.Location
             };
@@ -926,7 +930,7 @@ public sealed class Parser
                 parser._tokens.Skip();
             }
 
-            parser.ExpectTypeName(); // var type
+            parser.ExpectTypeName(new SymbolTable(null)); // var type
             parser.GrabNextByExpecting(TokenType.Identifier);
             if (parser.MessageCollection.HasFatalErrors)
             {
@@ -938,10 +942,9 @@ public sealed class Parser
             {
                 throw new CancelParsingException("Premature EOF");
             }
-            if (next.Type    == TokenType.Semicolon
-                || next.Type == TokenType.Assign)
+            if (next.Type is TokenType.Semicolon or TokenType.Assign)
             {
-                return ExpectLocalVariableDeclaration(); // use regular parser, not sub-parser!
+                return ExpectLocalVariableDeclaration(scope); // use regular parser, not sub-parser!
             }
         }
         catch (FormatException)
@@ -951,12 +954,9 @@ public sealed class Parser
         // Try getting an expression chain (method call/assignment)
         try
         {
-            CreateSubParser();
+            ExpressionNode expr = ExpectExpression(new SymbolTable(null));
 
-            ExpressionNode expr = ExpectExpression(); // should work if the sub-parser didn't error
-
-            if (expr is MethodCallNode
-                || expr is VariableAssignmentNode)
+            if (expr is MethodCallNode or VariableAssignmentNode)
             {
                 Require(TokenType.Semicolon);
                 return expr;
@@ -976,23 +976,23 @@ public sealed class Parser
     /// <summary>
     /// Expects a variable assignment.
     /// </summary>
-    private VariableAssignmentNode ExpectVariableAssignment()
+    private VariableAssignmentNode ExpectVariableAssignment(SymbolTable scope)
     {
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
         GrabNextByExpecting(TokenType.Assign);
-        ExpressionNode value = ExpectExpression();
+        ExpressionNode value = ExpectExpression(scope);
         return new VariableAssignmentNode(name, value) { Location = nameToken.Location };
     }
 
     /// <summary>
     /// Expects a method call.
     /// </summary>
-    private MethodCallNode ExpectMethodCall()
+    private MethodCallNode ExpectMethodCall(SymbolTable scope)
     {
         string name = GrabNextByExpecting(TokenType.Identifier);
         Token nameToken = _tokens.CurrentToken;
-        ExpressionNode[] args = GrabTupleValues();
+        ExpressionNode[] args = GrabTupleValues(scope);
 
         bool isNativeCall = _tokens.NextIsOfType(TokenType.At);
         return new MethodCallNode(name, isNativeCall, args)
@@ -1004,7 +1004,7 @@ public sealed class Parser
     /// <summary>
     /// Expects any expression.
     /// </summary>
-    private ExpressionNode ExpectExpression(bool doNotEvaluateOperators = false)
+    private ExpressionNode ExpectExpression(SymbolTable scope, bool doNotEvaluateOperators = false)
     {
         Token? next = _tokens.PeekToken();
         if (next == null)
@@ -1018,7 +1018,7 @@ public sealed class Parser
         {
             case TokenType.LeftParen:
                 Require(TokenType.LeftParen);
-                expr = ExpectExpression();
+                expr = ExpectExpression(scope);
                 Require(TokenType.RightParen);
                 break;
 
@@ -1030,7 +1030,7 @@ public sealed class Parser
                 throw new NotImplementedException();
 
             case TokenType.New:
-                expr = ExpectNew();
+                expr = ExpectNew(scope);
                 break;
 
             case TokenType.Identifier:
@@ -1040,22 +1040,16 @@ public sealed class Parser
                     throw new CancelParsingException("Expected expression, got EOF");
                 }
 
-                if (peek.Type == TokenType.DoubleColon)
+                expr = peek.Type switch
                 {
-                    expr = ExpectTypeName();
-                }
-                else if (peek.Type == TokenType.LeftParen)
-                {
-                    expr = ExpectMethodCall();
-                }
-                else if (peek.Type == TokenType.Assign)
-                {
-                    expr = ExpectVariableAssignment();
-                }
-                else
-                {
-                    expr = new MemberAccessNode(_tokens.GrabToken()!.Value) { Location = peek.Location };
-                }
+                    TokenType.DoubleColon => ExpectTypeName(scope),
+                    TokenType.LeftParen   => ExpectMethodCall(scope),
+                    TokenType.Assign      => ExpectVariableAssignment(scope),
+                    _ => new MemberAccessNode(_tokens.GrabToken()!.Value)
+                    {
+                        Location = peek.Location
+                    }
+                };
 
                 break;
 
@@ -1063,18 +1057,16 @@ public sealed class Parser
                 throw new ParseException($"Expected expression, got {next.Type}", next);
         }
 
-        if (doNotEvaluateOperators)
-        {
-            return expr;
-        }
-        return ExpectExpressionRhs(expr, 0);
+        return doNotEvaluateOperators
+                   ? expr
+                   : ExpectExpressionRhs(scope, expr, 0);
     }
 
     /// <summary>
     /// Complements ExpectExpression. Takes care of operation precedence.
     /// </summary>
     /// <remarks>https://en.wikipedia.org/wiki/Operator-precedence_parser#Pseudocode</remarks>
-    private ExpressionNode ExpectExpressionRhs(ExpressionNode left, int minimumPrecedence)
+    private ExpressionNode ExpectExpressionRhs(SymbolTable scope, ExpressionNode left, int minimumPrecedence)
     {
         Token? peek = _tokens.PeekToken();
         if (peek == null)
@@ -1088,7 +1080,7 @@ public sealed class Parser
             while (_tokens.NextIsOfType(TokenType.Dot))
             {
                 peek = _tokens.GrabToken()!; // .
-                ExpressionNode right = ExpectExpression(true);
+                ExpressionNode right = ExpectExpression(scope, true);
 
                 if (right is not IndexableExpressionNode node)
                 {
@@ -1114,7 +1106,7 @@ public sealed class Parser
             {
                 throw new CancelParsingException("Premature EOF");
             }
-            ExpressionNode right = ExpectExpression();
+            ExpressionNode right = ExpectExpression(scope);
 
             peek = _tokens.PeekToken();
             if (peek == null)
@@ -1125,7 +1117,7 @@ public sealed class Parser
             while (peek.Precedence > op.Precedence
                    || peek.IsRightAssocBinOp && peek.Precedence == op.Precedence)
             {
-                right = ExpectExpressionRhs(right, op.Precedence + (peek.Precedence > op.Precedence ? 0 : 1));
+                right = ExpectExpressionRhs(scope, right, op.Precedence + (peek.Precedence > op.Precedence ? 0 : 1));
             }
 
             left = new BinaryOperatorNode(op.Type, left, right) { Location = op.Location };
@@ -1137,17 +1129,17 @@ public sealed class Parser
     /// <summary>
     /// Expects a new class instance (e.g. new app::Class())
     /// </summary>
-    private InitializerNode ExpectNew()
+    private InitializerNode ExpectNew(SymbolTable scope)
     {
         Token newKeyword = _tokens.GrabToken()!;
 
-        TypeReferenceNode type = ExpectTypeName();
+        TypeReferenceNode type = ExpectTypeName(scope);
 
         if (_tokens.NextIsOfType(TokenType.LeftParen))
         {
             // we have a class initializer
 
-            ExpressionNode[] constructorArgs = GrabTupleValues();
+            ExpressionNode[] constructorArgs = GrabTupleValues(scope);
 
             return new NewClassInitializerNode(type, constructorArgs) { Location = newKeyword.Location };
         }
@@ -1167,14 +1159,14 @@ public sealed class Parser
     /// <summary>
     /// Utility method for expecting a value list.
     /// </summary>
-    private ExpressionNode[] GrabTupleValues()
+    private ExpressionNode[] GrabTupleValues(SymbolTable scope)
     {
         Require(TokenType.LeftParen);
         List<ExpressionNode> expressions = new();
 
         while (!_tokens.NextIsOfType(TokenType.RightParen))
         {
-            expressions.Add(ExpectExpression());
+            expressions.Add(ExpectExpression(scope));
 
             Token? next = _tokens.PeekToken();
 
@@ -1206,14 +1198,14 @@ public sealed class Parser
     /// <summary>
     /// Utility method for expecting an argument list.
     /// </summary>
-    private VariableNode[] GrabTupleTypeDefinition()
+    private VariableNode[] GrabTupleTypeDefinition(SymbolTable scope)
     {
         List<VariableNode> vars = new();
 
         Require(TokenType.LeftParen);
         while (!_tokens.NextIsOfType(TokenType.RightParen))
         {
-            TypeReferenceNode type = ExpectTypeName();
+            TypeReferenceNode type = ExpectTypeName(scope);
             string name = GrabNextByExpecting(TokenType.Identifier);
             Token nameToken = _tokens.CurrentToken;
             vars.Add(
@@ -1395,7 +1387,8 @@ public sealed class Parser
     /// <summary>
     /// Utility method for reading a type name.
     /// </summary>
-    private TypeReferenceNode ExpectTypeName()
+    /// <param name="scope">Used for later lookups (during semantic analysis), so the type can be found.</param>
+    private TypeReferenceNode ExpectTypeName(SymbolTable scope)
     {
         // In all cases we need an identifier
         // If the token after it is a double colon, we get module name first
@@ -1404,7 +1397,7 @@ public sealed class Parser
         // It's void :sunglasses:
         if (_tokens.PeekToken()?.Type == TokenType.Void)
         {
-            return new VoidTypeReferenceNode()
+            return new VoidTypeReferenceNode
             {
                 Location = _tokens.GrabToken()!.Location
             };
@@ -1415,22 +1408,28 @@ public sealed class Parser
 
         if (!_tokens.NextIsOfType(TokenType.LeftAngle))
         {
-            return new TypeReferenceNode(name, Array.Empty<TypeReferenceNode>()) { Location = nameToken.Location };
+            TypeReferenceNode node = new(name, Array.Empty<TypeReferenceNode>()) { Location = nameToken.Location };
+            node.SetMetadata(scope);
+            return node;
         }
-
-        // We have some generic args
-        List<TypeReferenceNode> genericNames = new();
-
-        do
+        else
         {
-            _tokens.Skip(); // < or comma!!
-            genericNames.Add(ExpectTypeName());
+            // We have some generic args
+            List<TypeReferenceNode> genericNames = new();
+
+            do
+            {
+                _tokens.Skip(); // < or comma!!
+                genericNames.Add(ExpectTypeName(scope));
+            }
+            while (_tokens.NextIsOfType(TokenType.Comma));
+
+            Require(TokenType.RightAngle);
+
+            TypeReferenceNode node = new(name, genericNames.ToArray()) { Location = nameToken.Location };
+            node.SetMetadata(scope);
+            return node;
         }
-        while (_tokens.NextIsOfType(TokenType.Comma));
-
-        Require(TokenType.RightAngle);
-
-        return new TypeReferenceNode(name, genericNames.ToArray()) { Location = nameToken.Location };
     }
 
     /// <summary>

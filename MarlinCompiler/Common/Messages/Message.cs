@@ -1,4 +1,4 @@
-﻿namespace MarlinCompiler.Common;
+﻿namespace MarlinCompiler.Common.Messages;
 
 /// <summary>
 /// The fatality of a message.
@@ -25,7 +25,7 @@ public enum MessageFatality
 /// A compilation message.
 /// </summary>
 /// <param name="Content">The message itself.</param>
-public record struct Message(string Content)
+public readonly record struct Message(string Content)
 {
     /// <summary>
     /// The location of the cause of the message.

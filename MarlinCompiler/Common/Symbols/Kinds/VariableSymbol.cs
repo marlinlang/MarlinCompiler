@@ -13,5 +13,5 @@ public class VariableSymbol : NamedSymbol
     /// The type of the property.
     /// </summary>
     /// <remarks>Null by default.</remarks>
-    public TypeUsageSymbol? Type { get; }
+    public TypeUsageSymbol? Type { get; set; }
 }

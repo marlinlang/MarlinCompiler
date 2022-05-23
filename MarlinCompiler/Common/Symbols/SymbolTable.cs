@@ -73,47 +73,6 @@ public sealed class SymbolTable
     }
 
     /// <summary>
-    /// Looks up symbols based on a hash code. This is faster than
-    /// <see cref="LookupSymbol{TSymbol}(System.Predicate{MarlinCompiler.Common.Symbols.ISymbol})"/>, but only works if you
-    /// know the hashcode that you will be working with.
-    /// </summary>
-    /// <param name="hashCode">The hash code to search for.</param>
-    /// <typeparam name="TSymbol">The expected type of the symbol.</typeparam>
-    /// <returns>The found symbol, never null.</returns>
-    /// <exception cref="NoNullAllowedException">Thrown if the symbol does not exist..</exception>
-    /// <exception cref="ArgumentException">Thrown if the generic param <typeparamref name="TSymbol"/>
-    /// doesn't match the type of the found symbol.</exception>
-    public TSymbol LookupSymbol<TSymbol>(int hashCode)
-    {
-        ISymbol? found = _childTables
-                        .SingleOrDefault(
-                             x => x.PrimarySymbol                  != null
-                                  && x.PrimarySymbol.GetHashCode() == hashCode
-                         )
-                       ?.PrimarySymbol;
-
-        if (found == default)
-        {
-            if (PrimarySymbol                  != default
-                && PrimarySymbol.GetHashCode() == hashCode)
-            {
-                found = PrimarySymbol;
-            }
-            else if (ParentTable != default)
-            {
-                found = ParentTable.LookupSymbol<ISymbol>(hashCode);
-            }
-        }
-
-        return found switch
-        {
-            TSymbol cast => cast,
-            null         => throw new NoNullAllowedException("The symbol could not be found."),
-            _            => throw new ArgumentException("The type of the found symbol does not match the expected type.")
-        };
-    }
-
-    /// <summary>
     /// Calls <see cref="LookupSymbol{TSymbol}(System.Predicate{MarlinCompiler.Common.Symbols.ISymbol})"/> with
     /// a predicate for a named symbol of the same name.
     /// </summary>
@@ -121,6 +80,48 @@ public sealed class SymbolTable
     /// <typeparam name="TSymbol">Expected symbol type.</typeparam>
     public TSymbol LookupSymbol<TSymbol>(string name) => LookupSymbol<TSymbol>(x => x is NamedSymbol named && named.Name == name);
 
+    /// <summary>
+    /// Attempts to lookup a symbol.
+    /// </summary>
+    /// <param name="predicate">The predicate to search for.</param>
+    /// <param name="found">The found symbol.</param>
+    /// <typeparam name="TSymbol">The symbol type to search for.</typeparam>
+    /// <returns>Whether a matching symbol was found.</returns>
+    public bool TryLookupSymbol<TSymbol>(Predicate<ISymbol> predicate, out TSymbol found)
+    {
+        try
+        {
+            found = LookupSymbol<TSymbol>(predicate);
+            return true;
+        }
+        catch
+        {
+            found = default!;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to lookup a (named) symbol.
+    /// </summary>
+    /// <param name="name">The name to search for.</param>
+    /// <param name="found">The found symbol.</param>
+    /// <typeparam name="TSymbol">The symbol type to search for.</typeparam>
+    /// <returns>Whether a matching symbol was found.</returns>
+    public bool TryLookupSymbol<TSymbol>(string name, out TSymbol found)
+    {
+        try
+        {
+            found = LookupSymbol<TSymbol>(name);
+            return true;
+        }
+        catch
+        {
+            found = default!;
+            return false;
+        }
+    }
+    
     /// <summary>
     /// Adds a symbol to this symbol table (scope).
     /// </summary>

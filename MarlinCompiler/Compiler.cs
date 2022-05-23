@@ -1,6 +1,8 @@
 ﻿using System.Collections.Concurrent;
+using System.Reflection;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Frontend;
 using MarlinCompiler.Frontend.Lexing;
 using MarlinCompiler.Frontend.Parsing;
@@ -56,6 +58,19 @@ public sealed class Compiler
     /// <returns>Program exit code.</returns>
     public int Compile(bool analyzeOnly)
     {
+        /*
+         * Status             Return code
+         *    NO MESSAGES     0
+         *    WARNINGS/INFOS  1
+         *    FATAL ERRORS    2
+         *    NO STDLIB       3
+         */
+        
+        if (!IsStdLibPresent())
+        {
+            return 3;
+        }
+        
         ContainerNode program = Parse(); /* Lex & parse       */
         Analyze(program);                /* Semantic analysis */
 
@@ -64,14 +79,6 @@ public sealed class Compiler
         {
             Build(program); /* LLVM compilation  */
         }
-
-
-        /*
-         * Status             Return code
-         *    NO MESSAGES     0
-         *    WARNINGS/INFOS  1
-         *    FATAL ERRORS    2
-         */
 
         return GetReturnCode();
     }
@@ -212,6 +219,23 @@ public sealed class Compiler
         MessageCollection.AddRange(lexer.MessageCollection);
 
         return new Tokens(tokens);
+    }
+
+    /// <summary>
+    /// Checks if the standard library is present on the system.
+    /// </summary>
+    /// <returns>Whether the stdlib directory exists.</returns>
+    private static bool IsStdLibPresent()
+    {
+        // TODO: When LLVM compilation is done, this method should do more extensive checks.
+        // TODO: The stdlib should be provided in a custom package format.
+
+        string stdLibPath = Path.Combine(
+            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? throw new InvalidOperationException(),
+            "stdlib.marlin"
+        );
+
+        return Directory.Exists(stdLibPath);
     }
 
     #endregion

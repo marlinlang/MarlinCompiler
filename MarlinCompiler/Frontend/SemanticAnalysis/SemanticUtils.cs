@@ -19,7 +19,7 @@ public static class SemanticUtils
             throw new NoNullAllowedException("Node must have metadata");
         }
 
-        if (!node.MetadataIs<SymbolTable>())
+        if (!node.MetadataIs<TypeUsageSymbol>())
         {
             throw new InvalidOperationException("Expressions must have a scope (symbol table) as their metadata.");
         }
@@ -29,7 +29,13 @@ public static class SemanticUtils
             throw new NoNullAllowedException("Expression node doesn't have a location");
         }
 
-        SymbolTable scope = node.GetMetadata<SymbolTable>();
+        TypeSymbol type = node.GetMetadata<TypeUsageSymbol>().Type;
+        if (type == TypeSymbol.UnknownType)
+        {
+            return new TypeUsageSymbol(TypeSymbol.UnknownType);
+        }
+
+        SymbolTable scope = type.SymbolTable;
         FileLocation location = (FileLocation) node.Location;
 
         switch (node)
@@ -56,11 +62,23 @@ public static class SemanticUtils
                            : new TypeUsageSymbol(typeSymbol);
             }
 
+            case MethodCallNode methodCallNode:
+            {
+                analyzer.CurrentVisitor.Visit(methodCallNode);
+                // we're expecting a TypeUsageSymbol here
+                return methodCallNode.GetMetadata<TypeUsageSymbol>();
+            }
+
+            case MemberAccessNode memberAccessNode:
+            {
+                analyzer.CurrentVisitor.Visit(memberAccessNode);
+                // we're expecting a TypeUsageSymbol here
+                return memberAccessNode.GetMetadata<TypeUsageSymbol>();
+            }
+
             case BinaryOperatorNode binaryOperatorNode:
             case NewClassInitializerNode newClassInitializerNode:
             case InitializerNode initializerNode:
-            case MemberAccessNode memberAccessNode:
-            case MethodCallNode methodCallNode:
             case VariableAssignmentNode variableAssignmentNode:
             case IndexableExpressionNode indexableExpressionNode:
                 throw new NotImplementedException();
@@ -94,6 +112,42 @@ public static class SemanticUtils
     public static bool IsAssignable(Analyzer analyzer, TypeSymbol super, TypeUsageSymbol sub)
     {
         return false;
+    }
+
+    /// <summary>
+    /// Assigns the metadata for a type reference.
+    /// </summary>
+    public static void SetTypeRefMetadata(Analyzer analyzer, TypeReferenceNode node)
+    {
+        if (node is VoidTypeReferenceNode)
+        {
+            node.SetMetadata(TypeSymbol.Void);
+            return;
+        }
+
+        if (!node.HasMetadata)
+        {
+            throw new NoNullAllowedException("TypeReferenceNode must have metadata");
+        }
+
+        try
+        {
+            SymbolTable symbolTable = node.GetMetadata<SymbolTable>();
+            if (symbolTable.TryLookupSymbol(node.FullName, out ISymbol symbol))
+            {
+                node.SetMetadata(symbol);
+            }
+            else
+            {
+                analyzer.MessageCollection.Error($"Could not find type '{node.FullName}'", node.Location);
+
+                node.SetMetadata(TypeSymbol.UnknownType);
+            }
+        }
+        catch (NoNullAllowedException)
+        {
+            analyzer.MessageCollection.Error($"Type reference not found: {node.FullName}", node.Location);
+        }
     }
 
     /// <summary>
@@ -150,9 +204,7 @@ public static class SemanticUtils
     /// </summary>
     private static TypeSymbol GetTypeOrUnknown(Analyzer analyzer, string name, FileLocation usageLocation, SymbolTable scope)
     {
-        ISymbol? symbol = scope.LookupSymbol<SymbolTable>(name).PrimarySymbol;
-
-        if (symbol == null)
+        if (!scope.TryLookupSymbol(name, out ISymbol? symbol))
         {
             analyzer.MessageCollection.Error($"Unknown type {name}", usageLocation);
             return TypeSymbol.UnknownType;

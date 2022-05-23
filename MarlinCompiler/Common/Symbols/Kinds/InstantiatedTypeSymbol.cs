@@ -5,7 +5,7 @@
 /// </summary>
 public class TypeUsageSymbol : ISymbol
 {
-    public TypeUsageSymbol(TypeSymbol? type)
+    public TypeUsageSymbol(TypeSymbol type)
     {
         Type        = type;
         GenericArgs = Array.Empty<TypeSymbol>();
@@ -14,7 +14,7 @@ public class TypeUsageSymbol : ISymbol
     /// <summary>
     /// The type that was instantiated.
     /// </summary>
-    public TypeSymbol? Type { get; set; }
+    public TypeSymbol Type { get; set; }
     
     /// <summary>
     /// The generic argument which was passed.
