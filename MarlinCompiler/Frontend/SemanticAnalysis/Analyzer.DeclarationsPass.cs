@@ -19,7 +19,7 @@ internal sealed class DeclarationsPass : NoNieVisitor
     {
         Visit(node.Type);
         ((MethodSymbol) node.GetMetadata<SymbolTable>().PrimarySymbol!).ReturnType
-            = new TypeUsageSymbol(node.Type.GetMetadata<TypeSymbol>());
+            = node.Type.GetMetadata<TypeUsageSymbol>();
 
         foreach (VariableNode parameter in node.Parameters)
         {
@@ -37,6 +37,7 @@ internal sealed class DeclarationsPass : NoNieVisitor
     public override None Property(PropertyNode node)
     {
         Visit(node.Type);
+        node.GetMetadata<PropertySymbol>().Type = node.Type.GetMetadata<TypeUsageSymbol>();
 
         return None.Null;
     }
@@ -44,7 +45,7 @@ internal sealed class DeclarationsPass : NoNieVisitor
     public override None LocalVariable(LocalVariableDeclarationNode node)
     {
         Visit(node.Type);
-        node.GetMetadata<VariableSymbol>().Type = new TypeUsageSymbol(node.Type.GetMetadata<TypeSymbol>());
+        node.GetMetadata<VariableSymbol>().Type = node.Type.GetMetadata<TypeUsageSymbol>();
 
         return None.Null;
     }

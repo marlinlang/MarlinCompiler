@@ -20,7 +20,7 @@ public static class SemanticUtils
 
         if (!node.MetadataIs<TypeUsageSymbol>())
         {
-            throw new InvalidOperationException("Expressions must have a scope (symbol table) as their metadata.");
+            throw new InvalidOperationException("Expressions must have a TypeUsageSymbol as their metadata.");
         }
 
         TypeSymbol type = node.GetMetadata<TypeUsageSymbol>().Type;
@@ -51,9 +51,11 @@ public static class SemanticUtils
                     return new TypeUsageSymbol(typeSymbol);
                 }
 
-                return typeReferenceNode.GenericTypeArguments.Any()
+                TypeUsageSymbol sym = typeReferenceNode.GenericTypeArguments.Any()
                            ? AttemptApplyGenerics(analyzer, typeSymbol, typeReferenceNode)
                            : new TypeUsageSymbol(typeSymbol);
+                sym.TypeReferencedStatically = true;
+                return sym;
             }
 
             case MethodCallNode methodCallNode:
@@ -70,8 +72,14 @@ public static class SemanticUtils
                 return memberAccessNode.GetMetadata<TypeUsageSymbol>();
             }
 
-            case BinaryOperatorNode binaryOperatorNode:
             case NewClassInitializerNode newClassInitializerNode:
+            {
+                analyzer.CurrentVisitor.Visit(newClassInitializerNode);
+                // we're expecting a TypeUsageSymbol here
+                return newClassInitializerNode.GetMetadata<TypeUsageSymbol>();
+            }
+
+            case BinaryOperatorNode binaryOperatorNode:
             case InitializerNode initializerNode:
             case VariableAssignmentNode variableAssignmentNode:
             case IndexableExpressionNode indexableExpressionNode:
@@ -115,7 +123,7 @@ public static class SemanticUtils
     {
         if (node is VoidTypeReferenceNode)
         {
-            node.SetMetadata(TypeSymbol.Void);
+            node.SetMetadata(new TypeUsageSymbol(TypeSymbol.Void));
             return;
         }
 
@@ -126,7 +134,16 @@ public static class SemanticUtils
 
         try
         {
-            node.SetMetadata(GetTypeOrUnknown(analyzer, node.FullName, node.Location, node.GetMetadata<SymbolTable>()));
+            node.SetMetadata(
+                new TypeUsageSymbol(
+                    GetTypeOrUnknown(
+                        analyzer,
+                        node.FullName,
+                        node.Location,
+                        node.GetMetadata<SymbolTable>()
+                    )
+                )
+            );
         }
         catch (NoNullAllowedException)
         {

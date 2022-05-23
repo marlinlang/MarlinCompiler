@@ -128,11 +128,17 @@ internal sealed class MainPass : AstVisitor<None>
 
     public override None TypeReference(TypeReferenceNode node)
     {
+        node.SetMetadata(_scopeManager.CurrentScope);
         SemanticUtils.SetTypeRefMetadata(_analyzer, node);
 
-        if (node.GetMetadata<TypeSymbol>() == TypeSymbol.UnknownType)
+        TypeUsageSymbol typeUsageSymbol = node.GetMetadata<TypeUsageSymbol>();
+        if (typeUsageSymbol.Type == TypeSymbol.UnknownType)
         {
             _analyzer.MessageCollection.Error($"Unknown type {node.FullName}", node.Location);
+        }
+        else
+        {
+            typeUsageSymbol.TypeReferencedStatically = true;
         }
 
         return None.Null;
@@ -269,11 +275,21 @@ internal sealed class MainPass : AstVisitor<None>
 
             if (methodSymbol.ReturnType == null)
             {
-                throw new NoNullAllowedException("MethodSymbol.ReturnType cannot be null");
+                throw new NoNullAllowedException("MethodSymbol.ReturnType cannot be null.");
             }
 
             node.SetMetadata(methodSymbol.ReturnType);
 
+            if (parent.TypeReferencedStatically
+                && !methodSymbol.IsStatic)
+            {
+                _analyzer.MessageCollection.Error("Cannot call non-static method on a static type.", node.Location);
+            }
+            else if (methodSymbol.IsStatic
+                     && !parent.TypeReferencedStatically)
+            {
+                _analyzer.MessageCollection.Error("Cannot call static method on an instance of a non-static type.", node.Location);
+            }
             // TODO: Check that the number of arguments matches the method signature
 
             return None.Null;
@@ -302,6 +318,11 @@ internal sealed class MainPass : AstVisitor<None>
 
     public override None NewClassInstance(NewClassInitializerNode node)
     {
-        throw new NotImplementedException();
+        node.Type.SetMetadata(_scopeManager.CurrentScope);
+        Visit(node.Type);
+
+        node.SetMetadata(new TypeUsageSymbol(node.Type.GetMetadata<TypeSymbol>()));
+
+        return None.Null;
     }
 }
