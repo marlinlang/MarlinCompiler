@@ -81,4 +81,9 @@ public abstract class AstVisitor<T>
     /// Visits a new class instance initializer.
     /// </summary>
     public abstract T NewClassInstance(NewClassInitializerNode node);
+
+    /// <summary>
+    /// Visits a return statement.
+    /// </summary>
+    public abstract T ReturnStatement(ReturnStatementNode node);
 }

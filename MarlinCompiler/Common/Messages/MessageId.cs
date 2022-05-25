@@ -42,6 +42,10 @@ public enum MessageId
     UninitializedVariableUsage           = 3012,
     MethodCallOnVoid                     = 3013,
     InvalidGenericArguments              = 3014,
+    ReturningInvalidType                 = 3015,
+    ReturningValueFromVoidMethod         = 3016,
+    NotAllCodePathsReturn                = 3017,
+    ReturningVoidFromNonVoidMethod       = 3018,
 
 
     /*

@@ -13,12 +13,13 @@ public enum TokenType
     Using,       // using
     New,         // new
     Operator,    // operator
-    Get,
-    Set,      // get and set
-    Mutable,  // mut
-    Void,     // void
-    Extern,   // extern
-    Modifier, // public, private, protected, internal, static, readonly 
+    Get,         //get
+    Set,         // set
+    Mutable,     // mut
+    Void,        // void
+    Extern,      // extern
+    Return,      // return
+    Modifier,    // public, private, protected, internal, static, readonly 
 
     // Numbers
     String,    // String literals

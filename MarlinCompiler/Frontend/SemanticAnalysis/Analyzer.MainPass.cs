@@ -195,7 +195,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
             if (varType.Type       != TypeSymbol.UnknownType
                 && typeOfExpr.Type != TypeSymbol.UnknownType
-                && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
+                && !SemanticUtils.IsAssignable(varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
                     MessageId.AssignedValueDoesNotMatchType,
@@ -229,6 +229,15 @@ internal sealed class MainPass : AstVisitor<None>, IPass
 
         ScopeManager.PopScope();
 
+        if (!SemanticUtils.DoAllCodePathsReturn(_analyzer, node, node.Type.GetMetadata<TypeUsageSymbol>()))
+        {
+            _analyzer.MessageCollection.Error(
+                MessageId.NotAllCodePathsReturn,
+                "Not all code paths return a value.",
+                node.Location
+            );
+        }
+        
         return None.Null;
     }
 
@@ -271,7 +280,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
             if (varType.Type       != TypeSymbol.UnknownType
                 && typeOfExpr.Type != TypeSymbol.UnknownType
-                && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
+                && !SemanticUtils.IsAssignable(varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
                     MessageId.AssignedValueDoesNotMatchType,
@@ -388,7 +397,6 @@ internal sealed class MainPass : AstVisitor<None>, IPass
                         parent.GenericArgs
                     );
                     if (!SemanticUtils.IsAssignable(
-                            _analyzer,
                             paramType,
                             valueType
                         ))
@@ -505,7 +513,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
             if (varType.Type       != TypeSymbol.UnknownType
                 && typeOfExpr.Type != TypeSymbol.UnknownType
-                && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
+                && !SemanticUtils.IsAssignable(varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
                     MessageId.AssignedValueDoesNotMatchType,
@@ -556,6 +564,16 @@ internal sealed class MainPass : AstVisitor<None>, IPass
 
         node.SetMetadata(node.Type.GetMetadata<TypeUsageSymbol>());
 
+        return None.Null;
+    }
+
+    public override None ReturnStatement(ReturnStatementNode node)
+    {
+        if (node.Value != null)
+        {
+            Visit(node.Value);
+        }
+        
         return None.Null;
     }
 }

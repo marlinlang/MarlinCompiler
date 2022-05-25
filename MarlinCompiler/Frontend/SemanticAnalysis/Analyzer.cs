@@ -1,7 +1,5 @@
-﻿using MarlinCompiler.Common;
-using MarlinCompiler.Common.AbstractSyntaxTree;
+﻿using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Messages;
-using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Frontend.SemanticAnalysis;
 

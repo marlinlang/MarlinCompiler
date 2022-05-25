@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Transactions;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
@@ -108,7 +107,7 @@ public static class SemanticUtils
     /// <summary>
     /// Returns whether two types are compatible.
     /// </summary>
-    public static bool IsAssignable(Analyzer analyzer, TypeUsageSymbol super, TypeUsageSymbol sub)
+    public static bool IsAssignable(TypeUsageSymbol super, TypeUsageSymbol sub)
     {
         // 1. Check generic compatibility
         // 2. Check if the types are the same
@@ -131,8 +130,8 @@ public static class SemanticUtils
                 if (classTypeSymbol.GenericParamNames[i] == genericParam.Name)
                 {
                     return genericSymbol == sub
-                               ? IsAssignable(analyzer, super, genericSymbol.GenericArgs[i])
-                               : IsAssignable(analyzer, genericSymbol.GenericArgs[i], sub);
+                               ? IsAssignable(super, genericSymbol.GenericArgs[i])
+                               : IsAssignable(genericSymbol.GenericArgs[i], sub);
                 }
             }
         }
@@ -175,7 +174,7 @@ public static class SemanticUtils
         // Check if generic arguments are compatible
         for (int i = 0; i < super.GenericArgs.Length; i++)
         {
-            if (!IsAssignable(analyzer, super.GenericArgs[i], sub.GenericArgs[i]))
+            if (!IsAssignable(super.GenericArgs[i], sub.GenericArgs[i]))
             {
                 return false;
             }
@@ -276,6 +275,74 @@ public static class SemanticUtils
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Returns whether all code paths return a value.
+    /// </summary>
+    public static bool DoAllCodePathsReturn(Analyzer analyzer, ContainerNode block, TypeUsageSymbol expectedReturnType)
+    {
+        // If the block contains a return statement, it obviously returns
+        // If any sub block returns on all of its sub-paths, the parent block also returns
+        // Void is considered to return on all paths
+
+        if (block.FirstOrDefault(x => x is ReturnStatementNode) is ReturnStatementNode found)
+        {
+            if (expectedReturnType.Type == TypeSymbol.UnknownType)
+            {
+                return true;
+            }
+            
+            if (found.Value                != null
+                && expectedReturnType.Type != TypeSymbol.Void)
+            {
+                TypeUsageSymbol actualReturnType = TypeOfExpr(analyzer, found.Value);
+                if (!IsAssignable(expectedReturnType, actualReturnType))
+                {
+                    analyzer.MessageCollection.Error(
+                        MessageId.ReturningInvalidType,
+                        "Return statement returns incorrect type."
+                        + $"\n\tExpected: {expectedReturnType.GetStringRepresentation()}"
+                        + $"\n\tActual:   {actualReturnType.GetStringRepresentation()}",
+                        found.Value.Location
+                    );
+                }
+            }
+            else if (found.Value                != null
+                     && expectedReturnType.Type == TypeSymbol.Void)
+            {
+                analyzer.MessageCollection.Error(
+                    MessageId.ReturningValueFromVoidMethod,
+                    "Return statement should not be returning a value from a void method.",
+                    found.Value.Location
+                );
+            }
+            else if (found.Value                == null
+                     && expectedReturnType.Type != TypeSymbol.Void)
+            {
+                analyzer.MessageCollection.Error(
+                    MessageId.ReturningVoidFromNonVoidMethod,
+                    "Return statement does not return a value, but the method isn't null.",
+                    found.Location
+                );
+            }
+
+            return true;
+        }
+
+        foreach (Node statement in block)
+        {
+            if (statement is ContainerNode subContainer)
+            {
+                // If all code paths in this container return a value, then the parent container also returns a value
+                if (DoAllCodePathsReturn(analyzer, subContainer, expectedReturnType))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return expectedReturnType.Type == TypeSymbol.Void;
     }
 
     /// <summary>

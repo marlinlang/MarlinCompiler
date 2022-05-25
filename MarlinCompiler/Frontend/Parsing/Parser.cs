@@ -904,6 +904,29 @@ public sealed class Parser
     }
 
     /// <summary>
+    /// Expects a return statement.
+    /// </summary>
+    /// <param name="scope"></param>
+    private ReturnStatementNode ExpectReturnStatement(SymbolTable scope)
+    {
+        _tokens.GrabToken(); // return
+        
+        ExpressionNode? value = null;
+        
+        if (!_tokens.NextIsOfType(TokenType.Semicolon))
+        {
+            value = ExpectExpression(scope);
+        }
+        
+        Require(TokenType.Semicolon);
+        
+        return new ReturnStatementNode(value)
+        {
+            Location = _tokens.CurrentToken.Location
+        };
+    }
+    
+    /// <summary>
     /// Expects any statement.
     /// </summary>
     /// <param name="scope">Current scope.</param>
@@ -915,6 +938,7 @@ public sealed class Parser
         //   local variable declaration         type identifier (assign expr)? semicolon
         //   variable assignment                (accessPath dot)? identifier assign expr semicolon
         //   method call                        (accessPath dot)? identifier tuple semicolon
+        //   return statement                   return (expr)? semicolon
 
         // Empty statement
         if (_tokens.NextIsOfType(TokenType.Semicolon))
@@ -930,6 +954,12 @@ public sealed class Parser
         {
             SymbolTable newScope = new(null);
             return ExpectStatementBody(newScope, insideLoop);
+        }
+        
+        // Return statement
+        if (_tokens.NextIsOfType(TokenType.Return))
+        {
+            return ExpectReturnStatement(scope);
         }
 
         // Variable declaration
