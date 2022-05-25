@@ -11,9 +11,9 @@ public sealed class SymbolTable
 {
     public SymbolTable(SymbolTable? parentTable, ISymbol? primarySymbol = null)
     {
-        ParentTable   = parentTable;
-        PrimarySymbol = primarySymbol;
-        _childTables  = new HashSet<SymbolTable>();
+        ParentTable          = parentTable;
+        PrimarySymbol        = primarySymbol;
+        _childTables         = new HashSet<SymbolTable>();
     }
 
     /// <summary>
@@ -121,7 +121,7 @@ public sealed class SymbolTable
             return false;
         }
     }
-    
+
     /// <summary>
     /// Adds a symbol to this symbol table (scope).
     /// </summary>

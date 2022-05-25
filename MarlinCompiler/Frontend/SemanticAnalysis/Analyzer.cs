@@ -15,7 +15,7 @@ public sealed class Analyzer
         _compilationUnits = compilationUnits;
         MessageCollection = new MessageCollection();
 
-        CurrentVisitor = null!;
+        CurrentPass = null!;
     }
 
     /// <summary>
@@ -26,7 +26,7 @@ public sealed class Analyzer
     /// <summary>
     /// The visitor that is currently being used to visit the AST.
     /// </summary>
-    public AstVisitor<None> CurrentVisitor { get; private set; }
+    public IPass CurrentPass { get; private set; }
 
     /// <summary>
     /// The compilation units.
@@ -48,17 +48,17 @@ public sealed class Analyzer
 
         foreach (CompilationUnitNode compilationUnit in _compilationUnits)
         {
-            UseVisitor(declarationsPass, compilationUnit);
+            InvokePass(declarationsPass, compilationUnit);
         }
         foreach (CompilationUnitNode compilationUnit in _compilationUnits)
         {
-            UseVisitor(mainPass, compilationUnit);
+            InvokePass(mainPass, compilationUnit);
         }
     }
 
-    private void UseVisitor(AstVisitor<None> visitor, Node node)
+    private void InvokePass(IPass pass, Node node)
     {
-        CurrentVisitor = visitor;
-        CurrentVisitor.Visit(node);
+        CurrentPass = pass;
+        CurrentPass.Visitor.Visit(node);
     }
 }

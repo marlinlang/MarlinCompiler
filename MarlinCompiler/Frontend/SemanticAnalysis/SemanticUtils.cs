@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Transactions;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
@@ -21,7 +22,7 @@ public static class SemanticUtils
 
             case IntegerNode:
             {
-                if (analyzer.CurrentVisitor is not MainPass mainPassVisitor)
+                if (analyzer.CurrentPass is not MainPass mainPassVisitor)
                 {
                     // Irrelevant
                     return new TypeUsageSymbol(TypeSymbol.UnknownType);
@@ -47,7 +48,7 @@ public static class SemanticUtils
         {
             throw new NoNullAllowedException("Node must have metadata");
         }
-        
+
         TypeSymbol? type = null;
         if (!node.MetadataIs<TypeUsageSymbol>())
         {
@@ -84,7 +85,7 @@ public static class SemanticUtils
                     return new TypeUsageSymbol(typeSymbol);
                 }
 
-                TypeUsageSymbol sym = typeReferenceNode.GenericTypeArguments.Any()
+                TypeUsageSymbol sym = typeSymbol is ClassTypeSymbol cls && cls.GenericParamNames.Any()
                                           ? AttemptApplyGenerics(analyzer, typeSymbol, typeReferenceNode)
                                           : new TypeUsageSymbol(typeSymbol);
                 sym.TypeReferencedStatically = true;
@@ -105,35 +106,82 @@ public static class SemanticUtils
     }
 
     /// <summary>
-    /// Returns the type of the reference.
-    /// </summary>
-    public static TypeSymbol TypeOfReference(TypeReferenceNode node)
-    {
-        if (node.MetadataIs<ISymbol>())
-        {
-            return node.GetMetadata<TypeUsageSymbol>().Type;
-        }
-
-        if (node.MetadataIs<SymbolTable>())
-        {
-            return node.GetMetadata<SymbolTable>().PrimarySymbol as TypeSymbol ?? throw new NoNullAllowedException();
-        }
-
-        throw new InvalidOperationException("Type reference must have metadata.");
-    }
-
-    /// <summary>
     /// Returns whether two types are compatible.
     /// </summary>
-    public static bool IsAssignable(Analyzer analyzer, TypeSymbol super, TypeUsageSymbol sub)
+    public static bool IsAssignable(Analyzer analyzer, TypeUsageSymbol super, TypeUsageSymbol sub)
     {
-        if (super == sub.Type)
+        // 1. Check generic compatibility
+        // 2. Check if the types are the same
+        // 3. Check if the types are compatible
+
+        // ReSharper disable once ConvertIfStatementToSwitchStatement - bro no?!
+        if (sub.Type is GenericParamTypeSymbol
+            || super.Type is GenericParamTypeSymbol)
         {
-            // Automatic pass, obviously
-            return true;
+            TypeUsageSymbol genericSymbol = sub.Type is GenericParamTypeSymbol ? sub : super;
+            GenericParamTypeSymbol genericParam = (GenericParamTypeSymbol) genericSymbol.Type;
+
+            // Generic arg supplement is in the TypeUsageSymbol of the sub
+            // We need to find the index of the generic arg (names are in the defining class)
+            // Then we check if the supplement is assignable to super
+
+            ClassTypeSymbol classTypeSymbol = genericParam.Owner;
+            for (int i = 0; i < classTypeSymbol.GenericParamNames.Length; ++i)
+            {
+                if (classTypeSymbol.GenericParamNames[i] == genericParam.Name)
+                {
+                    return genericSymbol == sub
+                               ? IsAssignable(analyzer, super, genericSymbol.GenericArgs[i])
+                               : IsAssignable(analyzer, genericSymbol.GenericArgs[i], sub);
+                }
+            }
         }
 
-        return false;
+        // Check if types are related (is sub actually a subclass of super)
+        if (sub.Type is ClassTypeSymbol subClass
+            && super.Type is ClassTypeSymbol superClass)
+        {
+            // Subclass checking: go up one base class at a time until we hit the superclass or the top of the hierarchy
+            ClassTypeSymbol? currentClass = subClass;
+            bool found = false;
+            while (currentClass != null)
+            {
+                if (currentClass == superClass)
+                {
+                    found = true;
+                    break;
+                }
+
+                currentClass = currentClass.BaseType?.Type as ClassTypeSymbol;
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            // For non-classes, i.e. types that don't have generics and inheritance, just check name matching
+            return super.Type == sub.Type;
+        }
+
+        if (super.GenericArgs.Length != sub.GenericArgs.Length)
+        {
+            // Generic arguments must be the same length
+            return false;
+        }
+
+        // Check if generic arguments are compatible
+        for (int i = 0; i < super.GenericArgs.Length; i++)
+        {
+            if (!IsAssignable(analyzer, super.GenericArgs[i], sub.GenericArgs[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -154,14 +202,11 @@ public static class SemanticUtils
 
         try
         {
-            node.SetMetadata(
-                new TypeUsageSymbol(
-                    GetTypeOrUnknown(
-                        node.FullName,
-                        node.GetMetadata<SymbolTable>()
-                    )
-                )
-            );
+            SymbolTable scope = analyzer.CurrentPass.ScopeManager.CurrentScope;
+
+            TypeSymbol typeOrUnknown = GetTypeOrUnknown(node.FullName, scope);
+
+            node.SetMetadata(new TypeUsageSymbol(typeOrUnknown));
         }
         catch (NoNullAllowedException)
         {
@@ -173,11 +218,17 @@ public static class SemanticUtils
     /// Attempts to apply the generic arguments from <see cref="referenceNode"/> to the <see cref="type"/>
     /// </summary>
     /// <returns>The <see cref="TypeUsageSymbol"/> that was generated alongside semantic checks.</returns>
-    private static TypeUsageSymbol AttemptApplyGenerics(Analyzer analyzer, TypeSymbol type, TypeReferenceNode referenceNode)
+    public static TypeUsageSymbol AttemptApplyGenerics(Analyzer analyzer, TypeSymbol type, TypeReferenceNode referenceNode)
     {
         if (type == TypeSymbol.UnknownType)
         {
             return new TypeUsageSymbol(type);
+        }
+
+        // Make sure we have usable types
+        foreach (TypeReferenceNode arg in referenceNode.GenericTypeArguments)
+        {
+            analyzer.CurrentPass.Visitor.Visit(arg);
         }
 
         // Only classes have generics
@@ -187,7 +238,9 @@ public static class SemanticUtils
             {
                 analyzer.MessageCollection.Error(
                     MessageId.GenericArgsOnNonGenericType,
-                    $"Cannot pass generic args to non-class type {type.ModuleName}::{type.TypeName}",
+                    $"Cannot pass generic arguments to non-generic type {type.Name}"
+                    + $"\n\tType:       {type.GetStringRepresentation()}"
+                    + $"\n\tUsed as:    {referenceNode}",
                     referenceNode.Location
                 );
             }
@@ -204,17 +257,22 @@ public static class SemanticUtils
         {
             analyzer.MessageCollection.Error(
                 MessageId.GenericArgsDoNotMatchParams,
-                $"Generic type arguments do not match the number of generic parameters. Expected {paramsCount}, got {argsCount}.",
+                $"Invalid number of generic arguments passed to type {type.Name}"
+                + $"\n\tType:       {type.GetStringRepresentation()}"
+                + $"\n\tUsed as:    {referenceNode}"
+                + $"\n\tExpected generic args:   {paramsCount}"
+                + $"\n\tGiven generic args:      {argsCount}",
                 referenceNode.Location
             );
 
             return result;
         }
 
-        result.GenericArgs = new TypeSymbol[paramsCount];
+        // Generic params and args match, so we can apply them
+        result.GenericArgs = new TypeUsageSymbol[paramsCount];
         for (int i = 0; i < paramsCount; ++i)
         {
-            result.GenericArgs[i] = TypeOfReference(referenceNode.GenericTypeArguments[i]);
+            result.GenericArgs[i] = referenceNode.GenericTypeArguments[i].GetMetadata<TypeUsageSymbol>();
         }
 
         return result;
@@ -229,15 +287,21 @@ public static class SemanticUtils
         string[] nameSplit = name.Split("::");
         string moduleName = String.Join("::", nameSplit[..^1]);
 
-        // Find module
-        if (!scope.TryLookupSymbol(moduleName, out ModuleSymbol module))
+        if (moduleName != String.Empty)
         {
-            return TypeSymbol.UnknownType;
+            // Find module
+            // For generic types, the module is "", this won't be executed
+            if (!scope.TryLookupSymbol(moduleName, out ModuleSymbol moduleSymbol))
+            {
+                return TypeSymbol.UnknownType;
+            }
+
+            scope = moduleSymbol.SymbolTable;
         }
 
         // Find type
         // the Name of types is the mod::typeName, not just the type name
-        return !module.SymbolTable.TryLookupSymbol(name, out TypeSymbol type)
+        return !scope.TryLookupSymbol(name, out TypeSymbol type)
                    ? TypeSymbol.UnknownType
                    : type;
     }

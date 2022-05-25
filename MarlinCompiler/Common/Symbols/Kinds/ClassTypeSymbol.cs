@@ -28,5 +28,5 @@ public sealed class ClassTypeSymbol : TypeSymbol
     /// The type that this class inherits. 
     /// </summary>
     /// <remarks>Null by default. Assign by hand.</remarks>
-    public TypeSymbol? BaseType { get; set; }
+    public TypeUsageSymbol? BaseType { get; set; }
 }

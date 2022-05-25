@@ -363,6 +363,11 @@ public sealed class Parser
         ContainerNode typeBody = ExpectTypeBody(scope);
         classNode.Children.AddRange(typeBody);
 
+        foreach (string genericParam in genericTypeParamNames)
+        {
+            scope.AddSymbol(new GenericParamTypeSymbol(genericParam, symbol));
+        }
+        
         foreach (Node childNode in typeBody)
         {
             // Types have members, which are symbols (properties) OR tables (methods)

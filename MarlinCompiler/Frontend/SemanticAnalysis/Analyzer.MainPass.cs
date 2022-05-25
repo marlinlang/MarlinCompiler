@@ -8,26 +8,30 @@ using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Frontend.SemanticAnalysis;
 
-internal sealed class MainPass : AstVisitor<None>
+internal sealed class MainPass : AstVisitor<None>, IPass
 {
     public MainPass(Analyzer analyzer)
     {
-        _analyzer    = analyzer;
         ScopeManager = new ScopeManager();
+        _analyzer    = analyzer;
     }
 
-    public ScopeManager ScopeManager { get; }
+    public ScopeManager     ScopeManager { get; }
+    public AstVisitor<None> Visitor      => this;
 
     private readonly Analyzer _analyzer;
 
     public override None MemberAccess(MemberAccessNode node)
     {
         SymbolTable owner;
+        TypeUsageSymbol? typeUsageSymbol = null;
 
         if (node.Target != null)
         {
             Visit(node.Target);
-            TypeSymbol type = node.Target.GetMetadata<TypeUsageSymbol>().Type;
+            typeUsageSymbol                          = node.Target.GetMetadata<TypeUsageSymbol>();
+            typeUsageSymbol.TypeReferencedStatically = node.Target is TypeReferenceNode;
+            TypeSymbol type = typeUsageSymbol.Type;
             if (type == TypeSymbol.UnknownType)
             {
                 // Type not found
@@ -58,13 +62,19 @@ internal sealed class MainPass : AstVisitor<None>
                 symbol switch
                 {
                     // Property
-                    PropertySymbol propertySymbol => new TypeUsageSymbol(propertySymbol.Type.Type),
+                    PropertySymbol propertySymbol => new TypeUsageSymbol(
+                        propertySymbol.Type,
+                        typeUsageSymbol?.GenericArgs ?? Array.Empty<TypeUsageSymbol>()
+                    ),
 
                     // Method
-                    MethodSymbol methodSymbol => new TypeUsageSymbol(methodSymbol.ReturnType!.Type),
+                    MethodSymbol methodSymbol => new TypeUsageSymbol(
+                        methodSymbol.ReturnType!,
+                        typeUsageSymbol?.GenericArgs ?? Array.Empty<TypeUsageSymbol>()
+                    ),
 
                     // Variable/arg
-                    VariableSymbol variableSymbol => new TypeUsageSymbol(variableSymbol.Type.Type),
+                    VariableSymbol variableSymbol => variableSymbol.Type,
 
                     _ => throw new InvalidOperationException()
                 }
@@ -164,7 +174,9 @@ internal sealed class MainPass : AstVisitor<None>
         }
         else
         {
-            typeUsageSymbol.TypeReferencedStatically = true;
+            TypeUsageSymbol usage = SemanticUtils.AttemptApplyGenerics(_analyzer, typeUsageSymbol.Type, node);
+            usage.TypeReferencedStatically = true;
+            node.SetMetadata(usage);
         }
 
         return None.Null;
@@ -179,17 +191,17 @@ internal sealed class MainPass : AstVisitor<None>
         {
             Visit(node.Value);
 
-            TypeSymbol varType = SemanticUtils.TypeOfReference(node.Type);
+            TypeUsageSymbol varType = node.Type.GetMetadata<TypeUsageSymbol>();
             TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
-            if (varType            != TypeSymbol.UnknownType
+            if (varType.Type       != TypeSymbol.UnknownType
                 && typeOfExpr.Type != TypeSymbol.UnknownType
                 && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
                     MessageId.AssignedValueDoesNotMatchType,
                     "Provided value type doesn't match variable type"
-                    + $"\n\tExpected: {varType.Name}"
-                    + $"\n\tActual:   {typeOfExpr.Type.Name}",
+                    + $"\n\tExpected: {varType.GetStringRepresentation()}"
+                    + $"\n\tActual:   {typeOfExpr.GetStringRepresentation()}",
                     node.Location
                 );
             }
@@ -200,14 +212,14 @@ internal sealed class MainPass : AstVisitor<None>
 
     public override None MethodDeclaration(MethodDeclarationNode node)
     {
-        TypeReference(node.Type);
+        Visit(node.Type);
 
         // Push scope
         ScopeManager.PushScope(node.GetMetadata<SymbolTable>());
 
         foreach (VariableNode parameter in node.Parameters)
         {
-            Visit(parameter);
+            Visit(parameter.Type);
         }
 
         foreach (Node statement in node)
@@ -249,22 +261,23 @@ internal sealed class MainPass : AstVisitor<None>
     {
         node.Type.SetMetadata(ScopeManager.CurrentScope);
         Visit(node.Type);
+        node.GetMetadata<VariableSymbol>().Type = node.Type.GetMetadata<TypeUsageSymbol>();
 
         if (node.Value != null)
         {
             Visit(node.Value);
 
-            TypeSymbol varType = SemanticUtils.TypeOfReference(node.Type);
+            TypeUsageSymbol varType = node.Type.GetMetadata<TypeUsageSymbol>();
             TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
-            if (varType            != TypeSymbol.UnknownType
+            if (varType.Type       != TypeSymbol.UnknownType
                 && typeOfExpr.Type != TypeSymbol.UnknownType
                 && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
                     MessageId.AssignedValueDoesNotMatchType,
                     "Provided value type doesn't match variable type"
-                    + $"\n\tExpected: {varType.Name}"
-                    + $"\n\tActual:   {typeOfExpr.Type.Name}",
+                    + $"\n\tExpected: {varType.GetStringRepresentation()}"
+                    + $"\n\tActual:   {typeOfExpr.GetStringRepresentation()}",
                     node.Location
                 );
             }
@@ -282,7 +295,8 @@ internal sealed class MainPass : AstVisitor<None>
         if (node.Target != null)
         {
             Visit(node.Target);
-            parent = SemanticUtils.TypeOfExpr(_analyzer, node.Target);
+            parent                          = SemanticUtils.TypeOfExpr(_analyzer, node.Target);
+            parent.TypeReferencedStatically = node.Target is TypeReferenceNode;
         }
         else
         {
@@ -332,7 +346,7 @@ internal sealed class MainPass : AstVisitor<None>
                 throw new NoNullAllowedException("MethodSymbol.ReturnType cannot be null.");
             }
 
-            node.SetMetadata(methodSymbol.ReturnType);
+            node.SetMetadata(new TypeUsageSymbol(methodSymbol.ReturnType, parent.GenericArgs));
 
             if (parent.TypeReferencedStatically
                 && !methodSymbol.IsStatic)
@@ -369,7 +383,10 @@ internal sealed class MainPass : AstVisitor<None>
                 {
                     Visit(node.Arguments[i]);
                     TypeUsageSymbol valueType = SemanticUtils.TypeOfExpr(_analyzer, node.Arguments[i]);
-                    TypeSymbol paramType = methodSymbol.Parameters[i].Type.GetMetadata<TypeUsageSymbol>().Type;
+                    TypeUsageSymbol paramType = new(
+                        methodSymbol.Parameters[i].Type.GetMetadata<TypeUsageSymbol>(),
+                        parent.GenericArgs
+                    );
                     if (!SemanticUtils.IsAssignable(
                             _analyzer,
                             paramType,
@@ -378,7 +395,7 @@ internal sealed class MainPass : AstVisitor<None>
                     {
                         _analyzer.MessageCollection.Error(
                             MessageId.AssignedValueDoesNotMatchType,
-                            $"For argument {i + 1}, expected type {paramType.Name} but got {valueType.Type.Name}",
+                            $"For argument {i + 1} to method {parent.GetStringRepresentation()}#{methodSymbol.Name}, expected type {paramType.GetStringRepresentation()} but got {valueType.GetStringRepresentation()}",
                             node.Location
                         );
                     }
@@ -419,7 +436,7 @@ internal sealed class MainPass : AstVisitor<None>
 
                 return None.Null;
             }
-            
+
 
             if (parent.Type == TypeSymbol.Void)
             {
@@ -459,6 +476,7 @@ internal sealed class MainPass : AstVisitor<None>
                 return None.Null;
             }
 
+            varSymbol.IsInitialized = true;
             node.SetMetadata(varSymbol);
 
             if (isTypeReferencedStatically
@@ -483,17 +501,17 @@ internal sealed class MainPass : AstVisitor<None>
 
             Visit(node.Value);
 
-            TypeSymbol varType = varSymbol.Type.Type;
+            TypeUsageSymbol varType = varSymbol.Type;
             TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
-            if (varType            != TypeSymbol.UnknownType
+            if (varType.Type       != TypeSymbol.UnknownType
                 && typeOfExpr.Type != TypeSymbol.UnknownType
                 && !SemanticUtils.IsAssignable(_analyzer, varType, typeOfExpr))
             {
                 _analyzer.MessageCollection.Error(
                     MessageId.AssignedValueDoesNotMatchType,
                     "Provided value type doesn't match variable type"
-                    + $"\n\tExpected: {varType.Name}"
-                    + $"\n\tActual:   {typeOfExpr.Type.Name}",
+                    + $"\n\tExpected: {varType.GetStringRepresentation()}"
+                    + $"\n\tActual:   {typeOfExpr.GetStringRepresentation()}",
                     node.Location
                 );
             }

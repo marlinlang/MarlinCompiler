@@ -51,4 +51,9 @@ public class TypeSymbol : NamedSymbol
     /// Backing field for <see cref="SymbolTable"/>
     /// </summary>
     private SymbolTable? _symbolTable;
+
+    /// <summary>
+    /// Creates a string representation of the type.
+    /// </summary>
+    public virtual string GetStringRepresentation() => Name;
 }

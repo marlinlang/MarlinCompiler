@@ -41,6 +41,7 @@ public enum MessageId
     ArgumentCountMismatch                = 3011,
     UninitializedVariableUsage           = 3012,
     MethodCallOnVoid                     = 3013,
+    InvalidGenericArguments              = 3014,
 
 
     /*
