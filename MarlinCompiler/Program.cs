@@ -1,7 +1,6 @@
 ﻿using System.CommandLine;
 using System.CommandLine.NamingConventionBinder;
 using MarlinCompiler.Common.Messages;
-using MarlinCompiler.Mbf;
 
 namespace MarlinCompiler;
 
