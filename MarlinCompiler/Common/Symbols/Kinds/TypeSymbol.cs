@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using Ubiquity.NET.Llvm.Types;
 
 namespace MarlinCompiler.Common.Symbols.Kinds;
 
@@ -55,5 +56,10 @@ public class TypeSymbol : NamedSymbol
     /// <summary>
     /// Creates a string representation of the type.
     /// </summary>
-    public virtual string GetStringRepresentation() => Name;
+    public string GetStringRepresentation() => Name;
+    
+    /// <summary>
+    /// The LLVM type reference for this type.
+    /// </summary>
+    public ITypeRef? LlvmTypeRef { get; set; }
 }

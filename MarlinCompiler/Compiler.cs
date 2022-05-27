@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Reflection;
+using MarlinCompiler.Backend;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
@@ -58,12 +59,12 @@ public sealed class Compiler
          *    FATAL ERRORS    2
          *    NO STDLIB       3
          */
-        
+
         if (!IsStdLibPresent())
         {
             return 3;
         }
-        
+
         ContainerNode program = Parse(); /* Lex & parse       */
         Analyze(program);                /* Semantic analysis */
 
@@ -90,7 +91,7 @@ public sealed class Compiler
         ConcurrentBag<CompilationUnitNode> compilationUnits = new();
 
         _filePaths.AddRange(Directory.GetFiles(GetStdLibPath(), "*.mn", SearchOption.AllDirectories));
-        
+
         Parallel.ForEach(
             _filePaths,
             path =>
@@ -136,7 +137,7 @@ public sealed class Compiler
                 root.Children.Add(unit);
             }
         }
-        
+
         foreach (Node node in root)
         {
             CompilationUnitNode unit = (CompilationUnitNode) node;
@@ -162,10 +163,12 @@ public sealed class Compiler
     /// </summary>
     private void Build(ContainerNode program)
     {
-        // TODO: Invoke LLVM tools
-        //OutputBuilder builder = new(program, _outPath);
-        //builder.Build();
-        //MessageCollection.AddRange(builder.MessageCollection);
+        /*Builder builder = new(
+            program.Children.Select(x => (CompilationUnitNode) x),
+            _outPath
+        );
+        builder.Build();
+        MessageCollection.AddRange(builder.MessageCollection);*/
     }
 
     #endregion
@@ -220,6 +223,6 @@ public sealed class Compiler
             "stdlib.marlin"
         );
     }
-    
+
     #endregion
 }
