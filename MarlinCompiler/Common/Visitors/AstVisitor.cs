@@ -86,4 +86,9 @@ public abstract class AstVisitor<T>
     /// Visits a return statement.
     /// </summary>
     public abstract T ReturnStatement(ReturnStatementNode node);
+    
+    /// <summary>
+    /// Visits a null node.
+    /// </summary>
+    public abstract T Null(NullNode node);
 }

@@ -257,7 +257,7 @@ public sealed class Parser
 
         if (_tokens.NextIsOfType(TokenType.Constructor))
         {
-            type = new TypeReferenceNode(ExternMethodSymbol.ConstructorTypeName, Array.Empty<TypeReferenceNode>());
+            type = new TypeReferenceNode(ExternMethodSymbol.ConstructorTypeName, false, Array.Empty<TypeReferenceNode>());
             _tokens.Skip(); // constructor
         }
         else
@@ -335,10 +335,20 @@ public sealed class Parser
         {
             _tokens.Skip(); // colon
             baseClass = ExpectTypeName(moduleScope);
+
+            if (baseClass.IsNullable)
+            {
+                MessageCollection.Error(
+                    MessageId.NullableTypeInheritance,
+                    "Cannot inherit from nullable type. Please remove the '?' from the base class name.",
+                    baseClass.Location
+                );
+            }
         }
         else if (_moduleName + "::Object" != "std::Object") // don't make the base obj inherit from itself lol
         {
-            baseClass = new TypeReferenceNode("std::Object", Array.Empty<TypeReferenceNode>()) { Location = nameToken.Location };
+            baseClass = new TypeReferenceNode("std::Object", false, Array.Empty<TypeReferenceNode>())
+                { Location = nameToken.Location };
         }
 
         bool isStatic = modifiers.Contains("static");
@@ -367,7 +377,7 @@ public sealed class Parser
         {
             scope.AddSymbol(new GenericParamTypeSymbol(genericParam, symbol));
         }
-        
+
         foreach (Node childNode in typeBody)
         {
             // Types have members, which are symbols (properties) OR tables (methods)
@@ -910,22 +920,22 @@ public sealed class Parser
     private ReturnStatementNode ExpectReturnStatement(SymbolTable scope)
     {
         _tokens.GrabToken(); // return
-        
+
         ExpressionNode? value = null;
-        
+
         if (!_tokens.NextIsOfType(TokenType.Semicolon))
         {
             value = ExpectExpression(scope);
         }
-        
+
         Require(TokenType.Semicolon);
-        
+
         return new ReturnStatementNode(value)
         {
             Location = _tokens.CurrentToken.Location
         };
     }
-    
+
     /// <summary>
     /// Expects any statement.
     /// </summary>
@@ -955,7 +965,7 @@ public sealed class Parser
             SymbolTable newScope = new(null);
             return ExpectStatementBody(newScope, insideLoop);
         }
-        
+
         // Return statement
         if (_tokens.NextIsOfType(TokenType.Return))
         {
@@ -1059,6 +1069,13 @@ public sealed class Parser
 
         switch (next.Type)
         {
+            case TokenType.Null:
+                expr = new NullNode()
+                {
+                    Location = _tokens.GrabToken()!.Location
+                };
+                break;
+
             case TokenType.LeftParen:
                 Require(TokenType.LeftParen);
                 expr = ExpectExpression(scope);
@@ -1454,7 +1471,16 @@ public sealed class Parser
 
         if (!_tokens.NextIsOfType(TokenType.LeftAngle))
         {
-            TypeReferenceNode node = new(name, Array.Empty<TypeReferenceNode>()) { Location = nameToken.Location };
+            bool nullable = _tokens.NextIsOfType(TokenType.Question);
+            if (nullable)
+            {
+                _tokens.Skip(); // ?
+            }
+
+            TypeReferenceNode node = new(name, nullable, Array.Empty<TypeReferenceNode>())
+            {
+                Location = nameToken.Location
+            };
             node.SetMetadata(scope);
             return node;
         }
@@ -1472,7 +1498,13 @@ public sealed class Parser
 
             Require(TokenType.RightAngle);
 
-            TypeReferenceNode node = new(name, genericNames.ToArray()) { Location = nameToken.Location };
+            bool nullable = _tokens.NextIsOfType(TokenType.Question);
+            if (nullable)
+            {
+                _tokens.Skip(); // ?
+            }
+
+            TypeReferenceNode node = new(name, nullable, genericNames.ToArray()) { Location = nameToken.Location };
             node.SetMetadata(scope);
             return node;
         }

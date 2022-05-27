@@ -7,9 +7,10 @@ namespace MarlinCompiler.Common.AbstractSyntaxTree;
 /// </summary>
 public class TypeReferenceNode : IndexableExpressionNode
 {
-    public TypeReferenceNode(string fullName, TypeReferenceNode[] genericTypeArgs)
+    public TypeReferenceNode(string fullName, bool isNullable, TypeReferenceNode[] genericTypeArgs)
     {
         FullName             = fullName;
+        IsNullable           = isNullable;
         GenericTypeArguments = genericTypeArgs;
     }
 
@@ -17,6 +18,11 @@ public class TypeReferenceNode : IndexableExpressionNode
     /// The name of the type.
     /// </summary>
     public string FullName { get; }
+    
+    /// <summary>
+    /// Whether the type is nullable.
+    /// </summary>
+    public bool IsNullable { get;}
 
     /// <summary>
     /// Generic type name (e.g. Array&lt;string&gt; - the string part)

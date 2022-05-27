@@ -8,7 +8,7 @@ public class VariableSymbol : NamedSymbol
     
     public VariableSymbol(VariableNode node) : base(node.Name)
     {
-        Type          = new TypeUsageSymbol(TypeSymbol.UnknownType);
+        Type          = TypeUsageSymbol.UnknownType;
         IsInitialized = true;
     }
 

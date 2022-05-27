@@ -7,10 +7,15 @@ namespace MarlinCompiler.Common.Symbols.Kinds;
 /// </summary>
 public class TypeUsageSymbol : ISymbol
 {
-    public TypeUsageSymbol(TypeSymbol type, bool typeReferencedStatically = false)
+    public static readonly TypeUsageSymbol Void = new(TypeSymbol.Void, false);
+    public static readonly TypeUsageSymbol Null = new(TypeSymbol.Null, false);
+    public static readonly TypeUsageSymbol UnknownType = new(TypeSymbol.UnknownType, false);
+    
+    public TypeUsageSymbol(TypeSymbol type, bool isNullable, bool typeReferencedStatically = false)
     {
         Type                     = type;
         TypeReferencedStatically = typeReferencedStatically;
+        IsNullable               = isNullable;
         GenericArgs              = Array.Empty<TypeUsageSymbol>();
     }
 
@@ -18,6 +23,7 @@ public class TypeUsageSymbol : ISymbol
     {
         Type                     = copyFrom.Type;
         TypeReferencedStatically = copyFrom.TypeReferencedStatically;
+        IsNullable               = copyFrom.IsNullable;
         GenericArgs              = addGenericArgs;
     }
 
@@ -30,6 +36,11 @@ public class TypeUsageSymbol : ISymbol
     /// Whether the type was used statically or not.
     /// </summary>
     public bool TypeReferencedStatically { get; set; }
+    
+    /// <summary>
+    /// Whether the type is nullable or not.
+    /// </summary>
+    public bool IsNullable { get; set; }
 
     /// <summary>
     /// The generic argument which was passed.

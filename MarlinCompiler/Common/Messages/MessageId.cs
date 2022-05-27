@@ -23,6 +23,7 @@ public enum MessageId
     MissingAccessibilityModifier       = 2007,
     UnexpectedToken                    = 2008,
     ExpressionNotIndexable             = 2009,
+    NullableTypeInheritance            = 2010,
 
 
     /*
@@ -46,6 +47,8 @@ public enum MessageId
     ReturningValueFromVoidMethod         = 3016,
     NotAllCodePathsReturn                = 3017,
     ReturningVoidFromNonVoidMethod       = 3018,
+    NullableTypeNotClass                 = 3019,
+    CannotAssignNullToType               = 3020,
 
 
     /*

@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
 using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
@@ -17,18 +18,22 @@ public static class SemanticUtils
         switch (node)
         {
             case VoidTypeReferenceNode:
-                return new TypeUsageSymbol(TypeSymbol.Void);
+                return TypeUsageSymbol.Void;
+
+            case NullNode:
+                return TypeUsageSymbol.Null;
 
             case IntegerNode:
             {
                 if (analyzer.CurrentPass is not MainPass mainPassVisitor)
                 {
                     // Irrelevant
-                    return new TypeUsageSymbol(TypeSymbol.UnknownType);
+                    return TypeUsageSymbol.UnknownType;
                 }
 
                 return new TypeUsageSymbol(
-                    GetTypeOrUnknown("std::Int32", mainPassVisitor.ScopeManager.CurrentScope)
+                    GetTypeOrUnknown("std::Int32", mainPassVisitor.ScopeManager.CurrentScope),
+                    false
                 );
             }
 
@@ -68,7 +73,7 @@ public static class SemanticUtils
 
         if (type == TypeSymbol.UnknownType)
         {
-            return new TypeUsageSymbol(TypeSymbol.UnknownType);
+            return TypeUsageSymbol.UnknownType;
         }
 
         SymbolTable scope = type.SymbolTable;
@@ -81,12 +86,12 @@ public static class SemanticUtils
 
                 if (typeSymbol == TypeSymbol.UnknownType)
                 {
-                    return new TypeUsageSymbol(typeSymbol);
+                    return TypeUsageSymbol.UnknownType;
                 }
 
                 TypeUsageSymbol sym = typeSymbol is ClassTypeSymbol cls && cls.GenericParamNames.Any()
                                           ? AttemptApplyGenerics(analyzer, typeSymbol, typeReferenceNode)
-                                          : new TypeUsageSymbol(typeSymbol);
+                                          : new TypeUsageSymbol(typeSymbol, typeReferenceNode.IsNullable);
                 sym.TypeReferencedStatically = true;
                 return sym;
             }
@@ -159,9 +164,20 @@ public static class SemanticUtils
                 return false;
             }
         }
+        else if (super.Type is ClassTypeSymbol
+                 && sub == TypeUsageSymbol.Null)
+        {
+            return super.IsNullable;
+        }
         else
         {
             // For non-classes, i.e. types that don't have generics and inheritance, just check name matching
+            // Cannot assign null to non-class
+            if (sub == TypeUsageSymbol.Null)
+            {
+                return false;
+            }
+
             return super.Type == sub.Type;
         }
 
@@ -184,13 +200,49 @@ public static class SemanticUtils
     }
 
     /// <summary>
+    /// Utility method to provide an error for a type usage, if the types aren't assignable.
+    /// </summary>
+    public static void CheckIncompatibleTypesAndError(
+        MessageCollection collection,
+        TypeUsageSymbol expected,
+        TypeUsageSymbol given,
+        FileLocation usageLocation)
+    {
+        if (expected.Type != TypeSymbol.UnknownType
+            && given.Type != TypeSymbol.UnknownType
+            && !IsAssignable(expected, given))
+        {
+            if (given == TypeUsageSymbol.Null)
+            {
+                collection.Error(
+                    MessageId.CannotAssignNullToType,
+                    "Cannot assign null to non-null type"
+                    + $"\n\tExpected: {expected.GetStringRepresentation()}"
+                    + $"\n\tActual:   null",
+                    usageLocation
+                );
+            }
+            else
+            {
+                collection.Error(
+                    MessageId.AssignedValueDoesNotMatchType,
+                    "Provided value type doesn't match variable type"
+                    + $"\n\tExpected: {expected.GetStringRepresentation()}"
+                    + $"\n\tActual:   {given.GetStringRepresentation()}",
+                    usageLocation
+                );
+            }
+        }
+    }
+
+    /// <summary>
     /// Assigns the metadata for a type reference.
     /// </summary>
     public static void SetTypeRefMetadata(Analyzer analyzer, TypeReferenceNode node)
     {
         if (node is VoidTypeReferenceNode)
         {
-            node.SetMetadata(new TypeUsageSymbol(TypeSymbol.Void));
+            node.SetMetadata(TypeUsageSymbol.Void);
             return;
         }
 
@@ -205,7 +257,7 @@ public static class SemanticUtils
 
             TypeSymbol typeOrUnknown = GetTypeOrUnknown(node.FullName, scope);
 
-            node.SetMetadata(new TypeUsageSymbol(typeOrUnknown));
+            node.SetMetadata(new TypeUsageSymbol(typeOrUnknown, node.IsNullable));
         }
         catch (NoNullAllowedException)
         {
@@ -221,7 +273,7 @@ public static class SemanticUtils
     {
         if (type == TypeSymbol.UnknownType)
         {
-            return new TypeUsageSymbol(type);
+            return TypeUsageSymbol.UnknownType;
         }
 
         // Make sure we have usable types
@@ -244,10 +296,10 @@ public static class SemanticUtils
                 );
             }
 
-            return new TypeUsageSymbol(type);
+            return new TypeUsageSymbol(type, referenceNode.IsNullable);
         }
 
-        TypeUsageSymbol result = new(type);
+        TypeUsageSymbol result = new(type, referenceNode.IsNullable);
         int paramsCount = classType.GenericParamNames.Length;
         int argsCount = referenceNode.GenericTypeArguments.Length;
 
@@ -292,7 +344,7 @@ public static class SemanticUtils
             {
                 return true;
             }
-            
+
             if (found.Value                != null
                 && expectedReturnType.Type != TypeSymbol.Void)
             {

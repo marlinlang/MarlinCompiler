@@ -83,4 +83,9 @@ public class NoNieVisitor : AstVisitor<None>
     {
         return None.Null;
     }
+
+    public override None Null(NullNode node)
+    {
+        return None.Null;
+    }
 }

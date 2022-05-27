@@ -35,7 +35,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             if (type == TypeSymbol.UnknownType)
             {
                 // Type not found
-                node.SetMetadata(new TypeUsageSymbol(TypeSymbol.UnknownType));
+                node.SetMetadata(TypeUsageSymbol.UnknownType);
                 return None.Null;
             }
 
@@ -101,7 +101,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
                 );
             }
 
-            node.SetMetadata(new TypeUsageSymbol(TypeSymbol.UnknownType));
+            node.SetMetadata(TypeUsageSymbol.UnknownType);
         }
 
         return None.Null;
@@ -109,7 +109,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
 
     public override None ClassDefinition(ClassTypeDefinitionNode node)
     {
-        node.BaseType ??= new TypeReferenceNode("std::Object", Array.Empty<TypeReferenceNode>())
+        node.BaseType ??= new TypeReferenceNode("std::Object", false, Array.Empty<TypeReferenceNode>())
         {
             Location = node.Location
         };
@@ -177,6 +177,17 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             TypeUsageSymbol usage = SemanticUtils.AttemptApplyGenerics(_analyzer, typeUsageSymbol.Type, node);
             usage.TypeReferencedStatically = true;
             node.SetMetadata(usage);
+
+            if (usage.IsNullable
+                && usage.Type is not ClassTypeSymbol)
+            {
+                // Cannot have nullable types that are not classes
+                _analyzer.MessageCollection.Error(
+                    MessageId.NullableTypeNotClass,
+                    $"Cannot have a nullable type that is not a class",
+                    node.Location
+                );
+            }
         }
 
         return None.Null;
@@ -191,20 +202,12 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         {
             Visit(node.Value);
 
-            TypeUsageSymbol varType = node.Type.GetMetadata<TypeUsageSymbol>();
-            TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
-            if (varType.Type       != TypeSymbol.UnknownType
-                && typeOfExpr.Type != TypeSymbol.UnknownType
-                && !SemanticUtils.IsAssignable(varType, typeOfExpr))
-            {
-                _analyzer.MessageCollection.Error(
-                    MessageId.AssignedValueDoesNotMatchType,
-                    "Provided value type doesn't match variable type"
-                    + $"\n\tExpected: {varType.GetStringRepresentation()}"
-                    + $"\n\tActual:   {typeOfExpr.GetStringRepresentation()}",
-                    node.Location
-                );
-            }
+            SemanticUtils.CheckIncompatibleTypesAndError(
+                _analyzer.MessageCollection,
+                node.Type.GetMetadata<TypeUsageSymbol>(),
+                SemanticUtils.TypeOfExpr(_analyzer, node.Value),
+                node.Location
+            );
         }
 
         return None.Null;
@@ -237,7 +240,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
                 node.Location
             );
         }
-        
+
         return None.Null;
     }
 
@@ -276,20 +279,12 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         {
             Visit(node.Value);
 
-            TypeUsageSymbol varType = node.Type.GetMetadata<TypeUsageSymbol>();
-            TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
-            if (varType.Type       != TypeSymbol.UnknownType
-                && typeOfExpr.Type != TypeSymbol.UnknownType
-                && !SemanticUtils.IsAssignable(varType, typeOfExpr))
-            {
-                _analyzer.MessageCollection.Error(
-                    MessageId.AssignedValueDoesNotMatchType,
-                    "Provided value type doesn't match variable type"
-                    + $"\n\tExpected: {varType.GetStringRepresentation()}"
-                    + $"\n\tActual:   {typeOfExpr.GetStringRepresentation()}",
-                    node.Location
-                );
-            }
+            SemanticUtils.CheckIncompatibleTypesAndError(
+                _analyzer.MessageCollection,
+                node.Type.GetMetadata<TypeUsageSymbol>(),
+                SemanticUtils.TypeOfExpr(_analyzer, node.Value),
+                node.Location
+            );
         }
 
         return None.Null;
@@ -311,13 +306,13 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         {
             // Look to nearest type
             SymbolTable typeScope = ScopeManager.CurrentScope.LookupSymbol<TypeSymbol>(x => x is TypeSymbol).SymbolTable;
-            parent = new TypeUsageSymbol((TypeSymbol) typeScope.PrimarySymbol!);
+            parent = new TypeUsageSymbol((TypeSymbol) typeScope.PrimarySymbol!, false);
         }
 
         if (parent.Type == TypeSymbol.UnknownType)
         {
             // We don't know the type of the target, so we can't resolve the method
-            node.SetMetadata(new TypeUsageSymbol(TypeSymbol.UnknownType));
+            node.SetMetadata(TypeUsageSymbol.UnknownType);
 
             return None.Null;
         }
@@ -325,7 +320,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         if (parent.Type == TypeSymbol.Void)
         {
             // We can't call methods on void
-            node.SetMetadata(new TypeUsageSymbol(TypeSymbol.UnknownType));
+            node.SetMetadata(TypeUsageSymbol.UnknownType);
 
             _analyzer.MessageCollection.Error(
                 MessageId.MethodCallOnVoid,
@@ -345,7 +340,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             if (methodSymbol.ReturnType?.Type == TypeSymbol.UnknownType)
             {
                 // We don't know the return type of the method, so we can't resolve the method
-                node.SetMetadata(new TypeUsageSymbol(TypeSymbol.UnknownType));
+                node.SetMetadata(TypeUsageSymbol.UnknownType);
 
                 return None.Null;
             }
@@ -391,21 +386,33 @@ internal sealed class MainPass : AstVisitor<None>, IPass
                 for (int i = 0; i < args; i++)
                 {
                     Visit(node.Arguments[i]);
-                    TypeUsageSymbol valueType = SemanticUtils.TypeOfExpr(_analyzer, node.Arguments[i]);
                     TypeUsageSymbol paramType = new(
                         methodSymbol.Parameters[i].Type.GetMetadata<TypeUsageSymbol>(),
                         parent.GenericArgs
                     );
-                    if (!SemanticUtils.IsAssignable(
-                            paramType,
-                            valueType
-                        ))
+                    TypeUsageSymbol argType = SemanticUtils.TypeOfExpr(_analyzer, node.Arguments[i]);
+                    if (!SemanticUtils.IsAssignable(paramType, argType))
                     {
-                        _analyzer.MessageCollection.Error(
-                            MessageId.AssignedValueDoesNotMatchType,
-                            $"For argument {i + 1} to method {parent.GetStringRepresentation()}#{methodSymbol.Name}, expected type {paramType.GetStringRepresentation()} but got {valueType.GetStringRepresentation()}",
-                            node.Location
-                        );
+                        if (argType == TypeUsageSymbol.Null)
+                        {
+                            _analyzer.MessageCollection.Error(
+                                MessageId.CannotAssignNullToType,
+                                $"For argument {i + 1} to method {parent.GetStringRepresentation()}#{methodSymbol.Name}:"
+                                + $"\n\tExpected type: {paramType.GetStringRepresentation()},"
+                                + "\n\tBut got:       null",
+                                node.Location
+                            );   
+                        }
+                        else
+                        {
+                            _analyzer.MessageCollection.Error(
+                                MessageId.AssignedValueDoesNotMatchType,
+                                $"For argument {i + 1} to method {parent.GetStringRepresentation()}#{methodSymbol.Name}:"
+                                + $"\n\tExpected type: {paramType.GetStringRepresentation()},"
+                                + $"\n\tBut got:       {argType.GetStringRepresentation()}",
+                                node.Location
+                            );                            
+                        }
                     }
                 }
             }
@@ -414,7 +421,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         }
 
         // We couldn't find the method
-        node.SetMetadata(new TypeUsageSymbol(TypeSymbol.UnknownType));
+        node.SetMetadata(TypeUsageSymbol.UnknownType);
         _analyzer.MessageCollection.Error(
             MessageId.MemberNotFound,
             $"Cannot find method {node.MethodName} in type {parent.Type.Name}",
@@ -509,20 +516,12 @@ internal sealed class MainPass : AstVisitor<None>, IPass
 
             Visit(node.Value);
 
-            TypeUsageSymbol varType = varSymbol.Type;
-            TypeUsageSymbol typeOfExpr = SemanticUtils.TypeOfExpr(_analyzer, node.Value);
-            if (varType.Type       != TypeSymbol.UnknownType
-                && typeOfExpr.Type != TypeSymbol.UnknownType
-                && !SemanticUtils.IsAssignable(varType, typeOfExpr))
-            {
-                _analyzer.MessageCollection.Error(
-                    MessageId.AssignedValueDoesNotMatchType,
-                    "Provided value type doesn't match variable type"
-                    + $"\n\tExpected: {varType.GetStringRepresentation()}"
-                    + $"\n\tActual:   {typeOfExpr.GetStringRepresentation()}",
-                    node.Location
-                );
-            }
+            SemanticUtils.CheckIncompatibleTypesAndError(
+                _analyzer.MessageCollection,
+                varSymbol.Type,
+                SemanticUtils.TypeOfExpr(_analyzer, node.Value),
+                node.Location
+            );
 
             return None.Null;
         }
@@ -573,7 +572,12 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         {
             Visit(node.Value);
         }
-        
+
+        return None.Null;
+    }
+
+    public override None Null(NullNode node)
+    {
         return None.Null;
     }
 }

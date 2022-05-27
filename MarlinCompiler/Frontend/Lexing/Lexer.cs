@@ -77,6 +77,7 @@ public sealed class Lexer
         new(TokenType.Set, new Regex("^set\\b", RegexOptions.Compiled)),
         new(TokenType.Mutable, new Regex("^mut\\b", RegexOptions.Compiled)),
         new(TokenType.Void, new Regex("^void\\b", RegexOptions.Compiled)),
+        new(TokenType.Null, new Regex("^null\\b", RegexOptions.Compiled)),
         new(TokenType.Extern, new Regex("^extern\\b", RegexOptions.Compiled)),
         new(TokenType.Return, new Regex("^return\\b", RegexOptions.Compiled)),
         new(TokenType.Operator, new Regex("^operator\\b", RegexOptions.Compiled)),

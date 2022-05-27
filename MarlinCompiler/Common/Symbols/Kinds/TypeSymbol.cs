@@ -9,6 +9,7 @@ namespace MarlinCompiler.Common.Symbols.Kinds;
 public class TypeSymbol : NamedSymbol
 {
     public static readonly TypeSymbol Void        = new("", "void", GetAccessibility.Public);
+    public static readonly TypeSymbol Null        = new("", "nullptr", GetAccessibility.Public);
     public static readonly TypeSymbol UnknownType = new("???", "???", GetAccessibility.Public);
 
     protected TypeSymbol(string moduleName, string typeName, GetAccessibility accessibility)
