@@ -1191,7 +1191,7 @@ public sealed class Parser
     /// </summary>
     private InitializerNode ExpectNew(SymbolTable scope)
     {
-        Token newKeyword = _tokens.GrabToken()!;
+        _tokens.Skip(); // new
 
         TypeReferenceNode type = ExpectTypeName(scope);
 
