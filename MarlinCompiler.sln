@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarlinCompiler", "MarlinCompiler\MarlinCompiler.csproj", "{214A4057-1443-4AD9-8DF1-C0AE51CA0474}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarlinCompilerTests", "MarlinCompilerTests\MarlinCompilerTests.csproj", "{42C787BD-0A2A-40F3-8D77-059378116F1F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,9 +12,5 @@ Global
 		{214A4057-1443-4AD9-8DF1-C0AE51CA0474}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{214A4057-1443-4AD9-8DF1-C0AE51CA0474}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{214A4057-1443-4AD9-8DF1-C0AE51CA0474}.Release|Any CPU.Build.0 = Release|Any CPU
-		{42C787BD-0A2A-40F3-8D77-059378116F1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{42C787BD-0A2A-40F3-8D77-059378116F1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{42C787BD-0A2A-40F3-8D77-059378116F1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{42C787BD-0A2A-40F3-8D77-059378116F1F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
