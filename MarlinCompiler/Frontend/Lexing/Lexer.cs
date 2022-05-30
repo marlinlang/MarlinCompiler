@@ -97,7 +97,7 @@ public sealed class Lexer
         {
             int currentPos = _startingLength - _parseContent.Length;
             int line = 1;
-            int column = 0;
+            int column = 1;
             for (int i = 0; i < currentPos; ++i)
             {
                 switch (_startingContent[i])
@@ -106,7 +106,7 @@ public sealed class Lexer
                         continue;
                     case '\n':
                         line++;
-                        column = 0;
+                        column = 1;
                         break;
                     default:
                         column++;
