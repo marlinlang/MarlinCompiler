@@ -2,11 +2,11 @@
 using System.Text;
 using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.FileLocations;
 using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Common.Symbols.Kinds;
 using MarlinCompiler.Frontend.Lexing;
-using static MarlinCompiler.Frontend.Lexing.Lexer;
 
 namespace MarlinCompiler.Frontend.Parsing;
 
@@ -30,7 +30,7 @@ public sealed class Parser
         _tokens                      = tokens;
         _path                        = filePath;
         _moduleName                  = "<global>";
-        _compilationUnitDependencies = new List<(string, FileLocation)>();
+        _compilationUnitDependencies = new List<(string, TokenLocation)>();
     }
 
     /// <summary>
@@ -56,7 +56,7 @@ public sealed class Parser
     /// <summary>
     /// The dependencies for this compilation unit.
     /// </summary>
-    private readonly List<(string, FileLocation)> _compilationUnitDependencies;
+    private readonly List<(string, TokenLocation)> _compilationUnitDependencies;
 
     /// <summary>
     /// Starts the parse operation.
@@ -106,7 +106,7 @@ public sealed class Parser
         }
         catch (CancelParsingException ex)
         {
-            MessageCollection.Info(MessageId.ParsingCancelled, $"Parsing cancelled: {ex.Message}", new FileLocation(_path));
+            MessageCollection.Info(MessageId.ParsingCancelled, $"Parsing cancelled for file {_path}: {ex.Message}", null);
         }
 
         node.Children.AddRange(children);
@@ -1301,9 +1301,9 @@ public sealed class Parser
     /// <summary>
     /// Utility method for parsing using directives.
     /// </summary>
-    private IEnumerable<(string, FileLocation)> GrabUsingDirectives()
+    private IEnumerable<(string, TokenLocation)> GrabUsingDirectives()
     {
-        List<(string, FileLocation)> dependencies = new();
+        List<(string, TokenLocation)> dependencies = new();
 
         while (_tokens.NextIsOfType(TokenType.Using))
         {
@@ -1311,7 +1311,7 @@ public sealed class Parser
 
             try
             {
-                FileLocation? location = _tokens.PeekToken()?.Location;
+                TokenLocation? location = _tokens.PeekToken()?.Location;
 
                 if (location == default)
                 {
@@ -1606,7 +1606,7 @@ public sealed class Parser
     /// <param name="location">The location of the offending code.</param>
     /// <param name="recoverConsumes">Whether or not the recover process should consume the final token.</param>
     /// <exception cref="CancelParsingException">When there are too many parse errors</exception>
-    private void LogErrorAndRecover(MessageId id, string message, FileLocation location, bool recoverConsumes)
+    private void LogErrorAndRecover(MessageId id, string message, TokenLocation location, bool recoverConsumes)
     {
         MessageCollection.Error(id, message, location);
 

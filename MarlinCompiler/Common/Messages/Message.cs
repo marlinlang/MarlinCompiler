@@ -1,4 +1,6 @@
-﻿namespace MarlinCompiler.Common.Messages;
+﻿using MarlinCompiler.Common.FileLocations;
+
+namespace MarlinCompiler.Common.Messages;
 
 /// <summary>
 /// The fatality of a message.
@@ -30,7 +32,7 @@ public readonly record struct Message(MessageId Id, string Content)
     /// <summary>
     /// The location of the cause of the message.
     /// </summary>
-    public FileLocation? Location { get; init; } = null;
+    public TokenLocation? Location { get; init; } = null;
 
     /// <summary>
     /// The fatality of the message.

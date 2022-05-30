@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
+using MarlinCompiler.Common.FileLocations;
 
 namespace MarlinCompiler.Common.Messages;
 
@@ -17,7 +18,7 @@ public class MessageCollection : IEnumerable<Message>
 
     public bool HasFatalErrors => _messages.Any(x => x.Fatality == MessageFatality.Severe);
 
-    public void Error(MessageId id, string message, FileLocation location)
+    public void Error(MessageId id, string message, TokenLocation location)
     {
         _messages.Add(
             new Message(id, message)
@@ -28,7 +29,7 @@ public class MessageCollection : IEnumerable<Message>
         );
     }
 
-    public void Warn(MessageId id, string message, FileLocation? location)
+    public void Warn(MessageId id, string message, TokenLocation? location)
     {
         _messages.Add(
             new Message(id, message)
@@ -39,7 +40,7 @@ public class MessageCollection : IEnumerable<Message>
         );
     }
 
-    public void Info(MessageId id, string message, FileLocation? location)
+    public void Info(MessageId id, string message, TokenLocation? location)
     {
         _messages.Add(
             new Message(id, message)

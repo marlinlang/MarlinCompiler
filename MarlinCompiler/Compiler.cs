@@ -192,7 +192,7 @@ public sealed class Compiler
     private Tokens Lex(string path)
     {
         Lexer lexer = new(File.ReadAllText(path), path);
-        Lexer.Token[] tokens = lexer.Lex();
+        Token[] tokens = lexer.Lex();
         MessageCollection.AddRange(lexer.MessageCollection);
 
         return new Tokens(tokens);

@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using MarlinCompiler.Common.FileLocations;
 using MarlinCompiler.Common.Visitors;
 
 namespace MarlinCompiler.Common.AbstractSyntaxTree;
@@ -11,7 +12,7 @@ public abstract class Node
     /// <summary>
     /// The location of the source representation of the node.
     /// </summary>
-    public FileLocation Location
+    public TokenLocation Location
     {
         get => _location ?? throw new InvalidOperationException("Node doesn't have a location");
         set => _location = value;
@@ -30,7 +31,7 @@ public abstract class Node
     /// <summary>
     /// The location of the node.
     /// </summary>
-    private FileLocation? _location;
+    private TokenLocation? _location;
 
     /// <summary>
     /// Accesses the metadata for a node.

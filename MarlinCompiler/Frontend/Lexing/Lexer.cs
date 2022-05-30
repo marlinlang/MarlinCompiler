@@ -1,6 +1,6 @@
 ﻿using System.Text;
 using System.Text.RegularExpressions;
-using MarlinCompiler.Common;
+using MarlinCompiler.Common.FileLocations;
 using MarlinCompiler.Common.Messages;
 
 namespace MarlinCompiler.Frontend.Lexing;
@@ -18,40 +18,6 @@ public sealed class Lexer
         _filePath        = filePath;
         _startingContent = sourceText;
         _startingLength  = sourceText.Length;
-    }
-
-    /// <summary>
-    /// A representation of a token.
-    /// </summary>
-    public record Token(TokenType Type, string Value, FileLocation Location)
-    {
-        /// <summary>
-        /// The operator precedence of this token
-        /// </summary>
-        public int Precedence => Type switch
-        {
-            TokenType.Dot  => 10,
-            TokenType.Plus => 10,
-
-            _ => 0
-        };
-
-        /// <summary>
-        /// Is this a right-associative operator?
-        /// </summary>
-        public bool IsRightAssocBinOp => Type switch
-        {
-            TokenType.Power => true,
-
-            _ => false
-        };
-
-        public override int GetHashCode()
-        {
-            return $"TOK<{Type}>({Value};{Value.GetHashCode()})".GetHashCode();
-        }
-
-        public virtual bool Equals(Token? other) => other is not null && other.Type == Type && other.Value == Value;
     }
 
     /// <summary>
@@ -125,13 +91,13 @@ public sealed class Lexer
     private readonly string        _startingContent;
     private readonly int           _startingLength;
 
-    private FileLocation CurrentLocation
+    private FilePosition CurrentPosition
     {
         get
         {
             int currentPos = _startingLength - _parseContent.Length;
             int line = 1;
-            int col = 0;
+            int column = 0;
             for (int i = 0; i < currentPos; ++i)
             {
                 switch (_startingContent[i])
@@ -140,15 +106,15 @@ public sealed class Lexer
                         continue;
                     case '\n':
                         line++;
-                        col = 0;
+                        column = 0;
                         break;
                     default:
-                        col++;
+                        column++;
                         break;
                 }
             }
 
-            return new FileLocation(_filePath, line, col);
+            return new FilePosition(line, column);
         }
     }
 
@@ -187,6 +153,8 @@ public sealed class Lexer
             return null;
         }
 
+        FilePosition tokenStart = CurrentPosition;
+
         foreach (TokenDefinition definition in TokenDefinitions)
         {
             Match match = definition.Regex.Match(useString);
@@ -202,11 +170,21 @@ public sealed class Lexer
                                       ? match.Value[1..^1]
                                       : match.Value;
 
-                return new Token(definition.TokenType, useValue, CurrentLocation);
+                FilePosition tokenEnd = CurrentPosition;
+
+                return new Token(
+                    definition.TokenType,
+                    useValue,
+                    new TokenLocation(_filePath, new PositionRange(tokenStart, tokenEnd))
+                );
             }
         }
 
         _parseContent.Remove(0, leadingSpaces + 1);
-        return new Token(TokenType.Invalid, useString[0].ToString(), CurrentLocation);
+        return new Token(
+            TokenType.Invalid,
+            useString[0].ToString(),
+            new TokenLocation(_filePath, new PositionRange(tokenStart))
+        );
     }
 }

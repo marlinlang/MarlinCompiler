@@ -1,11 +1,13 @@
-﻿namespace MarlinCompiler.Common.AbstractSyntaxTree;
+﻿using MarlinCompiler.Common.FileLocations;
+
+namespace MarlinCompiler.Common.AbstractSyntaxTree;
 
 /// <summary>
 /// A node that represents a compilation unit.
 /// </summary>
 public class CompilationUnitNode : ContainerNode
 {
-    public CompilationUnitNode(string fullName, (string, FileLocation)[] dependencies)
+    public CompilationUnitNode(string fullName, (string, TokenLocation)[] dependencies)
     {
         FullName     = fullName;
         Dependencies = dependencies;
@@ -20,5 +22,5 @@ public class CompilationUnitNode : ContainerNode
     /// The names of other needed compilation units.
     /// string is the name of the dependency, FileLocation is the location where the dependency was requested
     /// </summary>
-    public (string, FileLocation)[] Dependencies { get; }
+    public (string, TokenLocation)[] Dependencies { get; }
 }

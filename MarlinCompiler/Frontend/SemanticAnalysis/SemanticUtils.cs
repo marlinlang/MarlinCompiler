@@ -1,6 +1,6 @@
 ﻿using System.Data;
-using MarlinCompiler.Common;
 using MarlinCompiler.Common.AbstractSyntaxTree;
+using MarlinCompiler.Common.FileLocations;
 using MarlinCompiler.Common.Messages;
 using MarlinCompiler.Common.Symbols;
 using MarlinCompiler.Common.Symbols.Kinds;
@@ -217,7 +217,7 @@ public static class SemanticUtils
         MessageCollection collection,
         TypeUsageSymbol expected,
         TypeUsageSymbol given,
-        FileLocation usageLocation)
+        TokenLocation usageLocation)
     {
         if (expected.Type != TypeSymbol.UnknownType
             && given.Type != TypeSymbol.UnknownType
