@@ -38,8 +38,8 @@ More examples can be found in the `examples/` directory of the repo.
 ## Roadmap
 
 - [X] Lexing/parsing
-- [ ] Semantic analysis - **current**
-- [ ] Code generation
+- [X] Semantic analysis
+- [ ] Code generation - **current**
 - [ ] Code optimization
 - [ ] Documentation
 - [ ] LSP (Language Server Protocol) implementation
