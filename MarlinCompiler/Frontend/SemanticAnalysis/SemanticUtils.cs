@@ -119,6 +119,12 @@ public static class SemanticUtils
         // 3. Check if the types are compatible
 
         // ReSharper disable once ConvertIfStatementToSwitchStatement - bro no?!
+        if (super.Type is GenericParamTypeSymbol
+            && sub.Type is GenericParamTypeSymbol)
+        {
+            return super.Type.Name == sub.Type.Name;
+        }
+
         if (sub.Type is GenericParamTypeSymbol
             || super.Type is GenericParamTypeSymbol)
         {
@@ -134,6 +140,11 @@ public static class SemanticUtils
             {
                 if (classTypeSymbol.GenericParamNames[i] == genericParam.Name)
                 {
+                    if (sub == TypeUsageSymbol.Null)
+                    {
+                        return super.IsNullable;
+                    }
+                
                     return genericSymbol == sub
                                ? IsAssignable(super, genericSymbol.GenericArgs[i])
                                : IsAssignable(genericSymbol.GenericArgs[i], sub);

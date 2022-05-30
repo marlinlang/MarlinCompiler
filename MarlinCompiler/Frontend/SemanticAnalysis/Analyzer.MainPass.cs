@@ -561,6 +561,15 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         node.Type.SetMetadata(ScopeManager.CurrentScope);
         Visit(node.Type);
 
+        if (node.Type.GetMetadata<TypeUsageSymbol>().Type is GenericParamTypeSymbol)
+        {
+            _analyzer.MessageCollection.Error(
+                MessageId.GenericParamTypeCannotBeInstantiated,
+                $"Cannot instantiate generic parameter {node.Type.GetMetadata<TypeUsageSymbol>().Type.Name}",
+                node.Location
+            );
+        }
+
         node.SetMetadata(node.Type.GetMetadata<TypeUsageSymbol>());
 
         return None.Null;

@@ -49,6 +49,7 @@ public enum MessageId
     ReturningVoidFromNonVoidMethod       = 3018,
     NullableTypeNotClass                 = 3019,
     CannotAssignNullToType               = 3020,
+    GenericParamTypeCannotBeInstantiated = 3021,
 
 
     /*

@@ -53,12 +53,19 @@ public class TypeUsageSymbol : ISymbol
         {
             ClassTypeSymbol genericParamOwner = genericParam.Owner;
 
-            for (int i = 0; i < genericParamOwner.GenericParamNames.Length; ++i)
+            try
             {
-                if (genericParamOwner.GenericParamNames[i] == genericParam.Name)
+                for (int i = 0; i < genericParamOwner.GenericParamNames.Length; ++i)
                 {
-                    return GenericArgs[i].GetStringRepresentation();
+                    if (genericParamOwner.GenericParamNames[i] == genericParam.Name)
+                    {
+                        return GenericArgs[i].GetStringRepresentation();
+                    }
                 }
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return genericParam.Name;
             }
         }
 
