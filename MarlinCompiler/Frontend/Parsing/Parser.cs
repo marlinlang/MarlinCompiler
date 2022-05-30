@@ -1201,20 +1201,19 @@ public sealed class Parser
 
             ExpressionNode[] constructorArgs = GrabTupleValues(scope);
 
-            return new NewClassInitializerNode(type, constructorArgs) { Location = newKeyword.Location };
+            return new NewClassInitializerNode(type, constructorArgs) { Location = type.Location };
         }
-        else if (!_tokens.HasNext)
+        
+        if (!_tokens.HasNext)
         {
             throw new CancelParsingException("Premature EOF");
         }
-        else
-        {
-            throw new ParseException(
-                MessageId.UnexpectedToken,
-                $"Expected [ or ( after new, got {_tokens.PeekToken()!.Type}",
-                _tokens.PeekToken()!
-            );
-        }
+        
+        throw new ParseException(
+            MessageId.UnexpectedToken,
+            $"Expected [ or ( after new, got {_tokens.PeekToken()!.Type}",
+            _tokens.PeekToken()!
+        );
     }
 
     /// <summary>

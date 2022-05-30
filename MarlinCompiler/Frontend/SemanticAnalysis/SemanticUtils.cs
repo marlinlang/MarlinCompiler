@@ -136,15 +136,22 @@ public static class SemanticUtils
             // Then we check if the supplement is assignable to super
 
             ClassTypeSymbol classTypeSymbol = genericParam.Owner;
+
+            if (classTypeSymbol.GenericParamNames.Length != genericSymbol.GenericArgs.Length)
+            {
+                // We have an unfilled generic param
+                return false;
+            }
+
             for (int i = 0; i < classTypeSymbol.GenericParamNames.Length; ++i)
             {
                 if (classTypeSymbol.GenericParamNames[i] == genericParam.Name)
                 {
-                    if (sub == TypeUsageSymbol.Null)
+                    if (sub.IsNull)
                     {
                         return super.IsNullable;
                     }
-                
+
                     return genericSymbol == sub
                                ? IsAssignable(super, genericSymbol.GenericArgs[i])
                                : IsAssignable(genericSymbol.GenericArgs[i], sub);
@@ -176,7 +183,7 @@ public static class SemanticUtils
             }
         }
         else if (super.Type is ClassTypeSymbol
-                 && sub == TypeUsageSymbol.Null)
+                 && sub.IsNull)
         {
             return super.IsNullable;
         }
@@ -184,7 +191,7 @@ public static class SemanticUtils
         {
             // For non-classes, i.e. types that don't have generics and inheritance, just check name matching
             // Cannot assign null to non-class
-            if (sub == TypeUsageSymbol.Null)
+            if (sub.IsNull)
             {
                 return false;
             }
@@ -219,11 +226,11 @@ public static class SemanticUtils
         TypeUsageSymbol given,
         TokenLocation usageLocation)
     {
-        if (expected.Type != TypeSymbol.UnknownType
-            && given.Type != TypeSymbol.UnknownType
+        if (!expected.IsUnknownType
+            && !given.IsUnknownType
             && !IsAssignable(expected, given))
         {
-            if (given == TypeUsageSymbol.Null)
+            if (given.IsNull)
             {
                 collection.Error(
                     MessageId.CannotAssignNullToType,
@@ -351,16 +358,18 @@ public static class SemanticUtils
 
         if (block.FirstOrDefault(x => x is ReturnStatementNode) is ReturnStatementNode found)
         {
-            if (expectedReturnType.Type == TypeSymbol.UnknownType)
+            if (expectedReturnType.IsUnknownType)
             {
                 return true;
             }
 
-            if (found.Value                != null
-                && expectedReturnType.Type != TypeSymbol.Void)
+            if (found.Value != null
+                && !expectedReturnType.IsUnknownType
+                && !expectedReturnType.IsVoid)
             {
                 TypeUsageSymbol actualReturnType = TypeOfExpr(analyzer, found.Value);
-                if (!IsAssignable(expectedReturnType, actualReturnType))
+                if (!actualReturnType.IsUnknownType
+                    && !IsAssignable(expectedReturnType, actualReturnType))
                 {
                     analyzer.MessageCollection.Error(
                         MessageId.ReturningInvalidType,
@@ -371,8 +380,8 @@ public static class SemanticUtils
                     );
                 }
             }
-            else if (found.Value                != null
-                     && expectedReturnType.Type == TypeSymbol.Void)
+            else if (found.Value != null
+                     && expectedReturnType.IsVoid)
             {
                 analyzer.MessageCollection.Error(
                     MessageId.ReturningValueFromVoidMethod,
@@ -381,7 +390,7 @@ public static class SemanticUtils
                 );
             }
             else if (found.Value                == null
-                     && expectedReturnType.Type != TypeSymbol.Void)
+                     && !expectedReturnType.IsVoid)
             {
                 analyzer.MessageCollection.Error(
                     MessageId.ReturningVoidFromNonVoidMethod,
@@ -405,7 +414,7 @@ public static class SemanticUtils
             }
         }
 
-        return expectedReturnType.Type == TypeSymbol.Void;
+        return expectedReturnType.IsVoid;
     }
 
     /// <summary>

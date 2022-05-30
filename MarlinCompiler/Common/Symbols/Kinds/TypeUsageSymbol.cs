@@ -47,6 +47,25 @@ public class TypeUsageSymbol : ISymbol
     /// </summary>
     public TypeUsageSymbol[] GenericArgs { get; set; }
 
+    #region Helpers
+
+    /// <summary>
+    /// Whether the type is void.
+    /// </summary>
+    public bool IsVoid => Type == TypeSymbol.Void;
+    
+    /// <summary>
+    /// Whether the type is a null pointer.
+    /// </summary>
+    public bool IsNull => Type == TypeSymbol.Null;
+    
+    /// <summary>
+    /// Whether the type is unknown.
+    /// </summary>
+    public bool IsUnknownType => Type == TypeSymbol.UnknownType;
+
+    #endregion
+    
     public string GetStringRepresentation()
     {
         if (Type is GenericParamTypeSymbol genericParam)

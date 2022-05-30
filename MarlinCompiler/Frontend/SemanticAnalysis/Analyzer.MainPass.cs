@@ -31,15 +31,14 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             Visit(node.Target);
             typeUsageSymbol                          = node.Target.GetMetadata<TypeUsageSymbol>();
             typeUsageSymbol.TypeReferencedStatically = node.Target is TypeReferenceNode;
-            TypeSymbol type = typeUsageSymbol.Type;
-            if (type == TypeSymbol.UnknownType)
+            if (typeUsageSymbol.IsUnknownType)
             {
                 // Type not found
                 node.SetMetadata(TypeUsageSymbol.UnknownType);
                 return None.Null;
             }
 
-            owner = type.SymbolTable;
+            owner = typeUsageSymbol.Type.SymbolTable;
         }
         else
         {
@@ -168,7 +167,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         SemanticUtils.SetTypeRefMetadata(_analyzer, node);
 
         TypeUsageSymbol typeUsageSymbol = node.GetMetadata<TypeUsageSymbol>();
-        if (typeUsageSymbol.Type == TypeSymbol.UnknownType)
+        if (typeUsageSymbol.IsUnknownType)
         {
             _analyzer.MessageCollection.Error(MessageId.UnknownType, $"Unknown type {node.FullName}", node.Location);
         }
@@ -309,7 +308,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             parent = new TypeUsageSymbol((TypeSymbol) typeScope.PrimarySymbol!, false);
         }
 
-        if (parent.Type == TypeSymbol.UnknownType)
+        if (parent.IsUnknownType)
         {
             // We don't know the type of the target, so we can't resolve the method
             node.SetMetadata(TypeUsageSymbol.UnknownType);
@@ -317,7 +316,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             return None.Null;
         }
 
-        if (parent.Type == TypeSymbol.Void)
+        if (parent.IsVoid)
         {
             // We can't call methods on void
             node.SetMetadata(TypeUsageSymbol.UnknownType);
@@ -337,7 +336,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
                 out MethodSymbol methodSymbol
             ))
         {
-            if (methodSymbol.ReturnType?.Type == TypeSymbol.UnknownType)
+            if (methodSymbol.ReturnType?.IsUnknownType ?? false)
             {
                 // We don't know the return type of the method, so we can't resolve the method
                 node.SetMetadata(TypeUsageSymbol.UnknownType);
@@ -393,7 +392,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
                     TypeUsageSymbol argType = SemanticUtils.TypeOfExpr(_analyzer, node.Arguments[i]);
                     if (!SemanticUtils.IsAssignable(paramType, argType))
                     {
-                        if (argType == TypeUsageSymbol.Null)
+                        if (argType.IsNull)
                         {
                             _analyzer.MessageCollection.Error(
                                 MessageId.CannotAssignNullToType,
@@ -444,7 +443,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
         {
             Visit(node.Target);
             TypeUsageSymbol parent = SemanticUtils.TypeOfExpr(_analyzer, node.Target);
-            if (parent.Type == TypeSymbol.UnknownType)
+            if (parent.IsUnknownType)
             {
                 // We don't know the type of the target, so we can't resolve the method
                 node.SetMetadata(VariableSymbol.UnknownVariable);
@@ -453,7 +452,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
             }
 
 
-            if (parent.Type == TypeSymbol.Void)
+            if (parent.IsVoid)
             {
                 // We can't call methods on void
                 node.SetMetadata(VariableSymbol.UnknownVariable);
@@ -483,7 +482,7 @@ internal sealed class MainPass : AstVisitor<None>, IPass
                 out VariableSymbol varSymbol
             ))
         {
-            if (varSymbol.Type.Type == TypeSymbol.UnknownType)
+            if (varSymbol.Type.IsUnknownType)
             {
                 // We don't know the variable type, so we can't resolve the member within it
                 node.SetMetadata(VariableSymbol.UnknownVariable);
