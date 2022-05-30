@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using Ubiquity.NET.Llvm.Types;
 
 namespace MarlinCompiler.Common.Symbols.Kinds;
@@ -8,9 +9,9 @@ namespace MarlinCompiler.Common.Symbols.Kinds;
 /// </summary>
 public class TypeSymbol : NamedSymbol
 {
-    public static readonly TypeSymbol Void        = new("", "void", GetAccessibility.Public);
-    public static readonly TypeSymbol Null        = new("", "nullptr", GetAccessibility.Public);
-    public static readonly TypeSymbol UnknownType = new("???", "???", GetAccessibility.Public);
+    public static readonly TypeSymbol Void        = new(String.Empty, "void", GetAccessibility.Public);
+    public static readonly TypeSymbol Null        = new(String.Empty, "nullptr", GetAccessibility.Public);
+    public static readonly TypeSymbol UnknownType = new(String.Empty, "???", GetAccessibility.Public);
 
     protected TypeSymbol(string moduleName, string typeName, GetAccessibility accessibility)
         : base($"{moduleName}::{typeName}")
@@ -29,6 +30,8 @@ public class TypeSymbol : NamedSymbol
     /// The name of the class.
     /// </summary>
     public string TypeName { get; }
+
+    public override string Name => GetStringRepresentation();
 
     /// <summary>
     /// The accessibility of the class.
@@ -57,8 +60,25 @@ public class TypeSymbol : NamedSymbol
     /// <summary>
     /// Creates a string representation of the type.
     /// </summary>
-    public string GetStringRepresentation() => Name;
-    
+    [SuppressMessage("ReSharper", "ConvertIfStatementToReturnStatement")]
+    public string GetStringRepresentation()
+    {
+        if (this == Null)
+        {
+            return "null";
+        }
+        if (this == Void)
+        {
+            return "void";
+        }
+        if (this == UnknownType)
+        {
+            return "<unknown type>";
+        }
+
+        return $"{ModuleName}::{TypeName}";
+    }
+
     /// <summary>
     /// The LLVM type reference for this type.
     /// </summary>
