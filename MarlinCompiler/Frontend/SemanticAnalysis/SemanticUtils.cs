@@ -217,7 +217,7 @@ public static class SemanticUtils
         MessageCollection collection,
         TypeUsageSymbol expected,
         TypeUsageSymbol given,
-        FileLocation usageLocation)
+        TokenLocation usageLocation)
     {
         if (expected.Type != TypeSymbol.UnknownType
             && given.Type != TypeSymbol.UnknownType
