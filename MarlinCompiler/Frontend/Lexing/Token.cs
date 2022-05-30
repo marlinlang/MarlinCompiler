@@ -5,7 +5,7 @@ namespace MarlinCompiler.Frontend.Lexing;
 /// <summary>
 /// A representation of a token.
 /// </summary>
-public record Token(TokenType Type, string Value, TokenLocation Location)
+public record Token(TokenType Type, string Value, FileLocation Location)
 {
     /// <summary>
     /// The operator precedence of this token

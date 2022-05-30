@@ -30,7 +30,7 @@ public sealed class Parser
         _tokens                      = tokens;
         _path                        = filePath;
         _moduleName                  = "<global>";
-        _compilationUnitDependencies = new List<(string, TokenLocation)>();
+        _compilationUnitDependencies = new List<(string, FileLocation)>();
     }
 
     /// <summary>
@@ -56,7 +56,7 @@ public sealed class Parser
     /// <summary>
     /// The dependencies for this compilation unit.
     /// </summary>
-    private readonly List<(string, TokenLocation)> _compilationUnitDependencies;
+    private readonly List<(string, FileLocation)> _compilationUnitDependencies;
 
     /// <summary>
     /// Starts the parse operation.
@@ -1301,9 +1301,9 @@ public sealed class Parser
     /// <summary>
     /// Utility method for parsing using directives.
     /// </summary>
-    private IEnumerable<(string, TokenLocation)> GrabUsingDirectives()
+    private IEnumerable<(string, FileLocation)> GrabUsingDirectives()
     {
-        List<(string, TokenLocation)> dependencies = new();
+        List<(string, FileLocation)> dependencies = new();
 
         while (_tokens.NextIsOfType(TokenType.Using))
         {
@@ -1311,7 +1311,7 @@ public sealed class Parser
 
             try
             {
-                TokenLocation? location = _tokens.PeekToken()?.Location;
+                FileLocation? location = _tokens.PeekToken()?.Location;
 
                 if (location == default)
                 {
@@ -1606,7 +1606,7 @@ public sealed class Parser
     /// <param name="location">The location of the offending code.</param>
     /// <param name="recoverConsumes">Whether or not the recover process should consume the final token.</param>
     /// <exception cref="CancelParsingException">When there are too many parse errors</exception>
-    private void LogErrorAndRecover(MessageId id, string message, TokenLocation location, bool recoverConsumes)
+    private void LogErrorAndRecover(MessageId id, string message, FileLocation location, bool recoverConsumes)
     {
         MessageCollection.Error(id, message, location);
 

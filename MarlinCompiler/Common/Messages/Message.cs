@@ -32,7 +32,7 @@ public readonly record struct Message(MessageId Id, string Content)
     /// <summary>
     /// The location of the cause of the message.
     /// </summary>
-    public TokenLocation? Location { get; init; } = null;
+    public FileLocation? Location { get; init; } = null;
 
     /// <summary>
     /// The fatality of the message.

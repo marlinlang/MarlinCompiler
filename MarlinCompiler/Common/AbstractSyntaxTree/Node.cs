@@ -12,7 +12,7 @@ public abstract class Node
     /// <summary>
     /// The location of the source representation of the node.
     /// </summary>
-    public TokenLocation Location
+    public FileLocation Location
     {
         get => _location ?? throw new InvalidOperationException("Node doesn't have a location");
         set => _location = value;
@@ -31,7 +31,7 @@ public abstract class Node
     /// <summary>
     /// The location of the node.
     /// </summary>
-    private TokenLocation? _location;
+    private FileLocation? _location;
 
     /// <summary>
     /// Accesses the metadata for a node.

@@ -175,7 +175,7 @@ public sealed class Lexer
                 return new Token(
                     definition.TokenType,
                     useValue,
-                    new TokenLocation(_filePath, new PositionRange(tokenStart, tokenEnd))
+                    new FileLocation(_filePath, new PositionRange(tokenStart, tokenEnd))
                 );
             }
         }
@@ -184,7 +184,7 @@ public sealed class Lexer
         return new Token(
             TokenType.Invalid,
             useString[0].ToString(),
-            new TokenLocation(_filePath, new PositionRange(tokenStart))
+            new FileLocation(_filePath, new PositionRange(tokenStart))
         );
     }
 }
